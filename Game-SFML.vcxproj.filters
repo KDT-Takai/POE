@@ -283,6 +283,9 @@
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h">
       <Filter>External</Filter>
     </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

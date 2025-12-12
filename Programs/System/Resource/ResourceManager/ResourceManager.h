@@ -12,11 +12,11 @@ protected:
     friend class Singleton<ResourceManager>;
 private:
 
-    ResourceCache<sf::Texture>      m_textures;     // 画像
-    ResourceCache<sf::Font>         m_fonts;        // フォント
-    ResourceCache<sf::SoundBuffer>  m_soundBuffers; // 効果音 (SE)
-	std::unordered_map<std::string, std::shared_ptr<sf::Shader>> m_shaders; // シェーダーキャッシュ
-	std::unique_ptr<sf::Music> m_currentMusic;      // BGM再生用
+    ResourceCache<sf::Texture>      textures;     // 画像
+    ResourceCache<sf::Font>         fonts;        // フォント
+    ResourceCache<sf::SoundBuffer>  soundBuffers; // 効果音 (SE)
+	std::unordered_map<std::string, std::shared_ptr<sf::Shader>> shaders; // シェーダーキャッシュ
+	std::unique_ptr<sf::Music> music;      // BGM再生用
 
     template <typename T>
 	// 指定フォルダ(サブフォルダ含む)のリソースを全て読み込む
@@ -30,21 +30,21 @@ public:
     void loadAllSounds(const std::string& folderPath = "Assets/Sounds");
 
     // 画像
-    void loadTexture(const std::string& path) { m_textures.load(path); }
-    std::shared_ptr<sf::Texture> getTexture(const std::string& path) { return m_textures.get(path); }
+    void loadTexture(const std::string& path) { textures.load(path); }
+    std::shared_ptr<sf::Texture> getTexture(const std::string& path) { return textures.get(path); }
     // フォント
-    void loadFont(const std::string& path) { m_fonts.load(path); }
-    std::shared_ptr<sf::Font> getFont(const std::string& path) { return m_fonts.get(path); }
+    void loadFont(const std::string& path) { fonts.load(path); }
+    std::shared_ptr<sf::Font> getFont(const std::string& path) { return fonts.get(path); }
     // 効果音
-    void loadSound(const std::string& path) { m_soundBuffers.load(path); }
-    std::shared_ptr<sf::SoundBuffer> getSound(const std::string& path) { return m_soundBuffers.get(path); }
+    void loadSound(const std::string& path) { soundBuffers.load(path); }
+    std::shared_ptr<sf::SoundBuffer> getSound(const std::string& path) { return soundBuffers.get(path); }
 
     // テクスチャ参照用
-    ResourceCache<sf::Texture>& texture() { return m_textures; }
+    ResourceCache<sf::Texture>& texture() { return textures; }
     // フォント参照用
-    ResourceCache<sf::Font>& font() { return m_fonts; }
+    ResourceCache<sf::Font>& font() { return fonts; }
     // 効果音参照用
-    ResourceCache<sf::SoundBuffer>& sound() { return m_soundBuffers; }
+    ResourceCache<sf::SoundBuffer>& sound() { return soundBuffers; }
 	// シェーダー取得
     std::shared_ptr<sf::Shader> getShader(const std::string& filename, sf::Shader::Type type);
 

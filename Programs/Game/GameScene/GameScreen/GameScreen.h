@@ -3,6 +3,7 @@
 #include <string>
 #include "../../ECS/EditerSystem.h"
 #include "../../ECS/RenderSystem.h"
+#include "../Character/Plyaer/System/PlayerSystem.h"
 
 class GameScreen : public ScreenBase {
 public:
@@ -15,9 +16,15 @@ public:
     void RenderImGui(const sf::Texture* renderTexture) override;
 
 private:
+    // Registry
+	std::unique_ptr<Registry> registry;
+    
     // System
     std::shared_ptr<EditorSystem> editorSystem;
     std::shared_ptr<RenderSystem> renderSystem;
+
+    std::shared_ptr<PlayerSystem> playerSystem;
+
     // ÉQÅ[ÉÄì‡Ç≈égópÇ∑ÇÈ
     std::shared_ptr<Entity> playerEntity;
 

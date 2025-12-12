@@ -55,6 +55,7 @@
     <ClInclude Include="External\ECS\EntityObject.h" />
     <ClInclude Include="External\ECS\Registry.h" />
     <ClInclude Include="External\ECS\RenderSystem.h" />
+    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerSystem.h" />
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />
     <ClInclude Include="Programs\Game\GameScene\GameScreen\GameScreen.h" />
     <ClInclude Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.h" />

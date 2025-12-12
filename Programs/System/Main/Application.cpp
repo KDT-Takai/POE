@@ -1,8 +1,10 @@
 #include "Application.h"
+
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <imgui-SFML.h>
 #include <imgui.h>
+
 #include "../Input/InputManager.h"
 #include "../Config/Config.h"
 #include "../ScreenManager/ScreenManager.h"

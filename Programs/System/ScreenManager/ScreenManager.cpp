@@ -3,7 +3,7 @@
 #include "imgui.h"
 #include "../../Game/GameScene/GameScreen/GameScreen.h"
 #include "../../Game/TitleScene/TitleScreen/TitleSceen.h"
-
+#include "../Resource/ResourceManager/ResourceManager.h"
 
 void ScreenManager::RegisterScreen(const std::string& name, ScreenFactory factory)
 {
@@ -12,10 +12,13 @@ void ScreenManager::RegisterScreen(const std::string& name, ScreenFactory factor
 
 ScreenManager::ScreenManager()
 {
+    // 自動読み込み
+    ResourceManager::Instance().loadAllTextures("Assets/Textures");
+    ResourceManager::Instance().loadAllFonts("Assets/Fonts");
+    ResourceManager::Instance().loadAllSounds("Assets/Sounds");
     // 全シーンの登録
     RegisterScreen<TitleScreen>();
     RegisterScreen<GameScreen>();
-
     // 初期シーンの設定
     currentScreenName = TitleScreen::GetName();
     screen = registeredScreens.at(currentScreenName)();

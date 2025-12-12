@@ -29,3 +29,8 @@ struct CircleComponent {
     sf::Color color = sf::Color::Green;
     bool isVisible = true;
 };
+
+// プレイヤー制御用
+struct PlayerComponent {
+    float speed = 20.0f;
+};

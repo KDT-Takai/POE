@@ -14,7 +14,6 @@ public:
     }
 
     void RenderImGui(Registry& registry) {
-
         ImGui::Begin("Object Editor");
         ImGui::Separator();
 
@@ -48,8 +47,7 @@ public:
         for (auto e : toDestroy) registry.DestroyEntity(e);
         ImGui::End();
 
-
-        // --- 2. インスペクター (共通) ---
+        // インスペクター
         ImGui::Begin("Inspector");
         if (m_selectedEntity != -1) {
             DrawComponents(registry, m_selectedEntity);

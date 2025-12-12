@@ -8,7 +8,7 @@
 class RenderSystem {
 public:
     void Render(Registry& registry, sf::RenderTarget& target) {
-        // スプライトの描画 (既存の処理)
+        // スプライトの描画
         auto spriteEntities = registry.View<SpriteComponent>();
         struct RenderObject {
             TransformComponent* transform;
@@ -69,7 +69,6 @@ public:
         }
     }
 };
-
 //#pragma once
 //#include "ECS.h"
 //#include "Components.h"

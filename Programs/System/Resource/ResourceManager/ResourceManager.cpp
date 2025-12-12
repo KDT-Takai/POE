@@ -39,26 +39,26 @@ void ResourceManager::loadResourcesFromDirectory( ResourceCache<T>& cache, const
 void ResourceManager::loadAllTextures(const std::string& folderPath) {
     // 読み込み対象の拡張子リスト
     std::vector<std::string> extensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
-    loadResourcesFromDirectory(m_textures, folderPath, extensions);
+    loadResourcesFromDirectory(textures, folderPath, extensions);
 }
 
 // フォント一括読み込みの実装
 void ResourceManager::loadAllFonts(const std::string& folderPath) {
     std::vector<std::string> extensions = { ".ttf", ".otf" };
-    loadResourcesFromDirectory(m_fonts, folderPath, extensions);
+    loadResourcesFromDirectory(fonts, folderPath, extensions);
 }
 
 // 効果音一括読み込みの実装
 void ResourceManager::loadAllSounds(const std::string& folderPath) {
     std::vector<std::string> extensions = { ".wav", ".ogg", ".mp3" }; // sf::SoundBufferはmp3も読める場合があるがwav/ogg推奨
-    loadResourcesFromDirectory(m_soundBuffers, folderPath, extensions);
+    loadResourcesFromDirectory(soundBuffers, folderPath, extensions);
 }
 
 // --- シェーダーの取得 ---
 std::shared_ptr<sf::Shader> ResourceManager::getShader(const std::string& filename, sf::Shader::Type type) {
     // キャッシュ確認
-    auto it = m_shaders.find(filename);
-    if (it != m_shaders.end())
+    auto it = shaders.find(filename);
+    if (it != shaders.end())
     {
         return it->second;
     }
@@ -73,7 +73,7 @@ std::shared_ptr<sf::Shader> ResourceManager::getShader(const std::string& filena
     }
 
     // 登録
-    m_shaders[filename] = shader;
+    shaders[filename] = shader;
     spdlog::info("ResourceManager: Loaded shader: {}", filename);
     return shader;
 }
@@ -81,18 +81,18 @@ std::shared_ptr<sf::Shader> ResourceManager::getShader(const std::string& filena
 // BGM再生
 void ResourceManager::playMusic(const std::string& filename) {
     // すでに再生中のものがあれば止める
-    if (m_currentMusic)
+    if (music)
     {
-        m_currentMusic->stop();
+        music->stop();
     }
 
     // 新しいMusicインスタンスを作成
-    m_currentMusic = std::make_unique<sf::Music>();
+    music = std::make_unique<sf::Music>();
 
-    if (m_currentMusic->openFromFile(filename))
+    if (music->openFromFile(filename))
     {
-        m_currentMusic->setLooping(true);
-        m_currentMusic->play();
+        music->setLooping(true);
+        music->play();
         spdlog::info("ResourceManager: Playing music: {}", filename);
     }
     else
@@ -103,27 +103,27 @@ void ResourceManager::playMusic(const std::string& filename) {
 
 // BGM停止
 void ResourceManager::stopMusic() {
-    if (m_currentMusic)
+    if (music)
     {
-        m_currentMusic->stop();
+        music->stop();
         spdlog::info("ResourceManager: Music stopped.");
     }
 }
 
 // BGM一時停止
 void ResourceManager::pauseMusic() {
-    if (m_currentMusic && m_currentMusic->getStatus() == sf::SoundSource::Status::Playing)
+    if (music && music->getStatus() == sf::SoundSource::Status::Playing)
     {
-        m_currentMusic->pause();
+        music->pause();
         spdlog::info("ResourceManager: Music paused.");
     }
 }
 
 // BGM再開
 void ResourceManager::resumeMusic() {
-    if (m_currentMusic && m_currentMusic->getStatus() == sf::SoundSource::Status::Paused)
+    if (music && music->getStatus() == sf::SoundSource::Status::Paused)
     {
-        m_currentMusic->play();
+        music->play();
         spdlog::info("ResourceManager: Music resumed.");
     }
 }

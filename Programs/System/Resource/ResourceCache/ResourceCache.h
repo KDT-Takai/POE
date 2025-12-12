@@ -5,17 +5,18 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
-#include <type_traits> // 型名取得用
+#include <type_traits>
 
 // リソース管理用のクラス
 template <typename T>
+// リーソースキャッシュクラス
 class ResourceCache {
 private:
-    std::unordered_map<std::string, std::shared_ptr<T>> m_resources;
+    std::unordered_map<std::string, std::shared_ptr<T>> resources;
 public:
     // 先読み込み用メソッド
     bool load(const std::string& filename) {
-        if (m_resources.find(filename) != m_resources.end())
+        if (resources.find(filename) != resources.end())
         {
             return true;
         }
@@ -33,7 +34,7 @@ public:
             return false;
         }
 
-        m_resources[filename] = resource;
+        resources[filename] = resource;
         spdlog::info("ResourceCache: Pre-loaded '{}'", filename);
         return true;
     }
@@ -43,22 +44,22 @@ public:
         {
             return nullptr;
         }
-        return m_resources[filename];
+        return resources[filename];
     }
 
     // 特定リソース解放
     void unload(const std::string& filename) {
-        auto it = m_resources.find(filename);
-        if (it != m_resources.end())
+        auto it = resources.find(filename);
+        if (it != resources.end())
         {
-            m_resources.erase(it);
+            resources.erase(it);
             spdlog::info("ResourceCache: Unloaded '{}'", filename);
         }
     }
 
     // 全解放
     void unloadAll() {
-        m_resources.clear();
+        resources.clear();
         spdlog::info("ResourceCache: All resources cleared.");
     }
 };

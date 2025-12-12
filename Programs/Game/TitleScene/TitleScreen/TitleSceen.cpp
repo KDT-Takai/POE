@@ -4,7 +4,8 @@
 #include "../../../System/CameraManager/CameraManager.h"
 #include "../../../System/Resource/ResourceManager/ResourceManager.h"
 #include "../../../System/Time/Time.h"
-
+#include "../../../System/ScreenManager/ScreenManager.h"
+#include "../../GameScene/GameScreen/GameScreen.h"
 
 TitleScreen::TitleScreen() {
     screenName = "TitleScreen";
@@ -13,14 +14,9 @@ TitleScreen::TitleScreen() {
     movingCircle.setRadius(30.0f);
     movingCircle.setFillColor(sf::Color::Green);
     movingCircle.setPosition({ 100.0f, 100.0f }); // 初期位置
-
     // 移動速度の設定 (X方向に3, Y方向に2)
     circleVelocity = { 3.0f, 2.0f };
-
-    ResourceManager::Instance().loadAllTextures("Assets/Textures");
-    ResourceManager::Instance().loadAllFonts("Assets/Fonts");
-    ResourceManager::Instance().loadAllSounds("Assets/Sounds");
-
+    // テスト描画
     auto test = ResourceManager::Instance().getTexture("Assets/Textures/test.png");
     if (test) {
 		testSprite = std::make_unique<sf::Sprite>(*test);
@@ -39,17 +35,11 @@ TitleScreen::TitleScreen() {
 }
 
 void TitleScreen::Update() {
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::A)) {
-        Time::Instance().SetTargetFPS(60);
-    }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::S)) {
-        Time::Instance().SetTargetFPS(120);
-    }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::D)) {
-        Time::Instance().SetTimeScale(2);
-    }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::F)) {
-        Time::Instance().SetTimeScale(1);
+    // タイトルスクリーンに移動
+	bool input = InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Space);
+    if (input)
+    {
+		ScreenManager::Instance().ChangeScreen(GameScreen::GetName());
     }
 
     // 現在の座標を取得
