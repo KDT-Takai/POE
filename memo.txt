@@ -1,0 +1,84 @@
+ECSついに作成するよ
+まずECSのメリットである沢山のオブジェクトを軽い処理で回す。
+ImGui上（デバックモードでしたいこと）
+たとえばTransformのコンポーネントでは
+ObjectEditor（一つのオブジェクト）で座標の変更ができるImGuiの追加をできるようにしたい
+また、Entityの追加などもできるようにしたい。
+レイヤーも作りたい 描画順番を変えたい
+ほかにもいろいろImGui上でゲーム作成できるぐらいには追加していきたい 
+
+ECSManager：エンティティ管理、コンポーネントプール（メモリ管理）
+Components：Transform, Sprite（レイヤー含む）などのデータ
+EditorSystem(ImGui)：エンティティの追加・削除、コンポーネントのパラメータ編集
+RenderSystem：レイヤー順（Zオーダー）にソートして描画する機能
+
+
+
+
+
+
+
+Main.cpp
+    std::unique_ptr<Application> app;
+
+Application.h
+Application.cpp
+
+ScreenBase.h
+ScreenManager.h
+ScreenManager.cpp
+
+今回したいのが現在みたいにスクリーンとImGuiの同期をさせて、
+デバックモード中にImGuiだけを表示させていろいろいじれるようにしたい。
+ただ、ImGuiで描画させるときに重くならないように気を付けたい
+
+
+Application
+	メインループとウィンドウ管理
+	RenderTexture を一度だけ描画
+	ScreenManager を通して現在のスクリーンを更新・描画
+	デバッグモード切替（F1など）
+ScreenBase（抽象クラス）
+	各スクリーン（ゲーム画面・メニューなど）の共通インターフェース
+	メソッド：
+		virtual void Update(const sf::Time& dt) = 0;
+		virtual void Render(sf::RenderTarget& target) = 0; // RenderTexture を渡す
+		virtual void RenderImGui() = 0; // デバッグ用 ImGui 描画
+ScreenManager（シングルトン）
+	現在のスクリーンを管理
+	ScreenBase を保持し、切り替え可能
+	RenderTexture を一度だけ描画 → ウィンドウ表示と ImGui 表示で共有
+	デバッグモード時は ImGui 描画のみ表示可能
+2. 描画フローの考え方
+	Application::Update()
+	イベント処理
+	deltaClock で時間を取得
+	ScreenManager::Update(dt) を呼ぶ
+	Application::Render()
+	RenderTexture に一度だけ描画
+	renderTexture->clear();
+	ScreenManager::Instance().Render(*renderTexture);
+	renderTexture->display();
+ウィンドウに描画
+	window.draw(sf::Sprite(renderTexture->getTexture()));
+	デバッグモードなら ImGui 上で RenderTexture を表示
+	ImGui::Render()
+✅ ポイント：RenderTexture は 1フレームにつき一度だけ描画。
+ImGui はそのテクスチャを参照するだけにする。
+3. デバッグモードの設計
+	ScreenManager が debugMode フラグを保持
+	F1 でトグル切替
+	デバッグモード中：
+	ウィンドウ表示は止めてもよい（オプション）
+	ImGui 上にスクリーンの状態・オブジェクト・パラメータを表示
+	RenderTexture は共有するので描画は二重にならない
+4. 将来的な拡張
+	ScreenBase で複数の RenderTexture を使えるようにすれば、
+	ミニマップや複数レイヤーも簡単に表示できる
+	ScreenManager でスクリーン切替を安全に行える
+	Application では RenderWindow と deltaClock は保持し、Screen は参照渡しだけにする → 依存を最小化
+💡 この設計であれば：
+	現在の円の描画サンプルも Screen に移行可能
+	ImGui でパラメータいじる場合も、描画は RenderTexture を参照するだけ
+	オブジェクトが増えても負荷が2倍にはならない
+もしよければ、次に ScreenBase / ScreenManager / Application を使ったサンプルのクラス設計とコード骨組み を作ります。

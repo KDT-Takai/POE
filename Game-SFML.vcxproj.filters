@@ -1,0 +1,290 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="External">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="External\ImGui">
+      <UniqueIdentifier>{14ca9362-6785-4619-8e22-0ad3efc9abde}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\SFML-ImGui">
+      <UniqueIdentifier>{d1cf73e7-eac0-4d5a-a6de-82090f15402d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ImGuizmo">
+      <UniqueIdentifier>{e11f1906-a571-4b0c-8e4c-d32c4580349e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="System\Main">
+      <UniqueIdentifier>{c897fcc2-b873-4b0f-acb3-fbd33ee3a744}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Main\Application">
+      <UniqueIdentifier>{a54e2bd4-3007-493f-8df3-cf61ba20e46c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS">
+      <UniqueIdentifier>{ad66d3a8-25de-4cd8-82fd-90cfe84c547c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS\Component">
+      <UniqueIdentifier>{4ddc49b4-e90f-4f54-8bf8-c4b435b78b31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS\Entity">
+      <UniqueIdentifier>{7cdc6952-a22a-433c-a16b-8b3bfaf13bb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS\EntityManager">
+      <UniqueIdentifier>{ce478ba6-0d4e-4a13-84b9-cd704c819c03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS\System">
+      <UniqueIdentifier>{c6cc1916-f6cb-4cf0-a375-ea9dc6f87ddc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ECS\SystemManager">
+      <UniqueIdentifier>{48241c94-2879-4aae-8fdf-97a1e3f214f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input">
+      <UniqueIdentifier>{47b9ea43-4a26-4e06-a244-d7b0b3334400}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input\InputUtils">
+      <UniqueIdentifier>{a69782b0-97b1-4da2-b0ce-9c2bc329d1ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Singleton">
+      <UniqueIdentifier>{02378a14-4da6-471f-9964-bc85e7e6b094}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\DebugManager">
+      <UniqueIdentifier>{55a0deab-06e4-4e15-bb5b-0c1ea420d5ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Config">
+      <UniqueIdentifier>{112445ab-6526-42ee-9999-8bdca4ff50d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input\KeyInput">
+      <UniqueIdentifier>{5b384545-4db7-4bc6-9d14-62cc837e72db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input\MouseInput">
+      <UniqueIdentifier>{41ef3150-1c39-4524-b004-09169127f018}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input\PadInput">
+      <UniqueIdentifier>{06d71fc9-a901-429c-9080-e37216a9055a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\ScreenManager">
+      <UniqueIdentifier>{49290244-8936-489c-8f5c-7b6a46afdbc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\ScreenManager\ScreenBase">
+      <UniqueIdentifier>{8fa3ab23-6a30-49a7-9604-74ccd9d19a57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{9d92b316-8378-4221-be1d-b1d46266364b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene">
+      <UniqueIdentifier>{a107fc80-b876-44fd-b099-d79396289a04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameScene\GameScreen">
+      <UniqueIdentifier>{6983b6b3-888a-4775-b569-bd8b377d40c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\TitleScene">
+      <UniqueIdentifier>{d41c0be6-acc3-403f-afd6-c2a168a749b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\TitleScene\TitleScreen">
+      <UniqueIdentifier>{d87aa2b2-da29-4169-9fd0-0f6a2001cdb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Input\!ImputManager">
+      <UniqueIdentifier>{834ecec4-094a-4fe7-b690-b967008d0ed6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\CameraManager">
+      <UniqueIdentifier>{f710ccfd-1439-4208-86e9-22ea3886dba7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Resource">
+      <UniqueIdentifier>{c97629dd-bb4b-43e6-b55d-d9dcb911b2bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Resource\!ResourceManager">
+      <UniqueIdentifier>{c070579c-de84-40e4-beb1-bf1dbfb37278}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Resource\ResourceCache">
+      <UniqueIdentifier>{4977dbaa-ac41-496d-9f8f-ce3c7e0dbc31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Time">
+      <UniqueIdentifier>{f8ca71b5-c590-43e5-8929-1bb7cc8d51f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Performance">
+      <UniqueIdentifier>{34dff770-8a1f-468b-9951-f9678cf54e4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Performance\CPU">
+      <UniqueIdentifier>{9ad6c29b-8000-4611-b8a4-5d9796fc024b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Performance\GPU">
+      <UniqueIdentifier>{f3a6a3a8-7d84-4698-9d6b-b72d1166a617}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System\Performance\MemoryMonitor">
+      <UniqueIdentifier>{3378adae-7530-427c-8bbe-3368c2593612}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="External\ImGui-SFML\Source\imgui-SFML.cpp">
+      <Filter>External\SFML-ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGui\Source\imgui.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGui\Source\imgui_demo.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGui\Source\imgui_draw.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGui\Source\imgui_tables.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGui\Source\imgui_widgets.cpp">
+      <Filter>External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGuizmo\Source\GraphEditor.cpp">
+      <Filter>External\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGuizmo\Source\ImCurveEdit.cpp">
+      <Filter>External\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGuizmo\Source\ImGradient.cpp">
+      <Filter>External\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGuizmo\Source\ImGuizmo.cpp">
+      <Filter>External\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ImGuizmo\Source\ImSequencer.cpp">
+      <Filter>External\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Main\Main.cpp">
+      <Filter>System\Main</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Main\Application.cpp">
+      <Filter>System\Main\Application</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\DebugManager\DebugManager.cpp">
+      <Filter>System\DebugManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Input\KeyInput\KeyInput.cpp">
+      <Filter>System\Input\KeyInput</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Input\MouseInput\MouseInput.cpp">
+      <Filter>System\Input\MouseInput</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Input\PadInput\PadInput.cpp">
+      <Filter>System\Input\PadInput</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\ScreenManager\ScreenManager.cpp">
+      <Filter>System\ScreenManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\Game\GameScene\GameScreen\GameScreen.cpp">
+      <Filter>Game\GameScene\GameScreen</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Input\InputManager.cpp">
+      <Filter>System\Input\!ImputManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.cpp">
+      <Filter>Game\TitleScene\TitleScreen</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\CameraManager\CameraManager.cpp">
+      <Filter>System\CameraManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Resource\ResourceManager\ResourceManager.cpp">
+      <Filter>System\Resource\!ResourceManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Performance\MemoryMonitor.cpp">
+      <Filter>System\Performance\MemoryMonitor</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Performance\CPU.cpp">
+      <Filter>System\Performance\CPU</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Time\Time.cpp">
+      <Filter>System\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="External\ECS\Registry.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="External\ECS\Components.h">
+      <Filter>External\ECS\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\ECS.h">
+      <Filter>External\ECS\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\EditerSystem.h">
+      <Filter>External\ECS\EntityManager</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\RenderSystem.h">
+      <Filter>External\ECS\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Main\Application.h">
+      <Filter>System\Main\Application</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Input\InputUtils\InputUtils.h">
+      <Filter>System\Input\InputUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Singleton\Singleton.h">
+      <Filter>System\Singleton</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\DebugManager\DebugManager.h">
+      <Filter>System\DebugManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Config\Config.h">
+      <Filter>System\Config</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Input\KeyInput\KeyInput.h">
+      <Filter>System\Input\KeyInput</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Input\MouseInput\MouseInput.h">
+      <Filter>System\Input\MouseInput</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Input\PadInput\PadInput.h">
+      <Filter>System\Input\PadInput</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\ScreenManager\ScreenManager.h">
+      <Filter>System\ScreenManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\ScreenManager\ScreenBase.h">
+      <Filter>System\ScreenManager\ScreenBase</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\GameScreen\GameScreen.h">
+      <Filter>Game\GameScene\GameScreen</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.h">
+      <Filter>Game\TitleScene\TitleScreen</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Input\InputManager.h">
+      <Filter>System\Input\!ImputManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\CameraManager\CameraManager.h">
+      <Filter>System\CameraManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Resource\ResourceManager\ResourceManager.h">
+      <Filter>System\Resource\!ResourceManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Resource\ResourceCache\ResourceCache.h">
+      <Filter>System\Resource\ResourceCache</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Time\Time.h">
+      <Filter>System\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Performance\CPU.h">
+      <Filter>System\Performance\CPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Performance\GPU.h">
+      <Filter>System\Performance\GPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Performance\MemoryMonitor.h">
+      <Filter>System\Performance\MemoryMonitor</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Registry.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\EntityObject.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h">
+      <Filter>External</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>

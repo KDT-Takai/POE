@@ -1,0 +1,193 @@
+#include "DebugManager.h"
+#include <imgui-SFML.h>
+#include <imgui.h>
+#include "../Config/Config.h"
+#include "../ScreenManager/ScreenManager.h"
+#include "../CameraManager/CameraManager.h"
+#include "../Time/Time.h"
+#include "../Performance/CPU.h"
+
+void DebugManager::Update(const sf::Window& window) {
+    static bool lastF1 = false;
+    bool nowF1 = InputManager::Instance().GetKeyInput().GetKey(sf::Keyboard::Key::F1);
+    //bool nowF1 = InputManager::Instance().padInput->IsPressedPad(0,0);
+    if (nowF1 && !lastF1) debugMode = !debugMode;
+    // 通常の時は画面サイズを元に戻す
+    if (!debugMode)
+    {
+        CameraManager::Instance().SetZoomLevel(1);
+    }
+    lastF1 = nowF1;
+
+    // メモリ使用率のUpdate
+    memory.Update();
+}
+
+void DebugManager::Render(const sf::Texture* renderTexture) {
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+	// ゲーム画面表示
+    this->RenderGameScreen(renderTexture);
+	// シーン管理
+	this->RenderSceneManagement();
+	// ログ出力ウィンドウ
+	this->RenderLogWindow();
+	// カメラコントロール
+	this->RenderCameraControl();
+    // Timeクラス関係のログ表示
+    this->RenderPerformance();
+    // スクリーン上のGui表示
+    ScreenManager::Instance().RenderImGui(renderTexture);
+    // Input
+    InputManager::Instance().RenderImGui();
+}
+
+void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
+    // ゲーム画面表示
+    if (renderTexture) {
+        ImGui::Begin("Debug Controls");
+        ImGui::Text("Game Screen Render");
+
+        // 反転処理
+        // 一時的なスプライト用意する
+        sf::Sprite tempSprite(*renderTexture);
+        // サイズ取得
+        sf::Vector2u texSize = renderTexture->getSize();
+        // テクスチャ矩形を上下反転させてImGui上で元の状態に見せる
+        tempSprite.setTextureRect(sf::IntRect(
+            // 左上の座標。Y はテクスチャの下端から開始
+            { 0, static_cast<int>(texSize.y) },
+            // y軸だけ反転する
+            { static_cast<int>(texSize.x), -static_cast<int>(texSize.y) }
+        ));
+        ImGui::Image(tempSprite, sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f));
+
+        // メモ
+        // ImGui::Image(*renderTexture, sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f));
+        // なぜかImGui上ではy軸が反転してる
+        // 可能性として
+        // ImGui::Image関数のUV座標指定が逆になっている
+        // sf::Texture自体が上下反転している
+        // 上はApplicationでtextureをSpriteで描画しても上下反転しないので、
+        // ImGui側の問題の可能性が高い
+
+        //ImGui::Image(target,
+        //sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f),
+        //sf::Color::White,
+        //sf::Color::Transparent
+        //);
+
+        //mGui::Image(*renderTexture, ImVec2::toImVec2(size), ImVec2(0, 0), ImVec2(1, 1), toImColor(tintColor), toImColor(borderColor));
+        //ImGui::Image(*renderTexture, sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f), ImVec2(0, 0), ImVec2(1, 1), sf::Color::White, sf::Color::Transparent);
+        //ImGui::Image(renderTexture->getNativeHandle(), sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f), ImVec2(0, 0), ImVec2(1, 1), );
+        //void Image(const sf::Texture & texture, const sf::Vector2f & size, const sf::Color & tintColor, const sf::Color & borderColor)
+        //{
+        //    ImTextureID textureID = convertGLTextureHandleToImTextureID(texture.getNativeHandle());
+        //
+        //    ImGui::Image(textureID, toImVec2(size), ImVec2(0, 0), ImVec2(1, 1), toImColor(tintColor), toImColor(borderColor));
+        //}
+//        ImGui::Image(*renderTexture, sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
+        ImGui::End(); // Debug Controls
+    }
+}
+
+void DebugManager::RenderSceneManagement() {
+    // シーン切り替えコントロール
+    ImGui::Begin("Scene Management");
+    ImGui::Separator();
+    ImGui::Text("Scene Management");
+
+    ScreenManager& screenManager = ScreenManager::Instance();
+    const std::string& currentScreen = screenManager.GetCurrentScreenName();
+    const auto& registeredScreens = screenManager.GetRegisteredScreens();
+
+    // コンボボックスに表示するアイテムリストを作成
+    std::vector<std::string> screenNames;
+    for (const auto& pair : registeredScreens) {
+        screenNames.push_back(pair.first);
+    }
+
+    // ImGui::Comboで利用するためにstd::vector<const char*>に変換
+    std::vector<const char*> screenNames_c_str;
+    for (const auto& name : screenNames) {
+        screenNames_c_str.push_back(name.c_str());
+    }
+
+    static int currentItem = 0; // 現在選択されているインデックス
+
+    // 現在のシーン名を見つけ、currentItemを初期化
+    if (screenNames.size() > 0) {
+        auto it = std::find(screenNames.begin(), screenNames.end(), currentScreen);
+        if (it != screenNames.end()) {
+            currentItem = std::distance(screenNames.begin(), it);
+        }
+    }
+
+    ImGui::Text("Current Scene: %s", currentScreen.c_str());
+
+    if (ImGui::Combo("Change To", &currentItem, screenNames_c_str.data(), screenNames_c_str.size())) {
+        // 選択が変更された場合
+        const char* selectedName = screenNames_c_str[currentItem];
+
+        // **シーン切り替えの実行**
+        if (selectedName != currentScreen) {
+            screenManager.ChangeScreen(selectedName);
+        }
+    }
+
+    ImGui::End(); // Scene Management
+}
+
+void DebugManager::RenderLogWindow() {
+    // ログ画面 (Placeholder)
+    ImGui::Begin("Log Window");
+    ImGui::Separator();
+    ImGui::Text("Log Window");
+    // ImGui::BeginChild("Log", ImVec2(0, 200), true);
+    // spdlogのImGui Sinkへの書き込み処理をここに追加
+    // ImGui::EndChild();
+    ImGui::End(); // Log Window
+}
+
+void DebugManager::RenderCameraControl() {
+    // カメラズーム
+    ImGui::Begin("Camera Setting");
+    ImGui::Separator();
+    ImGui::Text("Camera Setting");
+
+    // シーンに依存しないカメラマネージャーのインスタンスを取得
+    CameraManager& cameraManager = CameraManager::Instance();
+
+    // 現在のズームレベルを取得して初期値とする
+    static float zoomLevel = cameraManager.GetZoomLevel();
+
+    if (ImGui::SliderFloat("Zoom Level", &zoomLevel, 0.1f, 5.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp)) {
+        // スライダーが操作されたら CameraManager にズームレベルを適用
+        cameraManager.SetZoomLevel(zoomLevel);
+    }
+    ImGui::Text("Range: 0.1 (far) ~ 5.0 (near)");
+
+    ImGui::End(); // Camera Setting
+}
+
+void DebugManager::RenderPerformance() {
+    // TODO: あとでやる気がでたら綺麗にする
+    ImGui::Begin(" Performance ");
+    // FPSの描画
+    Time::Instance().RenderImGui();
+
+    ImGui::SeparatorText(" System ");
+    {   // ImGuiのChildで囲われているのでわかりやすくスコープを付けておく
+        ImGui::BeginChild("PerfCard", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar);
+        // CPU 描画
+        CpuUsage::Instance().RenderImGui();
+        // メモリ描画
+        memory.RenderImGui();
+        ImGui::EndChild();
+    }
+    ImGui::End();
+
+}
+
+// TODO: 実装 今は必要ないけど後々使うかもだからおいておく
+void DebugManager::RenderOtherDebugInfo() {
+}
