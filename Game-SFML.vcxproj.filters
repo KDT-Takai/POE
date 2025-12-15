@@ -197,21 +197,21 @@
     <ClCompile Include="Programs\System\Time\Time.cpp">
       <Filter>System\Time</Filter>
     </ClCompile>
-    <ClCompile Include="External\ECS\Registry.cpp">
+    <ClCompile Include="External\ECS\Registry\Registry.cpp">
       <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="External\ECS\Components.h">
+    <ClInclude Include="External\ECS\Components\Components.h">
       <Filter>External\ECS\Component</Filter>
     </ClInclude>
     <ClInclude Include="External\ECS\ECS.h">
       <Filter>External\ECS\Entity</Filter>
     </ClInclude>
-    <ClInclude Include="External\ECS\EditerSystem.h">
+    <ClInclude Include="External\ECS\Systems\EditerSystem.h">
       <Filter>External\ECS\EntityManager</Filter>
     </ClInclude>
-    <ClInclude Include="External\ECS\RenderSystem.h">
+    <ClInclude Include="External\ECS\Systems\RenderSystem.h">
       <Filter>External\ECS\System</Filter>
     </ClInclude>
     <ClInclude Include="Programs\System\Main\Application.h">
@@ -274,10 +274,10 @@
     <ClInclude Include="Programs\System\Performance\MemoryMonitor.h">
       <Filter>System\Performance\MemoryMonitor</Filter>
     </ClInclude>
-    <ClInclude Include="External\ECS\Registry.h">
+    <ClInclude Include="External\ECS\Registry\Registry.h">
       <Filter>External</Filter>
     </ClInclude>
-    <ClInclude Include="External\ECS\EntityObject.h">
+    <ClInclude Include="External\ECS\EntityObject\EntityObject.h">
       <Filter>External</Filter>
     </ClInclude>
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h">
@@ -286,8 +286,17 @@
     <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerSystem.h">
       <Filter>External</Filter>
     </ClInclude>
+    <ClInclude Include="External\ECS\Core\Entity.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Core\ComponentPool.h">
+      <Filter>External</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="Assets\Sounds\test.mp3" />
   </ItemGroup>
 </Project>

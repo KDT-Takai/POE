@@ -1,8 +1,8 @@
 #include "GameScreen.h"
+#include <ECS.h>
 #include "../Entity/EntitySpawner.h"
-#include "../../ECS/EntityObject.h"
-#include "../../../System/CameraManager/CameraManager.h"
-#include "../../../System/Time/Time.h"
+#include <System/CameraManager/CameraManager.h>
+#include <System/Time/Time.h>
 
 GameScreen::GameScreen() {
     screenName = "GameScreen";

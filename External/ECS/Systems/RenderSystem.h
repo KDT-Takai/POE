@@ -1,7 +1,7 @@
 #pragma once
-#include "ECS.h"
-#include "Components.h"
-#include "../../../Programs/System/Resource/ResourceManager/ResourceManager.h"
+#include "../Registry/Registry.h"
+#include "../Components/Components.h"
+#include <System/Resource/ResourceManager/ResourceManager.h>
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 

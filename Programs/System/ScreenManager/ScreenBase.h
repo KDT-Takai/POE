@@ -2,8 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <SFML/Graphics.hpp>
-#include "../../ECS/ECS.h"
-#include "../../ECS/Registry.h"
+#include <ECS.h>
 
 class ScreenBase {
 protected:

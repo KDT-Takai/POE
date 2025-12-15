@@ -1,7 +1,5 @@
 #pragma once
-#include "../../ECS/ECS.h"
-#include "../../ECS/Components.h"
-#include "../../ECS/EntityObject.h"
+#include <ECS.h>
 
 class EntitySpawner {
 public:

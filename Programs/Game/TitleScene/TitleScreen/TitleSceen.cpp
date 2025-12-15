@@ -1,10 +1,10 @@
 #include "TitleSceen.h"
 #include <spdlog/spdlog.h>
-#include "../../../System/Config/Config.h"
-#include "../../../System/CameraManager/CameraManager.h"
-#include "../../../System/Resource/ResourceManager/ResourceManager.h"
-#include "../../../System/Time/Time.h"
-#include "../../../System/ScreenManager/ScreenManager.h"
+#include <System/Config/Config.h>
+#include <System/CameraManager/CameraManager.h>
+#include <System/Resource/ResourceManager/ResourceManager.h>
+#include <System/Time/Time.h>
+#include <System/ScreenManager/ScreenManager.h>
 #include "../../GameScene/GameScreen/GameScreen.h"
 
 TitleScreen::TitleScreen() {

@@ -20,7 +20,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="External\ECS\Registry.cpp" />
+    <ClCompile Include="External\ECS\Registry\Registry.cpp" />
     <ClCompile Include="External\ImGui-SFML\Source\imgui-SFML.cpp" />
     <ClCompile Include="External\ImGuizmo\Source\GraphEditor.cpp" />
     <ClCompile Include="External\ImGuizmo\Source\ImCurveEdit.cpp" />
@@ -49,12 +49,14 @@
     <ClCompile Include="Programs\System\Time\Time.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="External\ECS\Components.h" />
+    <ClInclude Include="External\ECS\Components\Components.h" />
+    <ClInclude Include="External\ECS\Core\ComponentPool.h" />
+    <ClInclude Include="External\ECS\Core\Entity.h" />
     <ClInclude Include="External\ECS\ECS.h" />
-    <ClInclude Include="External\ECS\EditerSystem.h" />
-    <ClInclude Include="External\ECS\EntityObject.h" />
-    <ClInclude Include="External\ECS\Registry.h" />
-    <ClInclude Include="External\ECS\RenderSystem.h" />
+    <ClInclude Include="External\ECS\Systems\EditerSystem.h" />
+    <ClInclude Include="External\ECS\EntityObject\EntityObject.h" />
+    <ClInclude Include="External\ECS\Registry\Registry.h" />
+    <ClInclude Include="External\ECS\Systems\RenderSystem.h" />
     <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerSystem.h" />
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />
     <ClInclude Include="Programs\Game\GameScene\GameScreen\GameScreen.h" />
@@ -80,6 +82,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="Assets\Sounds\test.mp3" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -178,7 +183,7 @@
       <PreprocessorDefinitions>SFML_STATIC;IMGUI_ENABLE_DOCKING;_DEBUG_DEBUG;_CONSOLE;%(PreprocessorDefinitions);SFML_STATIC;SFML_STATICSFML_STATIC;SFML_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>External\SpdLog\Include;External\ImGuizmo\Include;External\ImGui\Include;External\ImGui-SFML\Include;External\SFML\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Programs;External\ECS;External\SpdLog\Include;External\ImGuizmo\Include;External\ImGui\Include;External\ImGui-SFML\Include;External\SFML\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>

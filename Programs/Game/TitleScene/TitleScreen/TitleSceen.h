@@ -1,7 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <string>
-#include "../../../System/ScreenManager/ScreenBase.h"
+#include <System/ScreenManager/ScreenBase.h>
 
 class TitleScreen : public ScreenBase {
 public:

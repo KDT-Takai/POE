@@ -1,5 +1,5 @@
 #pragma once
-#include "Registry.h"
+#include "../Registry/Registry.h"
 #include <spdlog/spdlog.h>
 
 class EntityObject {

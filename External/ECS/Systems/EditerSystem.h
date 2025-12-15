@@ -1,6 +1,6 @@
 #pragma once
-#include "ECS.h"
-#include "Components.h"
+#include "../ECS.h"
+#include "../Components/Components.h"
 #include "imgui.h"
 
 class EditorSystem {

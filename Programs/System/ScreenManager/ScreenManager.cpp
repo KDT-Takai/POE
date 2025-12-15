@@ -1,8 +1,8 @@
 #include <spdlog/spdlog.h>
 #include "ScreenManager.h"
 #include "imgui.h"
-#include "../../Game/GameScene/GameScreen/GameScreen.h"
-#include "../../Game/TitleScene/TitleScreen/TitleSceen.h"
+#include <Game/GameScene/GameScreen/GameScreen.h>
+#include <Game/TitleScene/TitleScreen/TitleSceen.h>
 #include "../Resource/ResourceManager/ResourceManager.h"
 
 void ScreenManager::RegisterScreen(const std::string& name, ScreenFactory factory)

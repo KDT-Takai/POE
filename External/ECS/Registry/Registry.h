@@ -4,7 +4,8 @@
 #include <typeindex>
 #include <set>
 #include <unordered_map>
-#include "ECS.h" // Šî–{Œ^‚ğ“Ç‚İ‚Ş
+#include "Core/Entity.h"
+#include "../Core/ComponentPool.h"
 
 class EntityObject;
 

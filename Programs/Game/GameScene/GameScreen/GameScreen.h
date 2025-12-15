@@ -1,8 +1,7 @@
 #pragma once
-#include "../../../System/ScreenManager/ScreenBase.h"
 #include <string>
-#include "../../ECS/EditerSystem.h"
-#include "../../ECS/RenderSystem.h"
+#include <ECS.h>
+#include <System/ScreenManager/ScreenBase.h>
 #include "../Character/Plyaer/System/PlayerSystem.h"
 
 class GameScreen : public ScreenBase {

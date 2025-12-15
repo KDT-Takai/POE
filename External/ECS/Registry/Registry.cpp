@@ -1,5 +1,5 @@
 #include "Registry.h"
-#include "EntityObject.h" // ここでEntityObjectの定義を取り込む
+#include "../EntityObject/EntityObject.h" // ここでEntityObjectの定義を取り込む
 
 // Registryクラスのメンバ関数の実装
 EntityObject Registry::CreateEntityObject() {

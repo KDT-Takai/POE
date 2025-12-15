@@ -1,8 +1,6 @@
 #pragma once
-#include "../../../../../../External/ECS/ECS.h"
-#include "../../../../../../External/ECS/Registry.h"
-#include "../../../../../../External/ECS/Components.h"
-#include "../../../../../System/Input/InputManager.h"
+#include <ECS.h>
+#include <System/Input/InputManager.h>
 #include <SFML/Graphics.hpp>
 #include <cmath>
 
