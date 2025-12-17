@@ -2,7 +2,7 @@
 #include <string>
 #include <ECS.h>
 #include <System/ScreenManager/ScreenBase.h>
-#include "../Character/Plyaer/System/PlayerSystem.h"
+#include "../Character/Plyaer/System/PlayerMoveSystem.h"
 
 class GameScreen : public ScreenBase {
 public:
@@ -22,7 +22,7 @@ private:
     std::shared_ptr<EditorSystem> editorSystem;
     std::shared_ptr<RenderSystem> renderSystem;
 
-    std::shared_ptr<PlayerSystem> playerSystem;
+    std::shared_ptr<PlayerMoveSystem> playerMoveSystem;
 
     // ÉQÅ[ÉÄì‡Ç≈égópÇ∑ÇÈ
     std::shared_ptr<Entity> playerEntity;

@@ -32,5 +32,17 @@ struct CircleComponent {
 
 // プレイヤー制御用
 struct PlayerComponent {
-    float speed = 20.0f;
+    // 基本ステータス
+    float moveSpeed = 200.0f;     // 通常時の歩行速度
+
+    // ローリング
+    bool isRolling = false;
+    sf::Vector2f rollDirection;
+
+    float rollSpeed = 600.0f;
+    float rollDuration = 0.4f;
+    float currentRollTime = 0.0f;
+
+    float rollCooldown = 0.0f;
+    float rollCooldownMax = 0.8f;
 };

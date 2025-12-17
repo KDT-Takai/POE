@@ -11,7 +11,7 @@ GameScreen::GameScreen() {
 
     editorSystem = std::make_shared<EditorSystem>();
     renderSystem = std::make_shared<RenderSystem>();
-	playerSystem = std::make_shared<PlayerSystem>();
+	playerMoveSystem = std::make_shared<PlayerMoveSystem>();
 
     EntityObject player = registry->CreateEntityObject();
     player.AddComponent<TagComponent>({"Player"});
@@ -25,7 +25,7 @@ GameScreen::GameScreen() {
 }
 
 void GameScreen::Update() {
-	playerSystem->Update(*registry,Time::Instance().GetDeltaTime());
+	playerMoveSystem->Update(*registry,Time::Instance().GetDeltaTime());
 }
 
 void GameScreen::Render(sf::RenderTarget& target) {
