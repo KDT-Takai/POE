@@ -39,6 +39,8 @@ void DebugManager::Render(const sf::Texture* renderTexture) {
     this->RenderPerformance();
     // スクリーン上のGui表示
     SceneManager::Instance().RenderImGui(renderTexture);
+    // 言語設定
+    this->RenderLanguageSettings();
     // Input
     InputManager::Instance().RenderImGui();
 }
@@ -194,26 +196,20 @@ void DebugManager::RenderPerformance() {
 void DebugManager::RenderOtherDebugInfo() {
 }
 
-bool DebugManager::RenderLanguageSettings()
+void DebugManager::RenderLanguageSettings()
 {
-    bool isChanged = false;
+    DebugGui::Begin("Settings", "設定");
 
-    // ウィンドウ開始
-    if (DebugGui::Begin("Language Settings", "言語設定")) {
-
-        // 変更前の言語を覚えておく
-        auto preLang = Language::Get();
-
-        // ラジオボタンを表示（DebugGuiの中でSetが呼ばれる）
-        DebugGui::ShowLanguageSelector();
-
-        // 変更後と比較
-        if (preLang != Language::Get()) {
-            isChanged = true; // 変わった！
-        }
-
-        DebugGui::End();
+    // 言語切り替えラジオボタン
+    // 現在の状態を取得して判定
+    if (DebugGui::RadioButton("English", Language::Get() == Language::Type::English)) {
+        Language::Set(Language::Type::English);
     }
 
-    return isChanged;
+    ImGui::SameLine();
+    if (DebugGui::RadioButton("日本語", Language::Get() == Language::Type::Japanese)) {
+        Language::Set(Language::Type::Japanese);
+    }
+
+    DebugGui::End();
 }

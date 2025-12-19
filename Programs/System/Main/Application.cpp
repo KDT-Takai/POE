@@ -25,7 +25,7 @@ Application::Application() {
 	// ImGui initialization ImGuiの初期化
 	ImGui::SFML::Init(*window);
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+//	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	ImGui::StyleColorsClassic();
 	// RenderTexture settings レンダーテクスチャの設定
 	renderTexture->resize(sf::Vector2u{WINDOW_WIDTH, WINDOW_HEIGHT});
@@ -41,7 +41,6 @@ Application::Application() {
 	ResourceManager::Instance().loadAllTextures("Assets/Textures");
 	ResourceManager::Instance().loadAllFonts("Assets/Fonts");
 	ResourceManager::Instance().loadAllSounds("Assets/Sounds");
-
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->Clear();

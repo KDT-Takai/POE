@@ -26,7 +26,7 @@ private:
 	// その他デバッグ情報画面の表示
 	void RenderOtherDebugInfo();
 	// 言語設定
-	bool RenderLanguageSettings();
+	void RenderLanguageSettings();
 
     // デバックモード false:not debug mode true : debug mode
     bool debugMode = false;

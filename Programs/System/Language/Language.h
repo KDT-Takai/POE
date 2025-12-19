@@ -7,7 +7,7 @@ public:
     enum class Type { English, Japanese };
 
 private:
-    static inline Type s_Current = Type::English;
+        static inline Type s_Current = Type::English;
 
 public:
     // 設定変更
@@ -20,3 +20,15 @@ public:
         return (s_Current == Type::English) ? en : jp;
     }
 };
+
+/*
+Language 言語状態・切替の単一責任
+    LanguageManager（Singleton or Service）
+
+Localization 翻訳データ管理（拡張用）
+    TextID → 各言語文字列
+
+DebugGui ImGui ラッパ
+    Text(TextID)
+    Text(const char* en, const char* jp)
+*/
