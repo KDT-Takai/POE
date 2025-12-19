@@ -32,8 +32,8 @@
     <ClCompile Include="External\ImGui\Source\imgui_draw.cpp" />
     <ClCompile Include="External\ImGui\Source\imgui_tables.cpp" />
     <ClCompile Include="External\ImGui\Source\imgui_widgets.cpp" />
-    <ClCompile Include="Programs\Game\GameScene\GameScreen\GameScreen.cpp" />
-    <ClCompile Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.cpp" />
+    <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp" />
+    <ClCompile Include="Programs\Game\TitleScene\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Programs\System\CameraManager\CameraManager.cpp" />
     <ClCompile Include="Programs\System\DebugManager\DebugManager.cpp" />
     <ClCompile Include="Programs\System\Input\InputManager.cpp" />
@@ -45,7 +45,7 @@
     <ClCompile Include="Programs\System\Performance\CPU.cpp" />
     <ClCompile Include="Programs\System\Performance\MemoryMonitor.cpp" />
     <ClCompile Include="Programs\System\Resource\ResourceManager\ResourceManager.cpp" />
-    <ClCompile Include="Programs\System\ScreenManager\ScreenManager.cpp" />
+    <ClCompile Include="Programs\System\SceneManager\SceneManager.cpp" />
     <ClCompile Include="Programs\System\Time\Time.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -60,32 +60,43 @@
     <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerRollingSystem.h" />
     <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerMoveSystem.h" />
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />
-    <ClInclude Include="Programs\Game\GameScene\GameScreen\GameScreen.h" />
-    <ClInclude Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.h" />
+    <ClInclude Include="Programs\Game\GameScene\GameScene\GameScene.h" />
+    <ClInclude Include="Programs\Game\TitleScene\TitleScene\TitleScene.h" />
     <ClInclude Include="Programs\System\CameraManager\CameraManager.h" />
     <ClInclude Include="Programs\System\Config\Config.h" />
+    <ClInclude Include="Programs\System\DebugGui\DebugGui.h" />
     <ClInclude Include="Programs\System\DebugManager\DebugManager.h" />
     <ClInclude Include="Programs\System\Input\InputManager.h" />
     <ClInclude Include="Programs\System\Input\InputUtils\InputUtils.h" />
     <ClInclude Include="Programs\System\Input\KeyInput\KeyInput.h" />
     <ClInclude Include="Programs\System\Input\MouseInput\MouseInput.h" />
     <ClInclude Include="Programs\System\Input\PadInput\PadInput.h" />
+    <ClInclude Include="Programs\System\Language\Language.h" />
     <ClInclude Include="Programs\System\Main\Application.h" />
     <ClInclude Include="Programs\System\Performance\CPU.h" />
     <ClInclude Include="Programs\System\Performance\GPU.h" />
     <ClInclude Include="Programs\System\Performance\MemoryMonitor.h" />
     <ClInclude Include="Programs\System\Resource\ResourceCache\ResourceCache.h" />
     <ClInclude Include="Programs\System\Resource\ResourceManager\ResourceManager.h" />
-    <ClInclude Include="Programs\System\ScreenManager\ScreenBase.h" />
-    <ClInclude Include="Programs\System\ScreenManager\ScreenManager.h" />
+    <ClInclude Include="Programs\System\SceneManager\SceneBase.h" />
+    <ClInclude Include="Programs\System\SceneManager\SceneManager.h" />
     <ClInclude Include="Programs\System\Singleton\Singleton.h" />
     <ClInclude Include="Programs\System\Time\Time.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Fonts\HGRME.TTC" />
+    <None Include="Assets\Fonts\YuGothB.ttc" />
+    <None Include="Assets\Fonts\YuGothL.ttc" />
+    <None Include="Assets\Fonts\YuGothM.ttc" />
+    <None Include="Assets\Fonts\YuGothR.ttc" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="Assets\Sounds\test.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Assets\Fonts\NotoSansJP-Regular.ttf" />
+    <Font Include="Assets\Fonts\NotoSansJP-VariableFont_wght.ttf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -2,10 +2,11 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include "../Config/Config.h"
-#include "../ScreenManager/ScreenManager.h"
+#include "../SceneManager/SceneManager.h"
 #include "../CameraManager/CameraManager.h"
 #include "../Time/Time.h"
 #include "../Performance/CPU.h"
+#include "../Config/Config.h"
 
 void DebugManager::Update(const sf::Window& window) {
     static bool lastF1 = false;
@@ -24,7 +25,8 @@ void DebugManager::Update(const sf::Window& window) {
 }
 
 void DebugManager::Render(const sf::Texture* renderTexture) {
-    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+    ImGuiViewport* id = ImGui::GetMainViewport();
+    ImGui::DockSpaceOverViewport(id->ID);
 	// ゲーム画面表示
     this->RenderGameScreen(renderTexture);
 	// シーン管理
@@ -36,7 +38,7 @@ void DebugManager::Render(const sf::Texture* renderTexture) {
     // Timeクラス関係のログ表示
     this->RenderPerformance();
     // スクリーン上のGui表示
-    ScreenManager::Instance().RenderImGui(renderTexture);
+    SceneManager::Instance().RenderImGui(renderTexture);
     // Input
     InputManager::Instance().RenderImGui();
 }
@@ -45,7 +47,7 @@ void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
     // ゲーム画面表示
     if (renderTexture) {
         ImGui::Begin("Debug Controls");
-        ImGui::Text("Game Screen Render");
+        ImGui::Text("Game scene Render");
 
         // 反転処理
         // 一時的なスプライト用意する
@@ -96,9 +98,9 @@ void DebugManager::RenderSceneManagement() {
     ImGui::Separator();
     ImGui::Text("Scene Management");
 
-    ScreenManager& screenManager = ScreenManager::Instance();
-    const std::string& currentScreen = screenManager.GetCurrentScreenName();
-    const auto& registeredScreens = screenManager.GetRegisteredScreens();
+    SceneManager& screenManager = SceneManager::Instance();
+    const std::string& currentScreen = screenManager.GetCurrentSceneName();
+    const auto& registeredScreens = screenManager.GetRegisteredScenes();
 
     // コンボボックスに表示するアイテムリストを作成
     std::vector<std::string> screenNames;
@@ -130,7 +132,7 @@ void DebugManager::RenderSceneManagement() {
 
         // **シーン切り替えの実行**
         if (selectedName != currentScreen) {
-            screenManager.ChangeScreen(selectedName);
+            screenManager.ChangeScene(selectedName);
         }
     }
 
@@ -190,4 +192,28 @@ void DebugManager::RenderPerformance() {
 
 // TODO: 実装 今は必要ないけど後々使うかもだからおいておく
 void DebugManager::RenderOtherDebugInfo() {
+}
+
+bool DebugManager::RenderLanguageSettings()
+{
+    bool isChanged = false;
+
+    // ウィンドウ開始
+    if (DebugGui::Begin("Language Settings", "言語設定")) {
+
+        // 変更前の言語を覚えておく
+        auto preLang = Language::Get();
+
+        // ラジオボタンを表示（DebugGuiの中でSetが呼ばれる）
+        DebugGui::ShowLanguageSelector();
+
+        // 変更後と比較
+        if (preLang != Language::Get()) {
+            isChanged = true; // 変わった！
+        }
+
+        DebugGui::End();
+    }
+
+    return isChanged;
 }
