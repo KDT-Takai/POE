@@ -61,7 +61,6 @@ public:
     static bool Begin(const char* en, const char* jp, bool* p_open = nullptr, ImGuiWindowFlags flags = 0) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
         const char* title = isJp ? jp : en;
-
         if (isJp) {
 //            return ImGui::Begin(SjisToUtf8(title).c_str(), p_open, flags);
             std::string title = SjisToUtf8(jp) + "###" + en;
@@ -162,9 +161,78 @@ public:
             return ImGui::TreeNode(en);
         }
     }
-
     // ツリーノード終了 (中身は ImGui::TreePop と同じですが、名前空間を揃えるために用意)
     static void TreePop() {
         ImGui::TreePop();
+    }
+    // テキスト入力
+    static bool InputText(const char* en, const char* jp, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::InputText(text.c_str(), buf, buf_size, flags);
+        }
+        else {
+            return ImGui::InputText(en, buf, buf_size, flags);
+        }
+    }
+    // 折りたたみヘッダー
+    static bool CollapsingHeader(const char* en, const char* jp, ImGuiTreeNodeFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::CollapsingHeader(text.c_str(), flags);
+        }
+        else {
+            return ImGui::CollapsingHeader(en, flags);
+        }
+    }
+    // ドラッグ数値入力
+    static bool DragFloat(const char* en, const char* jp, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::DragFloat(text.c_str(), v, v_speed, v_min, v_max, format, flags);
+        }
+        else {
+            return ImGui::DragFloat(en, v, v_speed, v_min, v_max, format, flags);
+        }
+    }
+    // ドラッグ数値入力
+    static bool DragFloat2(const char* en, const char* jp, float v[2], float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::DragFloat2(text.c_str(), v, v_speed, v_min, v_max, format, flags);
+        }
+        else {
+            return ImGui::DragFloat2(en, v, v_speed, v_min, v_max, format, flags);
+        }
+    }
+    // カラー編集
+    static bool ColorEdit4(const char* en, const char* jp, float* col, ImGuiColorEditFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::ColorEdit4(text.c_str(), col, flags);
+        }
+        else {
+            return ImGui::ColorEdit4(en, col, flags);
+        }
+    }
+    static bool ColorEdit3(const char* en, const char* jp, float* col, ImGuiColorEditFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::ColorEdit3(text.c_str(), col, flags);
+        }
+        else {
+            return ImGui::ColorEdit3(en, col, flags);
+        }
     }
 };

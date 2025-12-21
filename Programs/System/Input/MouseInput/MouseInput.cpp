@@ -1,6 +1,6 @@
 #include "MouseInput.h"
 #include <imgui.h>
-#include <System/DebugGui/DebugGui.h>
+#include "../../DebugGui/DebugGui.h"
 
 MouseInput::MouseInput() {
 	nowMouseInput.fill(false);

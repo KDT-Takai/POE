@@ -1,7 +1,7 @@
 #include "KeyInput.h"
 #include <imgui.h>
 #include <string>
-#include <System/DebugGui/DebugGui.h>
+#include "../../DebugGui/DebugGui.h"
 
 KeyInput::KeyInput()
 {

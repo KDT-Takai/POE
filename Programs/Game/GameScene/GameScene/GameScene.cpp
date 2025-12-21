@@ -46,8 +46,6 @@ void GameScene::RenderImGui(const sf::Texture* renderTexture)
         editorSystem->SetSelectedEntity(e.GetID());
     }
 
-    DebugGui::Text("Current Scene: Game Screen", "現在のシーン: ゲームシーン");
     DebugGui::End();
-
     editorSystem->RenderImGui(*registry);
 }

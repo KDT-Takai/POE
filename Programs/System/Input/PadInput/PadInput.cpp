@@ -1,7 +1,7 @@
 #include "PadInput.h"
 #include <cmath>
 #include <imgui.h>
-#include <System/DebugGui/DebugGui.h>
+#include "../../DebugGui/DebugGui.h"
 
 PadInput::PadInput()
 {

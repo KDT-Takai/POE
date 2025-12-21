@@ -2,6 +2,7 @@
 #include "../ECS.h"
 #include "../Components/Components.h"
 #include "imgui.h"
+#include <System/DebugGui/DebugGui.h>
 
 class EditorSystem {
     Entity m_selectedEntity = -1;
@@ -14,11 +15,11 @@ public:
     }
 
     void RenderImGui(Registry& registry) {
-        ImGui::Begin("Object Editor");
+        DebugGui::Begin("Object Editor###ObjectEditor", "オブジェクトエディター###ObjectEditor");
         ImGui::Separator();
 
         // ヒエラルキー
-        ImGui::Text("Hierarchy");
+        DebugGui::Text("Hierarchy", "ヒエラルキー");
 
         std::vector<Entity> toDestroy;
         for (auto entity : registry.GetEntities()) {
@@ -45,17 +46,17 @@ public:
             ImGui::PopID();
         }
         for (auto e : toDestroy) registry.DestroyEntity(e);
-        ImGui::End();
+        DebugGui::End();
 
         // インスペクター
-        ImGui::Begin("Inspector");
+        DebugGui::Begin("Inspector###Inspector", "インスペクター###Inspector");
         if (m_selectedEntity != -1) {
             DrawComponents(registry, m_selectedEntity);
         }
         else {
-            ImGui::Text("No entity selected.");
+            DebugGui::Text("No entity selected.", "エンティティが選択されていません");
         }
-        ImGui::End();
+        DebugGui::End();
     }
 
 private:
@@ -66,7 +67,7 @@ private:
             auto& tag = registry.GetComponent<TagComponent>(entity);
             char buffer[256];
             strncpy_s(buffer, tag.name.c_str(), sizeof(buffer));
-            if (ImGui::InputText("Name", buffer, sizeof(buffer))) {
+            if (DebugGui::InputText("Name", "名前", buffer, sizeof(buffer))) {
                 tag.name = buffer;
             }
         }
@@ -74,8 +75,8 @@ private:
         if (registry.HasComponent<TagComponent>(entity))
         {
             auto& tag = registry.GetComponent<TagComponent>(entity);
-            ImGui::Text("Tag: %s", tag.name.c_str());
-            if (ImGui::Button("Delete"))
+            DebugGui::Text("Tag: %s", "タグ: %s", tag.name.c_str());
+            if (DebugGui::Button("Delete", "削除"))
             {
                 registry.RemoveComponent<TagComponent>(entity);
                 registry.DestroyEntity(entity);
@@ -85,28 +86,28 @@ private:
         // Transform
         if (registry.HasComponent<TransformComponent>(entity))
         {
-            if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+            if (DebugGui::CollapsingHeader("Transform", "トランスフォーム", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& t = registry.GetComponent<TransformComponent>(entity);
-                ImGui::DragFloat2("Position", &t.position.x);
-                ImGui::DragFloat("Rotation", &t.rotation);
-                ImGui::DragFloat2("Scale", &t.scale.x, 0.01f);
+                DebugGui::DragFloat2("Position", "座標", &t.position.x);
+                DebugGui::DragFloat("Rotation", "角度", &t.rotation);
+                DebugGui::DragFloat2("Scale", "スケール", &t.scale.x, 0.01f);
             }
         }
         // Circle (円の設定)
         if (registry.HasComponent<CircleComponent>(entity))
         {
-            if (ImGui::CollapsingHeader("Circle Shape", ImGuiTreeNodeFlags_DefaultOpen))
+            if (DebugGui::CollapsingHeader("Circle Shape", "円形", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& c = registry.GetComponent<CircleComponent>(entity);
-                ImGui::DragFloat("Radius", &c.radius);
+                DebugGui::DragFloat("Radius", "半径", &c.radius);
 
                 float color[4] = { c.color.r / 255.f, c.color.g / 255.f, c.color.b / 255.f, c.color.a / 255.f };
-                if (ImGui::ColorEdit4("Color", color))
+                if (DebugGui::ColorEdit4("Color", "カラー", color))
                 {
                     c.color = sf::Color(color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255);
                 }
-                ImGui::Checkbox("Visible", &c.isVisible);
+                DebugGui::Checkbox("Visible", "表示", &c.isVisible);
             }
         }
         // Sprite (スプライトの設定)
@@ -114,7 +115,7 @@ private:
         {
             if (ImGui::CollapsingHeader("Sprite", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                // (既存のSprite編集コード...)
+                // 既存のSprite編集コード
             }
         }
     }
