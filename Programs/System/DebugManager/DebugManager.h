@@ -2,6 +2,8 @@
 #include <SFML/Graphics.hpp>
 #include "../Input/InputManager.h"
 #include "../Performance/MemoryMonitor.h"
+#include "../DebugGui/DebugGui.h"
+#include "../Language/Language.h"
 
 class DebugManager {
 public:
@@ -23,6 +25,8 @@ private:
 	void RenderPerformance();
 	// その他デバッグ情報画面の表示
 	void RenderOtherDebugInfo();
+	// 言語設定
+	void RenderLanguageSettings();
 
     // デバックモード false:not debug mode true : debug mode
     bool debugMode = false;

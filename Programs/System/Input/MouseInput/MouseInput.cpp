@@ -1,5 +1,6 @@
 #include "MouseInput.h"
 #include <imgui.h>
+#include <System/DebugGui/DebugGui.h>
 
 MouseInput::MouseInput() {
 	nowMouseInput.fill(false);
@@ -38,10 +39,10 @@ sf::Vector2i MouseInput::GetMousePoint() {
 
 void MouseInput::RenderImGui()
 {
-    ImGui::Begin("Mouse Input");
+    DebugGui::Begin("Mouse Input###MouseInput", "マウス入力##MouseInput");
 
     // 座標表示
-    ImGui::Text("Screen Position");
+    DebugGui::Text("Screen Position", "現在地");
     ImGui::TextColored(ImVec4(0, 1, 1, 1), "X: %d  Y: %d", mouseX, mouseY);
 
     ImGui::Separator();
@@ -112,5 +113,5 @@ void MouseInput::RenderImGui()
     }
     // スペース確保
     ImGui::Dummy(ImVec2(w + 40, h + 20));
-    ImGui::End();
+    DebugGui::End();
 }

@@ -2,10 +2,11 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include "../Config/Config.h"
-#include "../ScreenManager/ScreenManager.h"
+#include "../SceneManager/SceneManager.h"
 #include "../CameraManager/CameraManager.h"
 #include "../Time/Time.h"
 #include "../Performance/CPU.h"
+#include "../Config/Config.h"
 
 void DebugManager::Update(const sf::Window& window) {
     static bool lastF1 = false;
@@ -24,7 +25,8 @@ void DebugManager::Update(const sf::Window& window) {
 }
 
 void DebugManager::Render(const sf::Texture* renderTexture) {
-    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+    ImGuiViewport* id = ImGui::GetMainViewport();
+    ImGui::DockSpaceOverViewport(id->ID);
 	// ゲーム画面表示
     this->RenderGameScreen(renderTexture);
 	// シーン管理
@@ -36,7 +38,9 @@ void DebugManager::Render(const sf::Texture* renderTexture) {
     // Timeクラス関係のログ表示
     this->RenderPerformance();
     // スクリーン上のGui表示
-    ScreenManager::Instance().RenderImGui(renderTexture);
+    SceneManager::Instance().RenderImGui(renderTexture);
+    // 言語設定
+    this->RenderLanguageSettings();
     // Input
     InputManager::Instance().RenderImGui();
 }
@@ -44,8 +48,8 @@ void DebugManager::Render(const sf::Texture* renderTexture) {
 void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
     // ゲーム画面表示
     if (renderTexture) {
-        ImGui::Begin("Debug Controls");
-        ImGui::Text("Game Screen Render");
+        DebugGui::Begin("Debug Controls###GameScreen", "デバックコントローラー###GameScreen");
+        DebugGui::Text("Game scene Render", "ゲームスクリーン");
 
         // 反転処理
         // 一時的なスプライト用意する
@@ -86,19 +90,18 @@ void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
         //    ImGui::Image(textureID, toImVec2(size), ImVec2(0, 0), ImVec2(1, 1), toImColor(tintColor), toImColor(borderColor));
         //}
 //        ImGui::Image(*renderTexture, sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
-        ImGui::End(); // Debug Controls
+        DebugGui::End(); // Debug Controls
     }
 }
 
 void DebugManager::RenderSceneManagement() {
     // シーン切り替えコントロール
-    ImGui::Begin("Scene Management");
+    DebugGui::Begin("Scene Management###SceneManagement", "シーンマネジメント###SceneManagement");
     ImGui::Separator();
-    ImGui::Text("Scene Management");
 
-    ScreenManager& screenManager = ScreenManager::Instance();
-    const std::string& currentScreen = screenManager.GetCurrentScreenName();
-    const auto& registeredScreens = screenManager.GetRegisteredScreens();
+    SceneManager& screenManager = SceneManager::Instance();
+    const std::string& currentScreen = screenManager.GetCurrentSceneName();
+    const auto& registeredScreens = screenManager.GetRegisteredScenes();
 
     // コンボボックスに表示するアイテムリストを作成
     std::vector<std::string> screenNames;
@@ -122,60 +125,59 @@ void DebugManager::RenderSceneManagement() {
         }
     }
 
-    ImGui::Text("Current Scene: %s", currentScreen.c_str());
+    DebugGui::Text("Current Scene: %s", "現在のシーン: %s", currentScreen.c_str());
 
-    if (ImGui::Combo("Change To", &currentItem, screenNames_c_str.data(), screenNames_c_str.size())) {
+    if (ImGui::Combo("##ScreenSelector", &currentItem, screenNames_c_str.data(), screenNames_c_str.size())) {
         // 選択が変更された場合
         const char* selectedName = screenNames_c_str[currentItem];
 
         // **シーン切り替えの実行**
         if (selectedName != currentScreen) {
-            screenManager.ChangeScreen(selectedName);
+            screenManager.ChangeScene(selectedName);
         }
     }
 
-    ImGui::End(); // Scene Management
+    DebugGui::End(); // Scene Management
 }
 
 void DebugManager::RenderLogWindow() {
     // ログ画面 (Placeholder)
-    ImGui::Begin("Log Window");
+    DebugGui::Begin("Log Window###LogWindow", "ログウィンドウ###LogWindow");
     ImGui::Separator();
-    ImGui::Text("Log Window");
-    // ImGui::BeginChild("Log", ImVec2(0, 200), true);
-    // spdlogのImGui Sinkへの書き込み処理をここに追加
-    // ImGui::EndChild();
-    ImGui::End(); // Log Window
+    // TODO:ログ後で作ろうね
+    // どんなふうに作ろうかな
+    DebugGui::End(); // Log Window
 }
 
 void DebugManager::RenderCameraControl() {
     // カメラズーム
-    ImGui::Begin("Camera Setting");
+    DebugGui::Begin("CameraSetting###CameraSetting", "カメラ設定###CameraSetting");
     ImGui::Separator();
-    ImGui::Text("Camera Setting");
 
     // シーンに依存しないカメラマネージャーのインスタンスを取得
     CameraManager& cameraManager = CameraManager::Instance();
 
     // 現在のズームレベルを取得して初期値とする
-    static float zoomLevel = cameraManager.GetZoomLevel();
+    // 現在の状態をずっと維持？しときたいからstatic消す
+    float zoomLevel = cameraManager.GetZoomLevel();
+    //static float zoomLevel = cameraManager.GetZoomLevel();
 
-    if (ImGui::SliderFloat("Zoom Level", &zoomLevel, 0.1f, 5.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp)) {
+    if (DebugGui::SliderFloat("Zoom Level", "ズーム倍率", &zoomLevel, 0.1f, 5.0f, " % .1f", ImGuiSliderFlags_AlwaysClamp)) {
         // スライダーが操作されたら CameraManager にズームレベルを適用
         cameraManager.SetZoomLevel(zoomLevel);
     }
-    ImGui::Text("Range: 0.1 (far) ~ 5.0 (near)");
+    DebugGui::Text("Range: 0.1 (far) ~ 5.0 (near)", "幅: 0.1 (遠い) ~ 5.0 (近い)");
 
-    ImGui::End(); // Camera Setting
+    DebugGui::End(); // Camera Setting
 }
 
 void DebugManager::RenderPerformance() {
     // TODO: あとでやる気がでたら綺麗にする
-    ImGui::Begin(" Performance ");
+    DebugGui::Begin("Performance###Performance", "プレファレンス###Performance");
     // FPSの描画
     Time::Instance().RenderImGui();
-
-    ImGui::SeparatorText(" System ");
+    
+    DebugGui::SeparatorText("System", "システム");
     {   // ImGuiのChildで囲われているのでわかりやすくスコープを付けておく
         ImGui::BeginChild("PerfCard", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar);
         // CPU 描画
@@ -184,10 +186,27 @@ void DebugManager::RenderPerformance() {
         memory.RenderImGui();
         ImGui::EndChild();
     }
-    ImGui::End();
-
+    DebugGui::End();
 }
 
 // TODO: 実装 今は必要ないけど後々使うかもだからおいておく
 void DebugManager::RenderOtherDebugInfo() {
+}
+
+void DebugManager::RenderLanguageSettings()
+{
+    DebugGui::Begin("Settings###LanguageSetting", "設定###LanguageSetting");
+
+    // 言語切り替えラジオボタン
+    // 現在の状態を取得して判定
+    if (DebugGui::RadioButton("English", Language::Get() == Language::Type::English)) {
+        Language::Set(Language::Type::English);
+    }
+
+    ImGui::SameLine();
+    if (DebugGui::RadioButton("日本語", Language::Get() == Language::Type::Japanese)) {
+        Language::Set(Language::Type::Japanese);
+    }
+
+    DebugGui::End();
 }

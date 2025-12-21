@@ -1,6 +1,7 @@
 #include "KeyInput.h"
 #include <imgui.h>
 #include <string>
+#include <System/DebugGui/DebugGui.h>
 
 KeyInput::KeyInput()
 {
@@ -35,26 +36,25 @@ bool KeyInput::GetKeyRepeat(sf::Keyboard::Key key) const
 
 void KeyInput::RenderImGui()
 {
-    ImGui::Begin("Key Input");
+    DebugGui::Begin("Key Input###KeyInput", "キー入力##KeyInput");
 
-    // --- 設定 ---
+    // 設定
     const float KEY_SIZE = 30.0f; // 基本のキーサイズ
     const float SPACING = 4.0f;   // キー同士の間隔
 
     // スタイル調整（キー同士を少し詰めるとキーボードっぽくなる）
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(SPACING, SPACING));
 
-    // --- ヘルパー関数: キー描画 ---
+    // ヘルパー関数: キー描画
     // label: 表示文字, key: SFMLキー, widthMult: 横幅の倍率
     auto DrawKey = [&](const char* label, sf::Keyboard::Key key, float widthMult = 1.0f) {
 
-        // ★修正点: key が Unknown (-1) じゃない場合だけ GetKey を呼ぶ
         bool on = false;
         if (key != sf::Keyboard::Key::Unknown) {
             on = GetKey(key);
         }
 
-        // 色設定 (ON: 緑, OFF: 暗いグレー)
+        // 色設定
         if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
         else    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
 
@@ -246,7 +246,7 @@ void KeyInput::RenderImGui()
     ImGui::Separator();
 
     // --- 4. リスト表示 (既存のロジック) ---
-    if (ImGui::TreeNode("Active Keys List"))
+    if (DebugGui::TreeNode("Active Keys List", "アクティブキーリスト"))
     {
         // ヘルパー（前のコードと同じものを使用）
         auto KeyToString = [](int k) -> std::string {
@@ -279,7 +279,7 @@ void KeyInput::RenderImGui()
         {
             ImGui::TextDisabled("(None)");
         }
-        ImGui::TreePop();
+        DebugGui::TreePop();
     }
-    ImGui::End();
+    DebugGui::End();
 }

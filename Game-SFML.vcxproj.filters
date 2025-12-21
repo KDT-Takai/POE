@@ -170,16 +170,16 @@
     <ClCompile Include="Programs\System\Input\PadInput\PadInput.cpp">
       <Filter>System\Input\PadInput</Filter>
     </ClCompile>
-    <ClCompile Include="Programs\System\ScreenManager\ScreenManager.cpp">
+    <ClCompile Include="Programs\System\SceneManager\SceneManager.cpp">
       <Filter>System\ScreenManager</Filter>
     </ClCompile>
-    <ClCompile Include="Programs\Game\GameScene\GameScreen\GameScreen.cpp">
+    <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp">
       <Filter>Game\GameScene\GameScreen</Filter>
     </ClCompile>
     <ClCompile Include="Programs\System\Input\InputManager.cpp">
       <Filter>System\Input\!ImputManager</Filter>
     </ClCompile>
-    <ClCompile Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.cpp">
+    <ClCompile Include="Programs\Game\TitleScene\TitleScene\TitleScene.cpp">
       <Filter>Game\TitleScene\TitleScreen</Filter>
     </ClCompile>
     <ClCompile Include="Programs\System\CameraManager\CameraManager.cpp">
@@ -238,16 +238,16 @@
     <ClInclude Include="Programs\System\Input\PadInput\PadInput.h">
       <Filter>System\Input\PadInput</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\System\ScreenManager\ScreenManager.h">
+    <ClInclude Include="Programs\System\SceneManager\SceneManager.h">
       <Filter>System\ScreenManager</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\System\ScreenManager\ScreenBase.h">
+    <ClInclude Include="Programs\System\SceneManager\SceneBase.h">
       <Filter>System\ScreenManager\ScreenBase</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\Game\GameScene\GameScreen\GameScreen.h">
+    <ClInclude Include="Programs\Game\GameScene\GameScene\GameScene.h">
       <Filter>Game\GameScene\GameScreen</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\Game\TitleScene\TitleScreen\TitleSceen.h">
+    <ClInclude Include="Programs\Game\TitleScene\TitleScene\TitleScene.h">
       <Filter>Game\TitleScene\TitleScreen</Filter>
     </ClInclude>
     <ClInclude Include="Programs\System\Input\InputManager.h">
@@ -283,20 +283,38 @@
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h">
       <Filter>External</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerSystem.h">
-      <Filter>External</Filter>
-    </ClInclude>
     <ClInclude Include="External\ECS\Core\Entity.h">
       <Filter>External</Filter>
     </ClInclude>
     <ClInclude Include="External\ECS\Core\ComponentPool.h">
       <Filter>External</Filter>
     </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerRollingSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerMoveSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\Language\Language.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\DebugGui\DebugGui.h">
+      <Filter>External</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Assets\Fonts\HGRME.TTC" />
+    <None Include="Assets\Fonts\YuGothB.ttc" />
+    <None Include="Assets\Fonts\YuGothL.ttc" />
+    <None Include="Assets\Fonts\YuGothM.ttc" />
+    <None Include="Assets\Fonts\YuGothR.ttc" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="Assets\Sounds\test.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Assets\Fonts\NotoSansJP-VariableFont_wght.ttf" />
+    <Font Include="Assets\Fonts\NotoSansJP-Regular.ttf" />
   </ItemGroup>
 </Project>

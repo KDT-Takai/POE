@@ -1,3 +1,6 @@
+// ƒIƒŠƒWƒiƒ‹’Ç‰Á
+#define J(str) (const char*)u8##str
+
 // dear imgui, v1.92.5 WIP
 // (headers)
 
