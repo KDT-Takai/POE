@@ -5,11 +5,12 @@
 #include <cstdarg>
 #include <string>
 #include <vector>
-#include <Windows.h> // 文字コード変換に必要
+// 文字コード用やで
+#include <Windows.h>
 
 class DebugGui {
 private:
-    // --- 内部用: Shift-JIS を UTF-8 に変換する関数 ---
+    // Shift-JISをUTF-8に変換する関数
     static std::string SjisToUtf8(const std::string& sjis) {
         if (sjis.empty()) return "";
 
@@ -33,20 +34,17 @@ private:
     }
 
 public:
-    // --- ラッパー関数群 ---
-
+    // テキスト
     static void Text(const char* en, const char* jp, ...) {
-        // 1. 言語選択
+        // 言語選択
         bool isJp = (Language::Get() == Language::Type::Japanese);
         const char* fmt = isJp ? jp : en;
-
-        // 2. フォーマット処理 (printf)
+        // フォーマット処理 (printf)
         va_list args;
         va_start(args, jp);
         char buffer[1024];
         vsnprintf(buffer, sizeof(buffer), fmt, args);
         va_end(args);
-
         // 文字コード変換 (日本語のときだけ変換する)
         if (isJp) {
             // バッファの中身(S-JIS)をUTF-8に変換して表示
@@ -59,29 +57,41 @@ public:
             ImGui::TextUnformatted(buffer);
         }
     }
-
     // ウィンドウ (タイトルも変換が必要)
     static bool Begin(const char* en, const char* jp, bool* p_open = nullptr, ImGuiWindowFlags flags = 0) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
         const char* title = isJp ? jp : en;
 
         if (isJp) {
-            // 日本語なら変換して渡す
-            // ※ウィンドウIDが変わるのを防ぐため、本来は "Title###ID" のID部分は固定するのがベストだが
-            // ここでは簡易的に変換だけ行う
-            return ImGui::Begin(SjisToUtf8(title).c_str(), p_open, flags);
+//            return ImGui::Begin(SjisToUtf8(title).c_str(), p_open, flags);
+            std::string title = SjisToUtf8(jp) + "###" + en;
+            return ImGui::Begin(title.c_str(), p_open, flags);
         }
         else {
             return ImGui::Begin(title, p_open, flags);
         }
     }
-
+    // 終了
     static void End() {
         ImGui::End();
     }
     // ボタン
     static bool RadioButton(const char* label, bool active) {
         return ImGui::RadioButton(SjisToUtf8(label).c_str(), active);
+    }
+    // ボタン
+    static bool Button(const char* en, const char* jp, const ImVec2& size = ImVec2(0, 0)) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            // 表示は日本語、内部IDは英語 ("敵出現###Spawn Enemy")
+            // これにより言語を切り替えてもボタンのIDが変わらず、動作が安定します
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::Button(text.c_str(), size);
+        }
+        else {
+            return ImGui::Button(en, size);
+        }
     }
     static bool RadioButton(const char* en, const char* jp, bool active) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
@@ -94,7 +104,6 @@ public:
             return ImGui::RadioButton(label, active);
         }
     }
-
     // ラジオボタン
     static bool RadioButton(const char* en, const char* jp, int* v, int v_button) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
@@ -107,7 +116,6 @@ public:
             return ImGui::RadioButton(label, v, v_button);
         }
     }
-
     // チェックボックス
     static bool Checkbox(const char* en, const char* jp, bool* v) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
@@ -119,5 +127,44 @@ public:
         else {
             return ImGui::Checkbox(label, v);
         }
+    }
+    // スライダー (Float)
+    static bool SliderFloat(const char* en, const char* jp, float* v, float v_min, float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+        if (isJp) {
+            std::string label = SjisToUtf8(jp) + "###" + en;
+            return ImGui::SliderFloat(label.c_str(), v, v_min, v_max, format, flags);
+        }
+        else {
+            return ImGui::SliderFloat(en, v, v_min, v_max, format, flags);
+        }
+    }
+    // セパレーター付きテキスト
+    static void SeparatorText(const char* en, const char* jp) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            ImGui::SeparatorText(SjisToUtf8(jp).c_str());
+        }
+        else {
+            ImGui::SeparatorText(en);
+        }
+    }
+    // ツリーノード
+    static bool TreeNode(const char* en, const char* jp) {
+        bool isJp = (Language::Get() == Language::Type::Japanese);
+
+        if (isJp) {
+            std::string text = SjisToUtf8(jp) + "###" + en;
+            return ImGui::TreeNode(text.c_str());
+        }
+        else {
+            return ImGui::TreeNode(en);
+        }
+    }
+
+    // ツリーノード終了 (中身は ImGui::TreePop と同じですが、名前空間を揃えるために用意)
+    static void TreePop() {
+        ImGui::TreePop();
     }
 };

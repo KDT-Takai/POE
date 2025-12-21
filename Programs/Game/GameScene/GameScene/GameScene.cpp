@@ -3,6 +3,7 @@
 #include "../Entity/EntitySpawner.h"
 #include <System/CameraManager/CameraManager.h>
 #include <System/Time/Time.h>
+#include <System/DebugGui/DebugGui.h>
 
 GameScene::GameScene() {
     sceneName = "GameScreen";
@@ -36,17 +37,17 @@ void GameScene::Render(sf::RenderTarget& target) {
 
 void GameScene::RenderImGui(const sf::Texture* renderTexture)
 {
-    ImGui::Begin("Game Tools");
+    DebugGui::Begin("Game Tools###GameTools", "ゲームツール###GameTools");
 
     ImGui::SameLine();
 
-    if (ImGui::Button("Spawn Enemy")) {
+    if (DebugGui::Button("Spawn Enemy", "敵生成")) {
         auto e = EntitySpawner::CreateEnemy(*registry, { 400, 300 });
         editorSystem->SetSelectedEntity(e.GetID());
     }
 
-    ImGui::Text("Current Scene: Game Screen");
-    ImGui::End();
+    DebugGui::Text("Current Scene: Game Screen", "現在のシーン: ゲームシーン");
+    DebugGui::End();
 
     editorSystem->RenderImGui(*registry);
 }

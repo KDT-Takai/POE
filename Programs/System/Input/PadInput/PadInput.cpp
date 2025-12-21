@@ -1,6 +1,7 @@
 #include "PadInput.h"
 #include <cmath>
 #include <imgui.h>
+#include <System/DebugGui/DebugGui.h>
 
 PadInput::PadInput()
 {
@@ -108,8 +109,6 @@ float PadInput::GetRightStickY() const
     return ApplyDeadzone(static_cast<float>(m_currentReading.RightThumbstickY), DEADZONE_THRESHOLD);
 }
 
-// --- ユーティリティ ---
-
 float PadInput::ApplyDeadzone(float value, float deadzone) const
 {
     // 値がデッドゾーン内なら0を返す
@@ -134,7 +133,7 @@ void PadInput::SetVibration(float leftMotor, float rightMotor)
 
 void PadInput::RenderImGui()
 {
-    ImGui::Begin("Pad Input");
+    DebugGui::Begin("Pad Input###PadInput", "マウス入力##PadInput");
     // 接続状態
     if (IsConnected())
     {
