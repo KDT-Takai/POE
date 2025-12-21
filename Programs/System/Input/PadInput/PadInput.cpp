@@ -53,7 +53,7 @@ bool PadInput::IsConnected() const
     return m_gamepad != nullptr;
 }
 
-// --- ボタン判定ロジック ---
+// ボタン判定ロジック
 // ビット演算を使って判定します
 
 bool PadInput::IsPress(winrt::Windows::Gaming::Input::GamepadButtons button) const
@@ -76,7 +76,7 @@ bool PadInput::IsRelease(winrt::Windows::Gaming::Input::GamepadButtons button) c
         ((m_previousReading.Buttons & button) == button);
 }
 
-// --- トリガーとスティック ---
+// トリガーとスティック
 
 float PadInput::GetLeftTrigger() const
 {
@@ -108,7 +108,7 @@ float PadInput::GetRightStickY() const
     return ApplyDeadzone(static_cast<float>(m_currentReading.RightThumbstickY), DEADZONE_THRESHOLD);
 }
 
-// --- ユーティリティ ---
+// ユーティリティ
 
 float PadInput::ApplyDeadzone(float value, float deadzone) const
 {
@@ -161,7 +161,7 @@ void PadInput::RenderImGui()
         const ImU32 crossColor = ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.5f);
         const ImU32 dotColor = ImGui::GetColorU32(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
-        // スティック描画用のヘルパーラムダ式
+        // スティック描画用
         auto DrawStickViz = [&](const char* label, float x_in, float y_in) {
             ImGui::BeginGroup();
 
