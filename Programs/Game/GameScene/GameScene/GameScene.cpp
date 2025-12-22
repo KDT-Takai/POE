@@ -37,7 +37,7 @@ void GameScene::Render(sf::RenderTarget& target) {
 
 void GameScene::RenderImGui(const sf::Texture* renderTexture)
 {
-    DebugGui::Begin("Game Tools###GameTools", "ゲームツール###GameTools");
+    DebugGui::Begin("Game Tools", "ゲームツール");
 
     ImGui::SameLine();
 

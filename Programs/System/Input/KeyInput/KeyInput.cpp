@@ -36,7 +36,7 @@ bool KeyInput::GetKeyRepeat(sf::Keyboard::Key key) const
 
 void KeyInput::RenderImGui()
 {
-    DebugGui::Begin("Key Input###KeyInput", "キー入力##KeyInput");
+    DebugGui::Begin("Key Input", "キー入力");
 
     // 設定
     const float KEY_SIZE = 30.0f; // 基本のキーサイズ

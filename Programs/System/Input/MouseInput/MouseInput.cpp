@@ -39,7 +39,7 @@ sf::Vector2i MouseInput::GetMousePoint() {
 
 void MouseInput::RenderImGui()
 {
-    DebugGui::Begin("Mouse Input###MouseInput", "マウス入力##MouseInput");
+    DebugGui::Begin("Mouse Input", "マウス入力");
 
     // 座標表示
     DebugGui::Text("Screen Position", "現在地");

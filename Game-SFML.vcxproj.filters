@@ -167,9 +167,6 @@
     <ClCompile Include="Programs\System\Input\MouseInput\MouseInput.cpp">
       <Filter>System\Input\MouseInput</Filter>
     </ClCompile>
-    <ClCompile Include="Programs\System\Input\PadInput\PadInput.cpp">
-      <Filter>System\Input\PadInput</Filter>
-    </ClCompile>
     <ClCompile Include="Programs\System\SceneManager\SceneManager.cpp">
       <Filter>System\ScreenManager</Filter>
     </ClCompile>
@@ -198,6 +195,9 @@
       <Filter>System\Time</Filter>
     </ClCompile>
     <ClCompile Include="External\ECS\Registry\Registry.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="Programs\System\Input\PadInput\PadInput.cpp">
       <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>

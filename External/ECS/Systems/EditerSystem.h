@@ -15,7 +15,7 @@ public:
     }
 
     void RenderImGui(Registry& registry) {
-        DebugGui::Begin("Object Editor###ObjectEditor", "オブジェクトエディター###ObjectEditor");
+        DebugGui::Begin("Object Editor", "オブジェクトエディター");
         ImGui::Separator();
 
         // ヒエラルキー
@@ -49,7 +49,7 @@ public:
         DebugGui::End();
 
         // インスペクター
-        DebugGui::Begin("Inspector###Inspector", "インスペクター###Inspector");
+        DebugGui::Begin("Inspector", "インスペクター");
         if (m_selectedEntity != -1) {
             DrawComponents(registry, m_selectedEntity);
         }

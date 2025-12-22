@@ -48,7 +48,7 @@ void DebugManager::Render(const sf::Texture* renderTexture) {
 void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
     // ゲーム画面表示
     if (renderTexture) {
-        DebugGui::Begin("Debug Controls###GameScreen", "デバックコントローラー###GameScreen");
+        DebugGui::Begin("Debug Controls", "デバックコントローラー");
         DebugGui::Text("Game scene Render", "ゲームスクリーン");
 
         // 反転処理
@@ -96,7 +96,7 @@ void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
 
 void DebugManager::RenderSceneManagement() {
     // シーン切り替えコントロール
-    DebugGui::Begin("Scene Management###SceneManagement", "シーンマネジメント###SceneManagement");
+    DebugGui::Begin("Scene Management", "シーンマネジメント");
     ImGui::Separator();
 
     SceneManager& screenManager = SceneManager::Instance();
@@ -142,7 +142,7 @@ void DebugManager::RenderSceneManagement() {
 
 void DebugManager::RenderLogWindow() {
     // ログ画面 (Placeholder)
-    DebugGui::Begin("Log Window###LogWindow", "ログウィンドウ###LogWindow");
+    DebugGui::Begin("Log Window", "ログウィンドウ");
     ImGui::Separator();
     // TODO:ログ後で作ろうね
     // どんなふうに作ろうかな
@@ -151,7 +151,7 @@ void DebugManager::RenderLogWindow() {
 
 void DebugManager::RenderCameraControl() {
     // カメラズーム
-    DebugGui::Begin("CameraSetting###CameraSetting", "カメラ設定###CameraSetting");
+    DebugGui::Begin("CameraSetting", "カメラ設定");
     ImGui::Separator();
 
     // シーンに依存しないカメラマネージャーのインスタンスを取得
@@ -173,7 +173,7 @@ void DebugManager::RenderCameraControl() {
 
 void DebugManager::RenderPerformance() {
     // TODO: あとでやる気がでたら綺麗にする
-    DebugGui::Begin("Performance###Performance", "プレファレンス###Performance");
+    DebugGui::Begin("Performance", "プレファレンス");
     // FPSの描画
     Time::Instance().RenderImGui();
     
@@ -195,7 +195,7 @@ void DebugManager::RenderOtherDebugInfo() {
 
 void DebugManager::RenderLanguageSettings()
 {
-    DebugGui::Begin("Settings###LanguageSetting", "設定###LanguageSetting");
+    DebugGui::Begin("Settings", "設定");
 
     // 言語切り替えラジオボタン
     // 現在の状態を取得して判定
