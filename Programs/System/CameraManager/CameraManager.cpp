@@ -11,6 +11,10 @@ void CameraManager::ResetView() {
     view.setCenter({ WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f });
 }
 
+void CameraManager::SetCenter(const sf::Vector2f& center) {
+    view.setCenter(center);
+}
+
 void CameraManager::SetZoomLevel(float zoom) {
     // ズームレベルに基づいてViewのサイズを再計算
     float ratio = 1.0f / zoom;

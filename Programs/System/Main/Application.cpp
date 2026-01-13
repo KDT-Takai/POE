@@ -18,7 +18,7 @@ Application::Application() {
 	// Create the render texture レンダーテクスチャの作成
 	renderTexture = std::make_unique<sf::RenderTexture>();
 	// Create the debug manager デバッグマネージャーの作成
-	debugManager = std::make_unique<DebugManager>();
+//	debugManager = std::make_unique<DebugManager>();
 
 	// Window settings ウィンドウの設定
 	window->setFramerateLimit(FRAMERATE_LIMIT);
@@ -86,9 +86,7 @@ void Application::Update(sf::Time deltaTime) {
 	// Spriteにテクスチャを更新
 	renderSprite->setTexture(renderTexture->getTexture(), true);
 #ifdef _DEBUG
-	if (debugManager) {
-		debugManager->Update(*window);
-	}
+	DebugManager::Instance().Update(*window);
 #endif
 	SceneManager::Instance().Update();
 // ゲームを停止させる場合
@@ -114,11 +112,11 @@ void Application::Render() {
 
 	window->clear();
 #ifdef _DEBUG
-	if (!debugManager->IsDebugMode()) {
+	if (!DebugManager::Instance().IsDebugMode()) {
 		window->draw(*renderSprite);
 	}
-	if (debugManager->IsDebugMode()){
-		debugManager->Render(&renderTexture->getTexture());
+	if (DebugManager::Instance().IsDebugMode()){
+		DebugManager::Instance().Render(&renderTexture->getTexture());
 	}
 #else
 	window->draw(*renderSprite);

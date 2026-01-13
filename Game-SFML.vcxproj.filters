@@ -289,16 +289,61 @@
     <ClInclude Include="External\ECS\Core\ComponentPool.h">
       <Filter>External</Filter>
     </ClInclude>
-    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerRollingSystem.h">
-      <Filter>External</Filter>
-    </ClInclude>
-    <ClInclude Include="Programs\Game\GameScene\Character\Plyaer\System\PlayerMoveSystem.h">
-      <Filter>External</Filter>
-    </ClInclude>
     <ClInclude Include="Programs\System\Language\Language.h">
       <Filter>External</Filter>
     </ClInclude>
     <ClInclude Include="Programs\System\DebugGui\DebugGui.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\System\InputAction\InputAction.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\Transform\Transform.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\Velocity\Velocity.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Tags\Player\Player.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\Gravity\Gravity.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\Facing\Facing.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\BoxCollider\BoxCollider.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Control\PlayerInput\PlayerInput.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Control\State\State.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Stats\CharacterStats\CharacterStats.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Contorol\InputSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Physics\PhysicsSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Physics\MovementSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\World\Map.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Interaction\Interaction.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\MapGenerator\MapGenerator.h">
       <Filter>External</Filter>
     </ClInclude>
   </ItemGroup>

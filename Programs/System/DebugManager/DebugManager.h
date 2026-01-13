@@ -4,8 +4,12 @@
 #include "../Performance/MemoryMonitor.h"
 #include "../DebugGui/DebugGui.h"
 #include "../Language/Language.h"
+#include "../Singleton/Singleton.h"
 
-class DebugManager {
+class DebugManager : public Singleton<DebugManager> {
+	friend class Singleton<DebugManager>;
+protected:
+	DebugManager() = default;
 public:
     void Update(const sf::Window& window);
     bool IsDebugMode() const { return debugMode; }

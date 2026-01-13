@@ -18,4 +18,6 @@ public:
     const sf::View& GetCurrentView() const { return view; }
     // Viewの初期化やリセット
     void ResetView();
+    // カメラを中央にセット
+	void SetCenter(const sf::Vector2f& center);
 };

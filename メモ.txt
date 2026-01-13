@@ -1,0 +1,729 @@
+前の記憶忘れてるね？
+一回ECSから現在のとこまで書くよ
+ゲーム概要（Game Concept）
+ジャンル：2D 横スクロールアクション
+プレイヤー：1体のみ
+操作：キーボード / ゲームパッド対応（入力抽象化済み）
+戦闘：
+通常攻撃
+スキル（入力が必要）
+スピリット（自動発動・永続効果）
+拡張方針：
+POE 系のビルド自由度
+行動やルールそのものを改変できる設計
+現在の設計思想（重要）
+ECS ベース
+Trigger + Effect による拡張型設計
+ただし 最初は Effect を使わず、プレイヤー実装を優先
+Effect / スピリット / パッシブは 後から統合
+現在できていること（基盤）
+ECS 基盤
+Entity / Component / System が存在
+ゲームロジックは ECS 前提で設計
+入力抽象（デバイス非依存）
+
+enum class InputAction {
+    Move,
+    Roll,
+    Jump,
+    Attack,
+    Dash,
+    Skill1,
+    Skill2,
+    Skill3,
+    Skill4,
+    Skill5
+};
+Trigger 設計（イベント駆動）
+
+enum class Trigger {
+    OnInput,
+    OnRoll,
+    OnDash,
+    OnJump,
+    OnAttack,
+    OnSkillCast,
+
+    OnHit,
+    OnKill,
+    OnDamageTaken,
+
+    OnLowHP,
+    OnCritical,
+
+    OnUpdate
+};
+TriggerContext（現状このまま使用）
+
+struct TriggerContext {
+    Entity source;
+    Entity target;
+
+    InputAction action;
+    double damage;
+    bool isCritical;
+};
+プレイヤーの現在の設計（確定）
+戦闘ステータス
+Level
+EXP
+Name
+HP / MaxHP
+MP / MaxMP
+Atk
+Def
+AtkSpd
+CritRate
+CritDamage
+PassivePoint
+移動関連コンポーネント
+Transform（x, y）
+Velocity（vx, vy）
+MoveSpeed
+Gravity
+Facing
+ColliderGround（地面判定）
+ColliderWall（壁判定）
+パッシブツリー用ステータス
+Str（筋力）：MaxHP 増加
+Dex（器用さ）：攻撃速度増加
+Int（知性）：MaxMP 増加
+属性耐性（マイナス可）
+FireRes（最大75%）
+IceRes（最大75%）
+LightningRes（最大75%）
+スキル設計（方向性）
+スキル = 入力が必要な能力
+ステータス強化だけでなく、行動・ルール変更も含む
+スキルが共通で持つ最小要素
+SkillLevel
+Name
+Description（予定）
+Icon（予定）
+ElementType
+例
+
+Skill: Shadow Roll
+Trigger: OnRollInput
+Effect: RuleOverride (Roll → Teleport)
+Cooldown
+MPCost
+※ Effect は後回し、今は通常実装でOK
+スピリット設計（確定方針）
+自動発動・入力不要
+行動やルールそのものを改変する「永続改造」
+最大 3つまで装備
+付け替え可能
+永続効果
+獲得方法
+精霊碑・祭壇などのオブジェクト
+ボス撃破報酬（ボス固有スピリット、再戦不可）
+スピリット例
+
+炎の守護者
+- FireRes +30%
+- ATK +10%
+
+灼熱の魂
+- OnKill: 敵を爆発させる
+
+死神の契約
+- OnHit: 対象HPが10%以下なら即死
+今後の実装方針（重要）
+直近の実装順（確定）
+プレイヤー作成
+移動
+ジャンプ
+重力
+通常攻撃
+HP / ダメージ / 死亡
+ロール / ダッシュ
+戦闘として成立させる
+👉 この段階では Effect / Trigger は深く使わない
+後から実装するもの
+Trigger → Effect System
+Effect 種別（StatModifier / RuleOverride / OnKill 等）
+スキルの Effect 化
+スピリットの Effect 化
+パッシブツリー
+属性・状態異常
+敵 / ボス
+この設計のゴール
+プレイヤーを作ったあとでも
+スキル・スピリット・ルール改変を後付けできる
+行動追加・能力追加で 既存コードを壊さない
+コンテンツ追加＝データ追加に近い形
+
+これが主な概要
+ここからはECSがどんな感じか
+
+#pragma once
+#include <cstdint>
+
+// エンティティは単なるID
+using Entity = std::uint32_t;
+const Entity MAX_ENTITIES = 100000;
+
+#pragma once
+#include <vector>
+#include <unordered_map>
+#include <memory>
+#include <algorithm>
+#include <typeindex>
+#include <set>
+
+#include "Entity.h"
+// コンポーネントのインターフェース
+struct IComponentPool {
+    virtual ~IComponentPool() = default;
+    virtual void OnEntityDestroyed(Entity entity) = 0;
+};
+
+// コンポーネントプール アクセス早くする
+template <typename T>
+class ComponentPool : public IComponentPool {
+public:
+    std::vector<T> data;
+    // EntityID -> Vector Index のマップ (Sparse Setの簡易版)
+    std::unordered_map<Entity, size_t> entityToIndex;
+    std::unordered_map<size_t, Entity> indexToEntity;
+
+    void Insert(Entity entity, T component) {
+        if (entityToIndex.find(entity) != entityToIndex.end())
+        {
+            // 既に持っていれば上書き
+            data[entityToIndex[entity]] = component;
+            return;
+        }
+        size_t index = data.size();
+        entityToIndex[entity] = index;
+        indexToEntity[index] = entity;
+        data.push_back(component);
+    }
+
+    void Remove(Entity entity) {
+        if (entityToIndex.find(entity) == entityToIndex.end())
+        {
+            return;
+        }
+
+        // 削除時は最後の要素を持ってきて穴埋めする (Swap & Pop)
+        // これによりメモリの連続性を保つ
+        size_t removedIndex = entityToIndex[entity];
+        size_t lastIndex = data.size() - 1;
+        Entity lastEntity = indexToEntity[lastIndex];
+
+        data[removedIndex] = data[lastIndex];
+
+        entityToIndex[lastEntity] = removedIndex;
+        indexToEntity[removedIndex] = lastEntity;
+
+        entityToIndex.erase(entity);
+        indexToEntity.erase(lastIndex);
+        data.pop_back();
+    }
+
+    T& Get(Entity entity) {
+        return data[entityToIndex[entity]];
+    }
+
+    bool Has(Entity entity) {
+        return entityToIndex.find(entity) != entityToIndex.end();
+    }
+
+    void OnEntityDestroyed(Entity entity) override {
+        if (Has(entity)) Remove(entity);
+    }
+};
+
+#pragma once
+#include "../Registry/Registry.h"
+#include <spdlog/spdlog.h>
+
+class EntityObject {
+private:
+    Entity m_entityHandle;
+    Registry* m_registry;
+
+public:
+    // コンストラクタ
+    EntityObject() : m_entityHandle(-1), m_registry(nullptr) {}
+    EntityObject(Entity handle, Registry* registry)
+        : m_entityHandle(handle), m_registry(registry) {
+    }
+
+    // IDを取得
+    Entity GetID() const { return m_entityHandle; }
+
+    // 有効か確認
+    bool IsValid() const { return m_registry != nullptr && m_entityHandle != -1; }
+
+    // コンポーネント操作
+    template<typename T>
+    T& AddComponent(T component) {
+        // moveを使うことで無駄なコピーを避ける
+        m_registry->AddComponent<T>(m_entityHandle, std::move(component));
+        return m_registry->GetComponent<T>(m_entityHandle);
+    }
+
+    template<typename T>
+    T& GetComponent() {
+        // コンポーネントを持っていない場合のspdlogエラー表示
+        if (!HasComponent<T>()) {
+            spdlog::error("Entity {} does not have component '{}'", m_entityHandle, typeid(T).name());
+            throw std::runtime_error("Component not found");    // ついでにthrowで落とす
+        }
+        return m_registry->GetComponent<T>(m_entityHandle);
+    }
+
+    template<typename T>
+    bool HasComponent() {
+        return m_registry->HasComponent<T>(m_entityHandle);
+    }
+
+    void Destroy() {
+        if (IsValid()) {
+            m_registry->DestroyEntity(m_entityHandle);
+        }
+    }
+
+    explicit operator bool() const { return IsValid(); }
+};
+
+#pragma once
+#include <memory>
+#include <algorithm>
+#include <typeindex>
+#include <set>
+#include <unordered_map>
+#include "Core/Entity.h"
+#include "../Core/ComponentPool.h"
+
+class EntityObject;
+
+class Registry {
+private:
+    Entity m_nextEntityId = 0;
+    std::set<Entity> m_entities;
+    std::unordered_map<std::type_index, std::shared_ptr<IComponentPool>> m_componentPools;
+
+    template <typename T>
+    std::shared_ptr<ComponentPool<T>> GetPool() {
+        std::type_index typeIndex(typeid(T));
+        if (m_componentPools.find(typeIndex) == m_componentPools.end()) {
+            m_componentPools[typeIndex] = std::make_shared<ComponentPool<T>>();
+        }
+        return std::static_pointer_cast<ComponentPool<T>>(m_componentPools[typeIndex]);
+    }
+
+public:
+    Entity CreateEntityID() {
+        Entity id = m_nextEntityId++;
+        m_entities.insert(id);
+        return id;
+    }
+
+    Entity CreateEntity() { return CreateEntityID(); }
+
+    EntityObject CreateEntityObject();
+
+    bool IsValid(Entity entity) const {
+        return m_entities.find(entity) != m_entities.end();
+    }
+
+    void DestroyEntity(Entity entity) {
+        for (auto& pair : m_componentPools) {
+            pair.second->OnEntityDestroyed(entity);
+        }
+        m_entities.erase(entity);
+    }
+
+    template <typename T>
+    void AddComponent(Entity entity, T component) {
+        GetPool<T>()->Insert(entity, component);
+    }
+
+    template <typename T>
+    void RemoveComponent(Entity entity) {
+        GetPool<T>()->Remove(entity);
+    }
+
+    template <typename T>
+    T& GetComponent(Entity entity) {
+        return GetPool<T>()->Get(entity);
+    }
+
+    template <typename T>
+    bool HasComponent(Entity entity) {
+        return GetPool<T>()->Has(entity);
+    }
+
+    const std::set<Entity>& GetEntities() const { return m_entities; }
+
+    template<typename T>
+    std::vector<Entity> View() {
+        std::vector<Entity> entities;
+        auto pool = GetPool<T>();
+        for (auto const& [index, entity] : pool->indexToEntity) {
+            entities.push_back(entity);
+        }
+        return entities;
+    }
+};
+
+ここまでが、主なECSです。
+ここからは現在プレイヤーの用意しているコンポーネント
+#pragma once
+
+// アニメーションや行動制御のための状態
+enum class ActorState {
+    Idle,
+    Run,
+    Jump,
+    Fall,
+    Attack,
+    Roll,
+    Hit,
+    Dead
+};
+
+struct StateComponent {
+    ActorState currentState = ActorState::Idle;
+    float stateTimer = 0.0f; // その状態になってからの経過時間
+};
+
+#pragma once
+
+struct PlayerInputComponent {
+    bool moveLeft = false;
+    bool moveRight = false;
+    bool jump = false;
+    bool roll = false;
+    bool attack = false;
+
+    // スキル入力などが必要になればここに追加
+};
+#pragma once
+
+struct BoxColliderComponent {
+    float width = 32.0f;
+    float height = 64.0f;
+
+    // 中心からのオフセット（必要な場合）
+    float offsetX = 0.0f;
+    float offsetY = 0.0f;
+
+    // 状態フラグ
+    bool isGrounded = false; // 地面に足がついているか
+    bool hitWall = false;    // 壁にぶつかっているか
+};
+#pragma once
+
+struct FacingComponent {
+    int direction = 1; // 1: 右向き, -1: 左向き
+};
+#pragma once
+
+struct GravityComponent {
+    float force = 980.0f; // 重力加速度
+};
+#pragma once
+#include <SFML/Graphics.hpp>
+// Components.h
+// 座標・回転・スケール
+struct TransformComponent {
+    sf::Vector2f position = { 0.f, 0.f };
+    sf::Vector2f scale = { 1.f, 1.f };
+    float rotation = 0.f;
+};
+#pragma once
+#include <SFML/Graphics.hpp>
+
+struct VelocityComponent
+{
+	sf::Vector2f velocity = { 0.f, 0.f };
+};
+#pragma once
+#include <string>
+
+struct CharacterStatsComponent {
+    // Basic Info
+    std::string name = "Unknown";
+    int level = 1;
+    float currentHP = 100.0f;
+    float maxHP = 100.0f;
+    float currentMP = 50.0f;
+    float maxMP = 50.0f;
+
+    // Primary Attributes (Passive Tree)
+    int str = 0; // Strength: MaxHPなどに影響
+    int dex = 0; // Dexterity: AtkSpdなどに影響
+    int intelligence = 0; // Intelligence: MaxMPなどに影響
+
+    // Combat Stats
+    float atk = 10.0f;
+    float def = 0.0f;
+    float atkSpd = 1.0f;
+    float critRate = 0.05f;   // 5%
+    float critDamage = 1.50f; // 150%
+
+    // Movement Stats
+    float moveSpeed = 200.0f;
+
+    // Resistances (Max 75%)
+    float fireRes = 0.0f;
+    float iceRes = 0.0f;
+    float lightningRes = 0.0f;
+};
+#pragma once
+// プレイヤーのタグ
+struct PlayerTag {};
+
+ここからはプレイヤーのシステム
+#pragma once
+#include "../../Registry/Registry.h"
+#include "../../Components/Control/PlayerInput/PlayerInput.h"
+#include "../../Components/Physics/Velocity/Velocity.h"
+#include "../../Components/Stats/CharacterStats/CharacterStats.h"
+#include "../../Components/Physics/Facing/Facing.h"
+#include "../../Components/Physics/BoxCollider/BoxCollider.h"
+
+class MovementSystem {
+public:
+    void Update(Registry& registry, float dt) {
+        auto view = registry.View<PlayerInputComponent>();
+
+        for (auto entity : view) {
+            // 必要なコンポーネントチェック
+            if (!registry.HasComponent<VelocityComponent>(entity) ||
+                !registry.HasComponent<CharacterStatsComponent>(entity)) {
+                continue;
+            }
+
+            auto& input = registry.GetComponent<PlayerInputComponent>(entity);
+            auto& velocity = registry.GetComponent<VelocityComponent>(entity);
+            auto& stats = registry.GetComponent<CharacterStatsComponent>(entity);
+
+            // 左右移動
+            // X速度をリセット（慣性なしのキビキビした動き）
+            velocity.velocity.x = 0.0f;
+
+            if (input.moveLeft) {
+                velocity.velocity.x = -stats.moveSpeed;
+
+                if (registry.HasComponent<FacingComponent>(entity)) {
+                    registry.GetComponent<FacingComponent>(entity).direction = -1;
+                }
+            }
+            else if (input.moveRight) {
+                velocity.velocity.x = stats.moveSpeed;
+
+                if (registry.HasComponent<FacingComponent>(entity)) {
+                    registry.GetComponent<FacingComponent>(entity).direction = 1;
+                }
+            }
+
+            // ジャンプ処理
+            if (input.jump) {
+                // 本来はここで「接地しているか(isGrounded)」をチェックします。
+                // まだCollisionSystemがないため、暫定的に「無限ジャンプ可能」にします。
+                // 地面判定ができたら以下のように書き換えます:
+                // if (registry.HasComponent<BoxColliderComponent>(entity) && 
+                //     registry.GetComponent<BoxColliderComponent>(entity).isGrounded)
+
+                {
+                    // 上方向へ速度を与える (SFML座標系は上がマイナス)
+                    velocity.velocity.y = -500.0f;
+                    // 接地フラグを解除（もしあれば）
+                    if (registry.HasComponent<BoxColliderComponent>(entity)) {
+                        registry.GetComponent<BoxColliderComponent>(entity).isGrounded = false;
+                    }
+                }
+            }
+        }
+    }
+};
+#pragma once
+#include "../../Registry/Registry.h"
+#include "../../Components/Physics/Transform/Transform.h"
+#include "../../Components/Physics/Velocity/Velocity.h"
+#include "../../Components/Physics/Gravity/Gravity.h"
+#include "../../Components/Physics/BoxCollider/BoxCollider.h"
+
+class PhysicsSystem {
+public:
+    void Update(Registry& registry, float dt) {
+        // 重力を速度に適用
+        // GravityComponent を持つエンティティすべてに対して
+        auto gravityView = registry.View<GravityComponent>();
+        for (auto entity : gravityView) {
+            if (registry.HasComponent<VelocityComponent>(entity)) {
+                auto& velocity = registry.GetComponent<VelocityComponent>(entity);
+                auto& gravity = registry.GetComponent<GravityComponent>(entity);
+
+                velocity.velocity.y += gravity.force * dt;
+            }
+        }
+
+        // 速度を座標に適用 (オイラー積分)
+        // Velocity と Transform を持つエンティティすべてに対して
+        auto velocityView = registry.View<VelocityComponent>();
+        for (auto entity : velocityView) {
+            if (registry.HasComponent<TransformComponent>(entity)) {
+                auto& vel = registry.GetComponent<VelocityComponent>(entity);
+                auto& trans = registry.GetComponent<TransformComponent>(entity);
+
+                trans.position += vel.velocity * dt;
+
+                // Y=500のラインを地面
+                float groundY = 500.0f;
+
+                if (trans.position.y >= groundY) {
+                    // 位置補正
+                    trans.position.y = groundY;
+                    // 接地したら落下速度を0にする
+                    if (vel.velocity.y > 0) vel.velocity.y = 0;
+
+                    // 接地フラグをONにする
+                    if (registry.HasComponent<BoxColliderComponent>(entity)) {
+                        registry.GetComponent<BoxColliderComponent>(entity).isGrounded = true;
+                    }
+                }
+                else {
+                    // 空中にいる
+                    if (registry.HasComponent<BoxColliderComponent>(entity)) {
+                        // ジャンプ直後などでなければ空中判定（厳密にはMovementSystemの後が良い）
+                        if (vel.velocity.y > 0) // 落下中
+                            registry.GetComponent<BoxColliderComponent>(entity).isGrounded = false;
+                    }
+                }
+
+                // ※ 本来はこの後か合間に「衝突判定」を行い、地面に埋まっていたら押し戻す処理が必要です。
+                // 今の状態だと、プレイヤーは無限に落下していきます。
+            }
+        }
+    }
+};
+#pragma once
+#include "../../Registry/Registry.h"
+#include "../../Components/Control/PlayerInput/PlayerInput.h"
+#include <System/Input/InputManager.h>
+
+class InputSystem {
+public:
+    void Update(Registry& registry) {
+        // InputManagerからキー入力を取得
+        auto& keyInput = InputManager::Instance().GetKeyInput();
+
+        auto view = registry.View<PlayerInputComponent>();
+
+        for (auto entity : view) {
+            auto& input = registry.GetComponent<PlayerInputComponent>(entity);
+
+            // フラグをリセット
+            input.moveLeft = false;
+            input.moveRight = false;
+            input.jump = false;
+            input.attack = false;
+
+            // --- 移動 (押しっぱなし = GetKey) ---
+            if (keyInput.GetKey(sf::Keyboard::Key::A) || keyInput.GetKey(sf::Keyboard::Key::Left)) {
+                input.moveLeft = true;
+            }
+            if (keyInput.GetKey(sf::Keyboard::Key::D) || keyInput.GetKey(sf::Keyboard::Key::Right)) {
+                input.moveRight = true;
+            }
+
+            // --- ジャンプ (押した瞬間 = IsGetKey) ---
+            // ※IsGetKeyを使うことで、押しっぱなしでの連打（空中浮遊）を防ぎます
+            if (keyInput.IsGetKey(sf::Keyboard::Key::Space) || keyInput.IsGetKey(sf::Keyboard::Key::W)) {
+                input.jump = true;
+            }
+
+            // --- 攻撃など ---
+            if (keyInput.IsGetKey(sf::Keyboard::Key::Z)) {
+                input.attack = true;
+            }
+        }
+    }
+};
+
+そしてゲームシーンです。
+
+#pragma once
+#include <string>
+#include <ECS.h>
+#include <System/SceneManager/SceneBase.h>
+#include "../Character/Plyaer/System/PlayerMoveSystem.h"
+// 仮
+#include "../.../../../ECS/Systems/Contorol/InputSystem.h"
+#include "../.../../../ECS/Systems/Physics/MovementSystem.h"
+#include "../.../../../ECS/Systems/Physics/PhysicsSystem.h"
+
+class GameScene : public SceneBase {
+public:
+    static const char* GetName() { return "GameScene"; }
+
+    GameScene();
+
+    void Update() override;
+    void Render(sf::RenderTarget& target) override;
+    void RenderImGui(const sf::Texture* renderTexture) override;
+
+private:
+    // Registry
+	std::unique_ptr<Registry> registry;
+    
+    // System
+    std::shared_ptr<EditorSystem> editorSystem;
+    std::shared_ptr<RenderSystem> renderSystem;
+    std::shared_ptr<InputSystem> inputSystem;
+    std::shared_ptr<MovementSystem> movementSystem;
+    std::shared_ptr<PhysicsSystem> physicsSystem;
+
+    std::shared_ptr<PlayerMoveSystem> playerMoveSystem;
+
+    // ゲーム内で使用する
+    std::shared_ptr<Entity> playerEntity;
+    
+};
+
+次にF1を押すとデバック表示用を作成しています。
+#pragma once
+#include <SFML/Graphics.hpp>
+#include "../Input/InputManager.h"
+#include "../Performance/MemoryMonitor.h"
+#include "../DebugGui/DebugGui.h"
+#include "../Language/Language.h"
+
+class DebugManager {
+public:
+    void Update(const sf::Window& window);
+    bool IsDebugMode() const { return debugMode; }
+    void Render(const sf::Texture* renderTexture);
+private:
+    // ゲーム画面の表示
+	void RenderGameScreen(const sf::Texture* renderTexture);
+	// シーン管理画面の表示
+	void RenderSceneManagement();
+	// ログ画面の表示
+	void RenderLogWindow();
+	// カメラコントロール画面の表示
+	void RenderCameraControl();
+	// オブジェクト設定画面の表示
+	void RenderObjectSettings();
+	// Timeクラス関係のログ表示
+	void RenderPerformance();
+	// その他デバッグ情報画面の表示
+	void RenderOtherDebugInfo();
+	// 言語設定
+	void RenderLanguageSettings();
+
+    // デバックモード false:not debug mode true : debug mode
+    bool debugMode = false;
+
+	// メモリーの使用率の描画
+	MemoryMonitor memory;
+};
+これらを踏まえて次に作成していくものを考えて
+プレイヤーはまだ移動とジャンプだけ

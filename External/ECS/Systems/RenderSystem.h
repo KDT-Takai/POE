@@ -1,9 +1,12 @@
 #pragma once
-#include "../Registry/Registry.h"
-#include "../Components/Components.h"
 #include <System/Resource/ResourceManager/ResourceManager.h>
 #include <SFML/Graphics.hpp>
 #include <algorithm>
+#include <cmath>
+#include "../Registry/Registry.h"
+#include "../Components/Components.h"
+#include "../Components/Physics/BoxCollider/BoxCollider.h"
+#include "../Components/Physics/Transform/Transform.h" // 座標
 
 class RenderSystem {
 public:
@@ -66,6 +69,34 @@ public:
                     target.draw(shape);
                 }
             }
+        }
+    }
+    // 当たり判定
+    void RenderDebug(Registry& registry, sf::RenderTarget& target)
+    {
+        auto view = registry.View<BoxColliderComponent>();
+
+        for (auto entity : view)
+        {
+            if (!registry.HasComponent<TransformComponent>(entity)) continue;
+
+            const auto& trans = registry.GetComponent<TransformComponent>(entity);
+            const auto& col = registry.GetComponent<BoxColliderComponent>(entity);
+
+            sf::RectangleShape rect;
+
+            rect.setSize({ col.width, col.height });
+
+            float left = std::floor(trans.position.x + col.offsetX);
+            float top = std::floor(trans.position.y + col.offsetY);
+
+            rect.setPosition({ left, top });
+
+            rect.setFillColor(sf::Color::Transparent); // 中身は透明
+            rect.setOutlineColor(sf::Color::Red);      // 赤枠
+            rect.setOutlineThickness(-3.0f);           // 内側に1pxの線（サイズが変わらない）
+
+            target.draw(rect);
         }
     }
 };

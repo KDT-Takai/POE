@@ -31,7 +31,8 @@ private:
 	// Sprite to display the render texture レンダーテクスチャを表示するスプライト
 	std::unique_ptr<sf::Sprite> renderSprite;
 	// Debug manager for handling debug features デバッグ機能を管理するデバッグマネージャー
-	std::unique_ptr<DebugManager> debugManager;
+	// シングルトンに変更したため不要
+//	std::unique_ptr<DebugManager> debugManager;
 	
 	// Initialize the application イベントの処理
 	void ProcessEvents();

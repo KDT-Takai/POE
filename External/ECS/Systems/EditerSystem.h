@@ -1,6 +1,7 @@
 #pragma once
 #include "../ECS.h"
 #include "../Components/Components.h"
+#include "../Components/Physics/Transform/Transform.h" // ç¿ïW
 #include "imgui.h"
 #include <System/DebugGui/DebugGui.h>
 
