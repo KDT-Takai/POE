@@ -7,20 +7,20 @@ struct CharacterStatsComponent {
     int level = 1;
     float currentHP = 100.0f;
     float maxHP = 100.0f;
-    float currentMP = 50.0f;
-    float maxMP = 50.0f;
+    float currentMP = 200.0f;
+    float maxMP = 200.0f;
 
-    // Primary Attributes (Passive Tree)
-    int str = 0; // Strength: MaxHPÇ»Ç«Ç…âeãø
-    int dex = 0; // Dexterity: AtkSpdÇ»Ç«Ç…âeãø
-    int intelligence = 0; // Intelligence: MaxMPÇ»Ç«Ç…âeãø
+    // Primary Attributes (Passive Treeó\íË éûä‘Ç»Ç≥ÇªÅ[)
+    int str = 0; // Strength:MaxHPÇ»Ç«Ç…âeãø
+    int dex = 0; // Dexterity:AtkSpdÇ»Ç«Ç…âeãø
+    int intelligence = 0; // Intelligence:MaxMPÇ»Ç«Ç…âeãø
 
     // Combat Stats
     float atk = 10.0f;
     float def = 0.0f;
     float atkSpd = 1.0f;
-    float critRate = 0.05f;   // 5%
-    float critDamage = 1.50f; // 150%
+    float critRate = 0.05f;
+    float critDamage = 1.50f;
 
     // Movement Stats
     float moveSpeed = 200.0f;

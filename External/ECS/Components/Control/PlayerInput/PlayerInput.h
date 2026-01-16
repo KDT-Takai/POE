@@ -1,4 +1,8 @@
 #pragma once
+#include <array>
+
+// スキルスロットの数
+constexpr int MAX_SKILL_SLOTS = 5;
 
 struct PlayerInputComponent {
     bool moveLeft = false;
@@ -7,5 +11,7 @@ struct PlayerInputComponent {
     bool roll = false;
     bool attack = false;
 
-    // スキル入力などが必要になればここに追加
+    // スキルは最大５個まで対応させる
+	// スキルスロットの最大数
+    std::array<bool, MAX_SKILL_SLOTS> skillInputs = { false, false, false, false, false };
 };

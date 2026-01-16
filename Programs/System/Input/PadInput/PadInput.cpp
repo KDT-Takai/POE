@@ -5,14 +5,14 @@
 
 PadInput::PadInput()
 {
-    // 初期化：すべての値をゼロにする
+    // 初期化
     m_currentReading = {};
     m_previousReading = {};
 
     // イベントリスナーの登録
-    // コントローラーが接続されたとき
+    // コントローラーが接続
     m_addedToken = winrt::Windows::Gaming::Input::Gamepad::GamepadAdded({ this, &PadInput::OnGamepadAdded });
-    // コントローラーが切断されたとき
+    // コントローラーが切断
     m_removedToken = winrt::Windows::Gaming::Input::Gamepad::GamepadRemoved({ this, &PadInput::OnGamepadRemoved });
 
     // 既に接続されているパッドがあれば取得
@@ -55,7 +55,7 @@ bool PadInput::IsConnected() const
 }
 
 // ボタン判定ロジック
-// ビット演算を使って判定します
+// ビット演算を使って判定
 
 bool PadInput::IsPress(winrt::Windows::Gaming::Input::GamepadButtons button) const
 {
@@ -65,20 +65,17 @@ bool PadInput::IsPress(winrt::Windows::Gaming::Input::GamepadButtons button) con
 
 bool PadInput::IsTrigger(winrt::Windows::Gaming::Input::GamepadButtons button) const
 {
-    // 現在ON かつ 前回OFF
     return ((m_currentReading.Buttons & button) == button) &&
         ((m_previousReading.Buttons & button) != button);
 }
 
 bool PadInput::IsRelease(winrt::Windows::Gaming::Input::GamepadButtons button) const
 {
-    // 現在OFF かつ 前回ON
     return ((m_currentReading.Buttons & button) != button) &&
         ((m_previousReading.Buttons & button) == button);
 }
 
 // トリガーとスティック
-
 float PadInput::GetLeftTrigger() const
 {
     return static_cast<float>(m_currentReading.LeftTrigger);
@@ -110,7 +107,6 @@ float PadInput::GetRightStickY() const
 }
 
 // ユーティリティ
-
 float PadInput::ApplyDeadzone(float value, float deadzone) const
 {
     // 値がデッドゾーン内なら0を返す
@@ -127,8 +123,8 @@ void PadInput::SetVibration(float leftMotor, float rightMotor)
     if (m_gamepad)
     {
         winrt::Windows::Gaming::Input::GamepadVibration vibration;
-        vibration.LeftMotor = leftMotor;   // 低周波（ドンドン）
-        vibration.RightMotor = rightMotor; // 高周波（ブブブ）
+        vibration.LeftMotor = leftMotor;   // 低周波
+        vibration.RightMotor = rightMotor; // 高周波
         m_gamepad.Vibration(vibration);
     }
 }
