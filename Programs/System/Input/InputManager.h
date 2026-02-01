@@ -22,8 +22,13 @@ public:
     MouseInput& GetMouseInput() { return *mouseInput; }
     PadInput& GetPadInput() { return *padInput; }
 
+    void SetWindow(sf::RenderWindow* window) { m_window = window; }
+	sf::RenderWindow* GetWindow() const { return m_window; }
+    sf::Vector2f GetMouseWorldPosition() const;
 private:
     std::unique_ptr<KeyInput> keyInput;
     std::unique_ptr<MouseInput> mouseInput;
     std::unique_ptr<PadInput> padInput;
+
+    sf::RenderWindow* m_window = nullptr;
 };

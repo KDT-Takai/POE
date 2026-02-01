@@ -6,6 +6,7 @@
 
 #include "../../../System/DebugManager/DebugManager.h"
 #include "../Entity/EntitySpawner.h"
+
 #include "../MapGenerator/MapGenerator.h"
 
 GameScene::GameScene() {
@@ -20,6 +21,16 @@ GameScene::GameScene() {
     movementSystem = std::make_shared<MovementSystem>();
     physicsSystem = std::make_shared<PhysicsSystem>();
     mapRenderSystem = std::make_shared<MapRenderSystem>();
+	skillSystem = std::make_shared<SkillSystem>();
+	uiSystem = std::make_shared<UISystem>();
+	sparkVisualSystem = std::make_shared<SparkVisualSystem>();
+	projectileSystem = std::make_shared<ProjectileSystem>();
+	sparkRenderSystem = std::make_shared<SparkRenderSystem>();
+	enemySpawnSystem = std::make_shared<EnemySpawnSystem>();
+	enemyAISystem = std::make_shared<EnemyAISystem>();
+	collisionSystem = std::make_shared<CollisionSystem>();
+	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
+    auto worldEntityObj = MapGenerator::CreateProceduralWorld(*registry, 250, 250);
 
 //    EntityObject player = registry->CreateEntityObject();
 //    player.AddComponent<TagComponent>({"Player"});
@@ -31,33 +42,81 @@ GameScene::GameScene() {
 //    auto& transform = player.GetComponent<TransformComponent>();
 //    transform.position.x += 10.0f;
 
-    auto player = EntitySpawner::CreatePlayer(*registry, 100.0f, 300.0f);
+    float spawnX = 100.0f;
+    float spawnY = 100.0f;
+
+    if (worldEntityObj) {
+        spdlog::info("World created");
+        auto& map = worldEntityObj.GetComponent<MapComponent>();
+        bool foundStart = false;
+        for (int y = 0; y < map.height; ++y) {
+            for (int x = 0; x < map.width; ++x) {
+                if (map.GetTile(x, y) == TileType::Wood) {
+                    spawnX = x * map.tileSize;
+                    spawnY = y * map.tileSize;
+                    foundStart = true;
+                    break;
+                }
+            }
+            if (foundStart) break;
+        }
+        // ï‡ÇØÇÈà íu
+        std::vector<sf::Vector2f> freeSlots = MapGenerator::GetWalkablePositions(map);
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(freeSlots.begin(), freeSlots.end(), g);
+        int enemyCount = 250; // ê∂ê¨ÇµÇΩÇ¢ìGÇÃêî
+        for (int i = 0; i < enemyCount && i < freeSlots.size(); ++i) {
+            EntitySpawner::CreateEnemy(*registry, freeSlots[i]);
+        }
+        spdlog::info("Spawned {} enemies using EntitySpawner.", std::min((size_t)enemyCount, freeSlots.size()));
+    }
+
+    auto player = EntitySpawner::CreatePlayer(*registry, spawnX, spawnY);
     if (player) {
         playerEntity = player.GetID();
         spdlog::info("Player created with ID: {}", player.GetID());
     }
+
 //	auto world = MapGenerator::CreateTestWorld(*registry);
-	auto world = MapGenerator::CreateProceduralWorld(*registry);
-    if (world) {
-        spdlog::info("world created");
-    }
-	auto monument = EntitySpawner::CreateMonument(*registry, sf::Vector2f(600.f, 800.f), 1);
+	//auto world = MapGenerator::CreateProceduralWorld(*registry);
+ //   if (world) {
+ //       spdlog::info("world created");
+ //   }
+//	auto monument = EntitySpawner::CreateMonument(*registry, sf::Vector2f(600.f, 800.f), 1);
 }
 
 void GameScene::Update() {
     auto dt = Time::Instance().GetDeltaTime();
     // ì¸óÕ
-    inputSystem->Update(*registry);
-    // à⁄ìÆ
-    movementSystem->Update(*registry, dt);
-    // ï®óùââéZ
-    physicsSystem->Update(*registry, dt);
+    inputSystem->Update(*registry, dt);
+    // Ç∑Ç´ÇÈ
+	skillSystem->Update(*registry, dt);
+    // ÉXÉpÅ[ÉN
+    sparkVisualSystem->Update(*registry);
+	projectileSystem->Update(*registry, dt);
     // ìñÇΩÇËîªíË
     if (registry->IsValid(playerEntity)) {
+        auto& input = registry->GetComponent<PlayerInputComponent>(playerEntity);
+        input.mouseWorldPos = InputManager::Instance().GetMouseWorldPosition();
+
         auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
         sf::Vector2f centerPos = trans.position + sf::Vector2f(16.0f, 32.0f);
         CameraManager::Instance().SetCenter(centerPos);
     }
+    sf::Vector2f playerPos(0, 0);
+    if (registry->HasComponent<TransformComponent>(playerEntity)) {
+        playerPos = registry->GetComponent<TransformComponent>(playerEntity).position;
+    }
+    // ìG
+//    enemySpawnSystem->Update(*registry, dt, playerPos);
+	enemyAISystem->Update(*registry, dt, playerPos);
+    // à⁄ìÆ
+    movementSystem->Update(*registry, dt);
+    // ï®óùââéZ
+    physicsSystem->Update(*registry, dt);
+	// è’ìÀèàóù
+	collisionSystem->Update(*registry);
 }
 
 void GameScene::Render(sf::RenderTarget& target) {
@@ -65,9 +124,12 @@ void GameScene::Render(sf::RenderTarget& target) {
 	// É}ÉbÉvï`âÊ
 	mapRenderSystem->Render(*registry, target);
     renderSystem->Render(*registry, target);
+	uiSystem->Render(*registry, target);
     if (DebugManager::Instance().IsDebugMode()) {
         renderSystem->RenderDebug(*registry, target);
     }
+    sparkRenderSystem->Render(*registry, target);
+	healthBarRenderSystem->Render(*registry, target);
     target.setView(target.getDefaultView());
 }
 

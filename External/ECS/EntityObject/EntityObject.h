@@ -29,6 +29,12 @@ public:
     }
 
     template<typename T>
+    T& AddComponent() {
+        T component{};
+        return AddComponent<T>(std::move(component));
+    }
+
+    template<typename T>
     T& GetComponent() {
         // コンポーネントを持っていない場合のspdlogエラー表示
         if (!HasComponent<T>()) {

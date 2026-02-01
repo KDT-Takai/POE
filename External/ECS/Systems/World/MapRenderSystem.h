@@ -44,21 +44,23 @@ public:
 
                 // 色設定（テクスチャがない間の仮の色分け）
                 switch (type) {
-				case TileType::Air:
-                    //rect.setFillColor(sf::Color::Transparent);
-                    rect.setFillColor(sf::Color(173, 216, 230));
-                    break;
                 case TileType::Dirt:
-                    rect.setFillColor(sf::Color(139, 69, 19)); // 茶色
+                    rect.setFillColor(sf::Color(70, 70, 70)); // 床：濃いグレー（ダンジョンっぽく）
                     break;
                 case TileType::Stone:
-                    rect.setFillColor(sf::Color(200, 200, 200)); // グレー
+                    rect.setFillColor(sf::Color(20, 20, 20)); // 壁：ほぼ黒
+                    break;
+                case TileType::Wood:
+                    rect.setFillColor(sf::Color::Green);      // スタート地点：緑
+                    break;
+                case TileType::Grass:
+                    rect.setFillColor(sf::Color::Red);        // ゴール地点：赤
                     break;
                 case TileType::Bedrock:
-                    rect.setFillColor(sf::Color(30, 30, 30));  // ほぼ黒
+                    rect.setFillColor(sf::Color::Black);      // 外枠
                     break;
                 default:
-                    rect.setFillColor(sf::Color::Magenta);     // エラー用の目立つ色
+                    rect.setFillColor(sf::Color::Magenta);
                     break;
                 }
 

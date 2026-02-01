@@ -10,7 +10,6 @@
 TitleScene::TitleScene() {
     sceneName = "TitleScene";
 
-    // --- “®‚­‰~‚Ì‰Šú‰» ---
     movingCircle.setRadius(30.0f);
     movingCircle.setFillColor(sf::Color::Green);
     movingCircle.setPosition({ 100.0f, 100.0f }); // ‰ŠúˆÊ’u

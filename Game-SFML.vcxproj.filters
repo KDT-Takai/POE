@@ -346,6 +346,48 @@
     <ClInclude Include="Programs\Game\GameScene\MapGenerator\MapGenerator.h">
       <Filter>External</Filter>
     </ClInclude>
+    <ClInclude Include="External\ECS\Components\Stats\SkillData\Skill.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\PlayerSkill\PlayerSkill.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Skill\SkillSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\UI\UISystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\Physics\Projectile\Projectile.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Physics\ProjectileSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Components\PlayerSkill\SparkVisual.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Skill\SparkVisualSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Skill\SparkRenderSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="Programs\Game\GameScene\Character\Enemy\EnemyFactory.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Chara\EnemySpawnSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Chara\EnemyAISystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\Physics\CollisionSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
+    <ClInclude Include="External\ECS\Systems\UI\HealthBarRenderSystem.h">
+      <Filter>External</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

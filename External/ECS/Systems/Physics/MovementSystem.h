@@ -5,6 +5,7 @@
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/Physics/Facing/Facing.h"
 #include "../../Components/Physics/BoxCollider/BoxCollider.h"
+#include "../../Components/Control/State/State.h"
 
 class MovementSystem {
 public:
@@ -17,24 +18,30 @@ public:
                 !registry.HasComponent<CharacterStatsComponent>(entity)) {
                 continue;
             }
+           
+            auto& state = registry.GetComponent<StateComponent>(entity);
+            if (state.currentState == ActorState::Roll || state.currentState == ActorState::Attack) {
+                continue;
+            }
 
             auto& input = registry.GetComponent<PlayerInputComponent>(entity);
             auto& velocity = registry.GetComponent<VelocityComponent>(entity);
-            auto& stats = registry.GetComponent<CharacterStatsComponent>(entity);
+            auto& charStats = registry.GetComponent<CharacterStatsComponent>(entity);
+
 
             // 左右移動
             // X速度をリセット
             velocity.velocity.x = 0.0f;
 
             if (input.moveLeft) {
-                velocity.velocity.x = -stats.moveSpeed;
+                velocity.velocity.x = -charStats.moveSpeed;
 
                 if (registry.HasComponent<FacingComponent>(entity)) {
                     registry.GetComponent<FacingComponent>(entity).direction = -1;
                 }
             }
             else if (input.moveRight) {
-                velocity.velocity.x = stats.moveSpeed;
+                velocity.velocity.x = charStats.moveSpeed;
 
                 if (registry.HasComponent<FacingComponent>(entity)) {
                     registry.GetComponent<FacingComponent>(entity).direction = 1;

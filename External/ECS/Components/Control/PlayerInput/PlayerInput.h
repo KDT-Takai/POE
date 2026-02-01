@@ -11,7 +11,7 @@ struct PlayerInputComponent {
     bool roll = false;
     bool attack = false;
 
-    // スキルは最大５個まで対応させる
-	// スキルスロットの最大数
     std::array<bool, MAX_SKILL_SLOTS> skillInputs = { false, false, false, false, false };
+
+    sf::Vector2f mouseWorldPos = { 0.0f, 0.0f };
 };

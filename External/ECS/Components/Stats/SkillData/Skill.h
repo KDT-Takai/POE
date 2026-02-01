@@ -1,0 +1,52 @@
+#pragma once
+#include <string>
+#include <vector>
+
+// 属性
+enum class ElementType {
+    None,
+    Fire,
+    Ice,
+    Lightning,
+    Dark,
+    Holy
+};
+
+// ★ここが重要：スキルの「具体的な名前」ではなく「何をするか（メカニクス）」で分類
+enum class SkillBehaviorType {
+    None,
+    Melee,      // 近接攻撃
+    Projectile, // 弾を発射
+    Dash,       // 移動系
+    Buff,       // 自己強化
+    AreaEffect,  // 範囲攻撃
+    Spark,      // 雷
+    GroundSlam,
+    LightningWarp,
+    LightningBall
+};
+
+struct SkillData {
+    std::string name = "Empty";
+    std::string description = "";
+    int level = 1;
+
+    SkillBehaviorType behaviorType = SkillBehaviorType::Melee;
+    ElementType element = ElementType::None;
+
+    float cooldownTime = 1.0f;      // クールダウン
+    float currentCooldown = 0.0f;   // 現在の待ち時間
+    float castTime = 0.0f;          // 詠唱時間
+    int mpCost = 0;                 // 消費MP
+
+    float damage = 0.0f;             // 威力
+    float duration = 0.0f;          // 持続時間
+    float range = 0.0f;             // 射程距離や速度
+
+    float buffAtk = 0.0f;
+    float buffDef = 0.0f;
+    float buffSpeed = 0.0f;
+
+    // 有効かどうかの判別
+    bool isValid = false;
+};

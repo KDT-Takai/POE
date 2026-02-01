@@ -68,12 +68,14 @@ public:
 
     const std::set<Entity>& GetEntities() const { return m_entities; }
 
-    template<typename T>
+    template<typename First, typename... Rest>
     std::vector<Entity> View() {
         std::vector<Entity> entities;
-        auto pool = GetPool<T>();
+        auto pool = GetPool<First>();
         for (auto const& [index, entity] : pool->indexToEntity) {
-            entities.push_back(entity);
+            if ((HasComponent<Rest>(entity) && ...)) {
+                entities.push_back(entity);
+            }
         }
         return entities;
     }

@@ -37,6 +37,10 @@ sf::Vector2i MouseInput::GetMousePoint() {
 	return sf::Vector2i{ mouseX, mouseY };
 }
 
+sf::Vector2f MouseInput::GetMousePointF() {
+    return sf::Vector2f(static_cast<float>(mouseX), static_cast<float>(mouseY));
+}
+
 void MouseInput::RenderImGui()
 {
     DebugGui::Begin("Mouse Input", "ƒ}ƒEƒX“ü—Í");

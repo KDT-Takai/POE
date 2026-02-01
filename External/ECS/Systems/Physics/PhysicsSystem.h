@@ -4,6 +4,7 @@
 #include "../../Components/Physics/Velocity/Velocity.h"
 #include "../../Components/Physics/Gravity/Gravity.h"
 #include "../../Components/Physics/BoxCollider/BoxCollider.h"
+#include "../../Components/Physics/Projectile/Projectile.h"
 #include "../../Components/World/Map.h"
 
 class PhysicsSystem {
@@ -18,15 +19,15 @@ public:
 
         // 重力を速度に適用
         // GravityComponent を持つエンティティに対して
-        auto gravityView = registry.View<GravityComponent>();
-        for (auto entity : gravityView) {
-            if (registry.HasComponent<VelocityComponent>(entity)) {
-                auto& velocity = registry.GetComponent<VelocityComponent>(entity);
-                auto& gravity = registry.GetComponent<GravityComponent>(entity);
+        //auto gravityView = registry.View<GravityComponent>();
+        //for (auto entity : gravityView) {
+        //    if (registry.HasComponent<VelocityComponent>(entity)) {
+        //        auto& velocity = registry.GetComponent<VelocityComponent>(entity);
+        //        auto& gravity = registry.GetComponent<GravityComponent>(entity);
 
-                velocity.velocity.y += gravity.force * dt;
-            }
-        }
+        //        velocity.velocity.y += gravity.force * dt;
+        //    }
+        //}
 
         // 速度を座標に適用
         // Velocity と Transform を持つエンティティすべてに対して
@@ -41,15 +42,27 @@ public:
                     trans.position += vel.velocity * dt;
                     continue;
                 }
-                
+
                 auto& col = registry.GetComponent<BoxColliderComponent>(entity);
+
+                // 投射物チェック
+                ProjectileComponent* proj = nullptr;
+                if (registry.HasComponent<ProjectileComponent>(entity)) {
+                    proj = &registry.GetComponent<ProjectileComponent>(entity);
+                }
 
                 // X軸
                 trans.position.x += vel.velocity.x * dt;
                 col.hitWall = false;
                 // 衝突があったら位置補正、速度リセット
                 if (ResolveMapCollision(trans, col, vel, *map, true)) {
-                    vel.velocity.x = 0.0f;
+                    if (proj) {
+                        if (proj->isBouncy) vel.velocity.x *= -1; // 反射
+                        else { registry.DestroyEntity(entity); continue; }
+                    }
+                    else {
+                        vel.velocity.x = 0.0f;
+                    }
                 }
 
                 // Y軸の処理
@@ -57,7 +70,13 @@ public:
                 col.isGrounded = false;
                 // 衝突があったら位置補正、速度リセット
                 if (ResolveMapCollision(trans, col, vel, *map, false)) {
-                    vel.velocity.y = 0.0f;
+                    if (proj) {
+                        if (proj->isBouncy) vel.velocity.y *= -1; // 反射
+                        else { registry.DestroyEntity(entity); continue; }
+                    }
+                    else {
+                        vel.velocity.y = 0.0f;
+                    }
                 }
                 // Y=500のラインを地面
                 //float groundY = 500.0f;
@@ -112,7 +131,7 @@ private:
         for (int y = minTile.y; y <= maxTile.y; ++y) {
             for (int x = minTile.x; x <= maxTile.x; ++x) {
                 TileType tile = map.GetTile(x, y);
-                if (tile == TileType::Air) continue;
+                if (tile == TileType::Dirt || tile == TileType::Wood || tile == TileType::Grass) continue;
 
                 // タイルの矩形
                 float tileLeft = x * map.tileSize;

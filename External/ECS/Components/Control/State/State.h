@@ -15,4 +15,5 @@ enum class ActorState {
 struct StateComponent {
     ActorState currentState = ActorState::Idle;
     float stateTimer = 0.0f; // ‚»‚Ìó‘Ô‚É‚È‚Á‚Ä‚©‚ç‚ÌŒo‰ßŠÔ
+    bool isFacingRight = true;
 };

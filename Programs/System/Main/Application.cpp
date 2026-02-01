@@ -67,6 +67,7 @@ void Application::run() {
 		ImGui::SFML::Update(*window, deltaTime);
 		Time::Instance().Update();
 		InputManager::Instance().Update(*window);
+		InputManager::Instance().SetWindow(window.get());
 		Update(deltaTime);
 		Render();
 	}

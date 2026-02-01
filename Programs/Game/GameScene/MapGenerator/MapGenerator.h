@@ -1,99 +1,93 @@
 #pragma once
-#include <ECS.h>
-#include "../ECS/Components/World/Map.h"
+#include "ECS.h"
+#include "../../ECS/Components/World/Map.h"
 #include <random>
-#include <cmath>
+#include <algorithm>
+#include <spdlog/spdlog.h>
 
 class MapGenerator {
 public:
-    // テスト用
-    static Entity CreateTestWorld(Registry& registry) {
-        Entity entity = registry.CreateEntity();
+    static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100) {
+        auto entity = registry.CreateEntityObject();
 
-        MapComponent map;
-        map.width = 100;
-        map.height = 30;
-        map.tileSize = 32.0f;
-        map.tiles.resize(map.width * map.height, (uint8_t)TileType::Air);
+        //entity.AddComponent<MapComponent>();
+        entity.AddComponent(MapComponent{});
+        auto& map = entity.GetComponent<MapComponent>();
 
-        // 地面
-        for (int x = 0; x < map.width; ++x) {
-            for (int y = map.height - 3; y < map.height; ++y) {
-                map.SetTile(x, y, TileType::Dirt);
-            }
-        }
+        int steps = (w * h) / 2;
 
-        // 石
-        for (int y = map.height - 6; y < map.height - 3; ++y) {
-            map.SetTile(20, y, TileType::Stone);
-        }
+        GenerateRandomWalk(map, w, h, steps);
 
-        // 穴
-        for (int x = 40; x < 45; ++x) {
-            map.SetTile(x, map.height - 3, TileType::Air);
-            map.SetTile(x, map.height - 1, TileType::Bedrock);
-        }
-
-        registry.AddComponent(entity, map);
         return entity;
     }
-    // 試作品１号ちゃん
-    static Entity CreateProceduralWorld(Registry& registry) {
-        Entity entity = registry.CreateEntity();
-        MapComponent map;
-        map.width = 400;  // 幅400ブロック
-        map.height = 100; // 高さ100ブロック
-        map.tileSize = 32.0f;
-        map.tiles.resize(map.width * map.height, (uint8_t)TileType::Air);
 
-        // 乱数
+    static void GenerateRandomWalk(MapComponent& map, int width, int height, int steps) {
+        // 初期化
+        map.Resize(width, height);
+
         std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, 100);
+        std::mt19937 mt(rd());
+        std::uniform_int_distribution<int> dirDist(0, 3);
 
-        std::vector<int> groundHeights(map.width);
+        int x = width / 2;
+        int y = height / 2;
+        map.SetTile(x, y, TileType::Dirt);
 
-        int currentHeight = map.height / 2;
+        for (int i = 0; i < steps; ++i) {
+            int dir = dirDist(mt);
 
-        for (int x = 0; x < map.width; ++x) {
-            int change = (dis(gen) % 3) - 1;
-            currentHeight += change;
+            if (dir == 0 && x > 1) x--;             // Left
+            else if (dir == 1 && x < width - 2) x++; // Right
+            else if (dir == 2 && y > 1) y--;        // Up
+            else if (dir == 3 && y < height - 2) y++; // Down
 
-            if (currentHeight < 10) currentHeight = 10;
-            if (currentHeight > map.height - 10) currentHeight = map.height - 10;
-
-            groundHeights[x] = currentHeight;
+            map.SetTile(x, y, TileType::Dirt); // 床にする
         }
 
-        for (int x = 0; x < map.width; ++x) {
-            int surfaceY = groundHeights[x];
-            for (int y = 0; y < map.height; ++y) {
-                if (y < surfaceY) {
-                    continue;
-                }
-                if (y == surfaceY) {
-                    map.SetTile(x, y, TileType::Dirt); // 草ブロック的な扱い
-                }
-                else if (y > surfaceY && y < surfaceY + 5) {
-                    map.SetTile(x, y, TileType::Dirt);
-                }
-                else {
-                    if (dis(gen) < 10) {
-                        map.SetTile(x, y, TileType::Dirt);
-                    }
-                    else {
-                        map.SetTile(x, y, TileType::Stone);
-                    }
-                }
-                if (y > surfaceY + 10) {
-                    if (dis(gen) < 2) {
-                        map.SetTile(x, y, TileType::Bedrock);
-                    }
+        SetStartGoal(map);
+
+        spdlog::info("Map Generated: RandomWalk ({}x{})", width, height);
+    }
+    // エネミー生成用に位置特定するで
+    static std::vector<sf::Vector2f> GetWalkablePositions(const MapComponent& map) {
+        std::vector<sf::Vector2f> positions;
+        for (int y = 0; y < map.height; ++y) {
+            for (int x = 0; x < map.width; ++x) {
+                TileType tile = map.GetTile(x, y);
+
+                if (tile == TileType::Dirt || tile == TileType::Wood || tile == TileType::Grass) {
+                    float posX = x * map.tileSize;
+                    float posY = y * map.tileSize;
+                    positions.push_back({ posX, posY });
                 }
             }
-            map.SetTile(x, map.height - 1, TileType::Bedrock);
         }
-        registry.AddComponent(entity, map);
-        return entity;
+        return positions;
+    }
+private:
+    static void SetStartGoal(MapComponent& map) {
+        // スタート地点探索
+        bool startSet = false;
+        for (int y = 0; y < map.height && !startSet; ++y) {
+            for (int x = 0; x < map.width; ++x) {
+                if (map.GetTile(x, y) == TileType::Dirt) {
+                    map.SetTile(x, y, TileType::Wood); // Start
+                    startSet = true;
+                    break;
+                }
+            }
+        }
+
+        // ゴール地点探索
+        bool goalSet = false;
+        for (int y = map.height - 1; y >= 0 && !goalSet; --y) {
+            for (int x = map.width - 1; x >= 0; --x) {
+                if (map.GetTile(x, y) == TileType::Dirt) {
+                    map.SetTile(x, y, TileType::Grass); // Goal
+                    goalSet = true;
+                    break;
+                }
+            }
+        }
     }
 };

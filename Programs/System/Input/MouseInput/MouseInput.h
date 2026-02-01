@@ -13,7 +13,7 @@ public:
 	bool GetMouse(sf::Mouse::Button button) const;			// 押されている間
 	bool GetMouseRepeat(sf::Mouse::Button button) const;	// 長押し
 	sf::Vector2i GetMousePoint();							// マウスの座標取得
-
+	sf::Vector2f GetMousePointF();							// マウスの座標取得（float版）
 	// Dedub用のログ出力
 	void RenderImGui();
 
