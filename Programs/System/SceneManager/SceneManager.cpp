@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include <Game/GameScene/GameScene/GameScene.h>
 #include <Game/TitleScene/TitleScene/TitleScene.h>
+#include <Game/ResultScene/ResultScene/ResultScene.h>
 
 void SceneManager::RegisterScene(const std::string& name, SceneFactory factory)
 {
@@ -14,6 +15,7 @@ SceneManager::SceneManager()
     // 全シーンの登録
     RegisterScene<TitleScene>();
     RegisterScene<GameScene>();
+    RegisterScene<ResultScene>();
     // 初期シーンの設定
     currentSceneName = TitleScene::GetName();
     Scene = registeredScenes.at(currentSceneName)();

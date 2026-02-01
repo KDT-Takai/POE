@@ -34,6 +34,7 @@
     <ClCompile Include="External\ImGui\Source\imgui_widgets.cpp" />
     <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp" />
     <ClCompile Include="Programs\Game\TitleScene\TitleScene\TitleScene.cpp" />
+    <ClCompile Include="Programs\Game\ResultScene\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Programs\System\CameraManager\CameraManager.cpp" />
     <ClCompile Include="Programs\System\DebugManager\DebugManager.cpp" />
     <ClCompile Include="Programs\System\Input\InputManager.cpp" />
@@ -90,6 +91,7 @@
     <ClInclude Include="Programs\Game\GameScene\MapGenerator\MapGenerator.h" />
     <ClInclude Include="External\ECS\Components\Stats\SkillData\Skill.h" />
     <ClInclude Include="Programs\Game\TitleScene\TitleScene\TitleScene.h" />
+    <ClInclude Include="Programs\Game\ResultScene\ResultScene\ResultScene.h" />
     <ClInclude Include="Programs\System\CameraManager\CameraManager.h" />
     <ClInclude Include="Programs\System\Config\Config.h" />
     <ClInclude Include="Programs\System\DebugGui\DebugGui.h" />

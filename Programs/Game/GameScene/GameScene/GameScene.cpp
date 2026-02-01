@@ -9,6 +9,9 @@
 
 #include "../MapGenerator/MapGenerator.h"
 
+#include "System/SceneManager/SceneManager.h"
+#include "../../ResultScene/ResultScene/ResultScene.h"
+
 GameScene::GameScene() {
     sceneName = "GameScreen";
 
@@ -117,6 +120,30 @@ void GameScene::Update() {
     physicsSystem->Update(*registry, dt);
 	// Õ“Ëˆ—
 	collisionSystem->Update(*registry);
+
+    // ƒQ[ƒ€‚ÌI—¹Šm”F
+    if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
+        auto& state = registry->GetComponent<CharacterStatsComponent>(playerEntity);
+        if (state.currentHP <= 0) {
+			spdlog::info("Player has died. Ending game.");
+			SceneManager::Instance().ChangeScene("ResultScene");
+            return;
+        }
+    }
+    // “GŽ€‚ñ‚¾‚©
+    auto enemyView = registry->View<CharacterStatsComponent>();
+    bool anyEnemyAlive = false;
+
+    for (auto entity : enemyView) {
+        if (!registry->HasComponent<PlayerTag>(entity)) {
+            anyEnemyAlive = true;
+            break;
+        }
+    }
+    if (!anyEnemyAlive) {
+        spdlog::info("All enemies defeated! Victory!");
+        SceneManager::Instance().ChangeScene("ResultScene");
+    }
 }
 
 void GameScene::Render(sf::RenderTarget& target) {
