@@ -151,12 +151,34 @@ void GameScene::Render(sf::RenderTarget& target) {
 	// マップ描画
 	mapRenderSystem->Render(*registry, target);
     renderSystem->Render(*registry, target);
-	uiSystem->Render(*registry, target);
     if (DebugManager::Instance().IsDebugMode()) {
         renderSystem->RenderDebug(*registry, target);
     }
     sparkRenderSystem->Render(*registry, target);
 	healthBarRenderSystem->Render(*registry, target);
+
+    target.setView(target.getDefaultView());
+	uiSystem->Render(*registry, target);
+
+	// 画面上部に残り敵数表示
+    int aliveEnemies = 0;
+    auto enemyView = registry->View<CharacterStatsComponent>();
+    for (auto entity : enemyView) {
+        if (!registry->HasComponent<PlayerTag>(entity)) {
+            aliveEnemies++;
+        }
+    }
+    std::shared_ptr<sf::Font> m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
+    if (m_font) {
+        sf::Text enemyText(*m_font, "Remaining Enemies: " + std::to_string(aliveEnemies), 20);
+        enemyText.setFillColor(sf::Color::White);
+        enemyText.setOutlineColor(sf::Color::Black);
+        enemyText.setOutlineThickness(2.0f);
+        sf::FloatRect textBounds = enemyText.getLocalBounds();
+        enemyText.setOrigin({ textBounds.position.x + textBounds.size.x / 2.0f, 0.0f });
+        enemyText.setPosition({ target.getSize().x / 2.0f, 10.0f });
+        target.draw(enemyText);
+    }
     target.setView(target.getDefaultView());
 }
 

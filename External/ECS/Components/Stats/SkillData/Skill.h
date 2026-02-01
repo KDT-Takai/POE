@@ -12,7 +12,6 @@ enum class ElementType {
     Holy
 };
 
-// ★ここが重要：スキルの「具体的な名前」ではなく「何をするか（メカニクス）」で分類
 enum class SkillBehaviorType {
     None,
     Melee,      // 近接攻撃

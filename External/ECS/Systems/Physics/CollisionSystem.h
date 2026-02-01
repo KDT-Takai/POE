@@ -16,9 +16,8 @@ public:
         // 削除・死亡リスト
         std::vector<unsigned int> deadEntities;
         std::vector<unsigned int> destroyedProjectiles;
-
+		// 投射物と敵の衝突判定
         for (auto projEntity : projectiles) {
-
             auto& proj = registry.GetComponent<ProjectileComponent>(projEntity);
             auto& pTrans = registry.GetComponent<TransformComponent>(projEntity);
             auto& pCol = registry.GetComponent<BoxColliderComponent>(projEntity);
@@ -35,11 +34,28 @@ public:
 
                 if (bulletRect.findIntersection(enemyRect)) {
                     auto& stats = registry.GetComponent<CharacterStatsComponent>(enemyEntity);
-                    stats.currentHP -= proj.damage;
 
-                    if (stats.currentHP <= 0) {
-                        deadEntities.push_back(enemyEntity);
+                    // まだ死んでいない場合のみダメージを与える
+                    if (stats.currentHP > 0) {
+                        stats.currentHP -= proj.damage;
+
+                        // 倒した瞬間の処理
+                        if (stats.currentHP <= 0) {
+                            deadEntities.push_back(enemyEntity);
+
+                            for (auto playerEnt : registry.View<PlayerInputComponent, CharacterStatsComponent, PlayerSkill>()) {
+
+                                if (proj.type == SkillBehaviorType::LightningWarp) {
+                                    auto& pStats = registry.GetComponent<CharacterStatsComponent>(playerEnt);
+                                    auto& pSkill = registry.GetComponent<PlayerSkill>(playerEnt);
+                                    // マナ全回復 & クールタイムリセット
+                                    pStats.currentMP = pStats.maxMP;
+                                    pSkill.skills[2].currentCooldown = 0.0f;
+                                }
+                            }
+                        }
                     }
+
                     if (!proj.isBouncy) {
                         hitSomething = true;
                         break;
@@ -68,15 +84,15 @@ public:
             auto& pStats = registry.GetComponent<CharacterStatsComponent>(playerEntity);
             sf::FloatRect playerRect = GetBounds(pTrans.position, pCol);
 
-            for (auto enemyEntity : enemies) {
-                if (enemyEntity == playerEntity) continue;
+            for (auto e : enemies) {
+                if (e == playerEntity) continue;
 
-                auto& eTrans = registry.GetComponent<TransformComponent>(enemyEntity);
-                auto& eCol = registry.GetComponent<BoxColliderComponent>(enemyEntity);
+                auto& eTrans = registry.GetComponent<TransformComponent>(e);
+                auto& eCol = registry.GetComponent<BoxColliderComponent>(e);
                 sf::FloatRect enemyRect = GetBounds(eTrans.position, eCol);
 
                 if (playerRect.findIntersection(enemyRect)) {
-                    auto& eStats = registry.GetComponent<CharacterStatsComponent>(enemyEntity);
+                    auto& eStats = registry.GetComponent<CharacterStatsComponent>(e);
 
                     pStats.currentHP -= eStats.atk * 0.1f;
                     if (pStats.currentHP < 0) pStats.currentHP = 0;

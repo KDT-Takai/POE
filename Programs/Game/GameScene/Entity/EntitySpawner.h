@@ -12,6 +12,7 @@
 #include "../ECS/Components/Stats/CharacterStats/CharacterStats.h"
 #include "../ECS/Components/Interaction/Interaction.h"
 #include "../ECS/Components/PlayerSkill/PlayerSkill.h"
+#include "../ECS/Components/Stats/SkillData/Skill.h"
 
 class EntitySpawner {
 public:
@@ -64,9 +65,9 @@ public:
         spark.name = "Spark";
         spark.level = 1;
         spark.behaviorType = SkillBehaviorType::Spark;
-        spark.cooldownTime = 0.5f;
-        spark.mpCost = 5.0f;
-        spark.damage = 15.0f;
+        spark.cooldownTime = 0.3f;
+        spark.mpCost = 4.0f;
+        spark.damage = 25.0f;
         spark.duration = 3.5f;     
         spark.isValid = true;
 
@@ -75,7 +76,7 @@ public:
         Slam.level = 1;
         Slam.behaviorType = SkillBehaviorType::GroundSlam;
         Slam.cooldownTime = 5.0f;
-        Slam.mpCost = 30.0f;
+        Slam.mpCost = 35.0f;
         Slam.damage = 120.0f;
         Slam.isValid = true;
 

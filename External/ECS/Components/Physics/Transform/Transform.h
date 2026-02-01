@@ -1,6 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-// Components.h
+
 // 座標・回転・スケール
 struct TransformComponent {
     sf::Vector2f position = { 0.f, 0.f };

@@ -1,4 +1,6 @@
 #pragma once
+#include <ECS.h>
+#include "../ECS/Components/Stats/SkillData/Skill.h"
 
 struct ProjectileComponent {
     float damage = 10.0f;
@@ -7,4 +9,6 @@ struct ProjectileComponent {
     bool isEnemy = false;
 
     bool isBouncy = false;
+	Entity ownerEntity = 0;
+    SkillBehaviorType type;
 };

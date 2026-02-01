@@ -175,8 +175,7 @@ private:
                 ProjectileComponent proj;
                 proj.duration = 3.5f;
                 proj.isBouncy = true;
-                proj.damage = stats.atk * (skill.damage / 100.0f);
-                if (proj.damage == 0) proj.damage = skill.damage;
+                proj.damage = stats.atk;
                 reg.AddComponent<ProjectileComponent>(p, proj);
                 SparkVisualComponent sparkVis;
                 sparkVis.trailHistory.push_back(spawnPos);
@@ -211,7 +210,7 @@ private:
                 ProjectileComponent proj;
                 proj.duration = 3.0f;
                 proj.isBouncy = false;
-                proj.damage = stats.atk * (skill.damage / 100.0f);
+                proj.damage = stats.atk;
                 reg.AddComponent<ProjectileComponent>(p, proj);
 
                 SparkVisualComponent sparkVis;
@@ -245,7 +244,7 @@ private:
             if (reg.HasComponent<TransformComponent>(pcEntity)) {
                 reg.GetComponent<TransformComponent>(pcEntity).position = targetPos - centerOffset;
             }
-
+			// エフェクト生成
             {
                 auto visualEntity = reg.CreateEntity();
                 reg.AddComponent<TransformComponent>(visualEntity, TransformComponent{ targetPos, sf::Vector2f(1.0f, 1.0f) });
@@ -263,12 +262,11 @@ private:
 
                 reg.AddComponent<VelocityComponent>(visualEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
             }
-
+			// ダメージ判定エンティティ生成
             {
                 auto damageEntity = reg.CreateEntity();
                 reg.AddComponent<TransformComponent>(damageEntity, TransformComponent{ targetPos, sf::Vector2f(1.0f, 1.0f) });
 
-                // ★修正: 見た目が「半径150」なので、判定は「直径300」にします
                 float blastSize = 300.0f;
                 float offset = -blastSize / 2.0f;
 
@@ -282,6 +280,8 @@ private:
                 dmgProj.duration = 0.4f;
                 dmgProj.damage = stats.atk * (skill.damage / 100.0f);
                 dmgProj.isBouncy = true;
+                dmgProj.ownerEntity = pcEntity;
+                dmgProj.type = SkillBehaviorType::LightningWarp;
                 reg.AddComponent<ProjectileComponent>(damageEntity, dmgProj);
 
                 reg.AddComponent<VelocityComponent>(damageEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
