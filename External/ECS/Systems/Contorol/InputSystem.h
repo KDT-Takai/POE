@@ -13,6 +13,7 @@ class InputSystem {
 public:
     void Update(Registry& registry, float dt) {
         auto& keyInput = InputManager::Instance().GetKeyInput();
+		auto& mouseInput = InputManager::Instance().GetMouseInput();
         auto view = registry.View<PlayerInputComponent, CharacterStatsComponent, StateComponent, VelocityComponent, TransformComponent>();
 
         for (auto entity : view) {
@@ -130,7 +131,7 @@ public:
             //    input.attack = true;
             //}
             if (registry.HasComponent<PlayerSkill>(entity)) {
-                if (keyInput.IsGetKey(sf::Keyboard::Key::E)) input.skillInputs[0] = true;
+                if (keyInput.IsGetKey(sf::Keyboard::Key::E) || mouseInput.GetMouse(sf::Mouse::Button::Left)) input.skillInputs[0] = true;
                 if (keyInput.IsGetKey(sf::Keyboard::Key::Q)) input.skillInputs[1] = true;
                 if (keyInput.IsGetKey(sf::Keyboard::Key::R)) input.skillInputs[2] = true;
                 if (keyInput.IsGetKey(sf::Keyboard::Key::V)) input.skillInputs[3] = true;
