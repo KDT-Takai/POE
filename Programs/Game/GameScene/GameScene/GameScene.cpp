@@ -33,7 +33,7 @@ GameScene::GameScene() {
 	enemyAISystem = std::make_shared<EnemyAISystem>();
 	collisionSystem = std::make_shared<CollisionSystem>();
 	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
-    auto worldEntityObj = MapGenerator::CreateProceduralWorld(*registry, 250, 250);
+    auto worldEntityObj = MapGenerator::CreateProceduralWorld(*registry, 1000, 1000);
 
 //    EntityObject player = registry->CreateEntityObject();
 //    player.AddComponent<TagComponent>({"Player"});
@@ -68,7 +68,7 @@ GameScene::GameScene() {
         std::random_device rd;
         std::mt19937 g(rd());
         std::shuffle(freeSlots.begin(), freeSlots.end(), g);
-        int enemyCount = 250; // ¶¬‚µ‚½‚¢“G‚Ì”
+        int enemyCount = 1000; // ¶¬‚µ‚½‚¢“G‚Ì”
         for (int i = 0; i < enemyCount && i < freeSlots.size(); ++i) {
             EntitySpawner::CreateEnemy(*registry, freeSlots[i]);
         }
