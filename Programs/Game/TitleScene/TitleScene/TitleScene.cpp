@@ -30,6 +30,13 @@ TitleScene::TitleScene() {
     //spdlog::error("Error!");
     //spdlog::debug("Debug message");
     //spdlog::trace("Trace message");
+    auto titleFont = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
+
+    if (titleFont) {
+        pressText = std::make_unique<sf::Text>(*titleFont, "Press Space Key", 40);
+        pressText->setFillColor(sf::Color::White);
+        pressText->setPosition({ 450.f, 500.f });
+    }
     
 }
 
@@ -77,7 +84,9 @@ void TitleScene::Render(sf::RenderTarget& target) {
 	if (testSprite) {
 		target.draw(*testSprite);
 	}
-
+    if (pressText) {
+        target.draw(*pressText);
+    }
     //// 青い円：ワールド座標 (100, 100)
     //sf::CircleShape circle2(50.0f);
     //circle2.setFillColor(sf::Color::Blue);

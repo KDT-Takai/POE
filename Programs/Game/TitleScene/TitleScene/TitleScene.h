@@ -18,4 +18,6 @@ private:
     sf::Vector2f circleVelocity;
 
 	std::unique_ptr<sf::Sprite> testSprite;
+
+    std::unique_ptr<sf::Text> pressText;
 };
