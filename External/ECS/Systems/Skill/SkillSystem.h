@@ -21,7 +21,7 @@ public:
         auto view = registry.View<PlayerSkill>();
 
         for (auto entity : view) {
-            // •K—v‚ÈƒRƒ“ƒ|[ƒlƒ“ƒgæ“¾
+            // ï¿½Kï¿½vï¿½ÈƒRï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½gï¿½æ“¾
             if (!registry.HasComponent<PlayerInputComponent>(entity) ||
                 !registry.HasComponent<VelocityComponent>(entity) ||
                 !registry.HasComponent<StateComponent>(entity)) {
@@ -41,13 +41,13 @@ public:
                 if (stats.currentHP > stats.maxHP) stats.currentHP = stats.maxHP;
             }
 
-            // MP‰ñ•œ
+            // MPï¿½ï¿½
             if (stats.currentMP < stats.maxMP) {
                 stats.currentMP += stats.manaRegen * dt;
                 if (stats.currentMP > stats.maxMP) stats.currentMP = stats.maxMP;
             }
 
-            // ”­ËˆÊ’u—p‚ÉTransformæ“¾
+            // ï¿½ï¿½ï¿½ËˆÊ’uï¿½pï¿½ï¿½Transformï¿½æ“¾
             sf::Vector2f pos(0, 0);
             if (registry.HasComponent<TransformComponent>(entity)) {
                 pos = registry.GetComponent<TransformComponent>(entity).position;
@@ -67,12 +67,12 @@ public:
             if (skillComp.castingSkillIndex != -1) {
                 skillComp.castTimer -= dt;
 
-                // ‘±ŠÔI—¹
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÔIï¿½ï¿½
                 if (skillComp.castTimer <= 0.0f) {
                     FinishSkill(skillComp, state, velocity);
                 }
                 else {
-                    // Às’†‚ÌŒp‘±ˆ—
+                    // ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½ÌŒpï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     UpdateActiveSkill(skillComp, velocity, direction);
                 }
             }
@@ -81,15 +81,15 @@ public:
                     if (input.skillInputs[i] && skillComp.skills[i].isValid && skillComp.skills[i].currentCooldown <= 0.0f) {
                         float cost = (float)skillComp.skills[i].mpCost;
                         if (stats.currentMP >= cost) {
-                            // MPÁ”ïÀs
+                            // MPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½s
                             stats.currentMP -= cost;
-                            // ƒXƒLƒ‹”­“®
+                            // ï¿½Xï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                             sf::Vector2f mousePos = input.mouseWorldPos;
                             ActivateSkill(registry, entity, i, skillComp, state, velocity, direction, pos, mousePos, stats);
                             break;
                         }
                         else {
-                            // ‚¢‚Â‚©MP•s‘«‚Ì‚Æ‚«‚Ì‚½‚ß‚É
+                            // ï¿½ï¿½ï¿½Â‚ï¿½MPï¿½sï¿½ï¿½ï¿½Ì‚Æ‚ï¿½ï¿½Ì‚ï¿½ï¿½ß‚ï¿½
                         }
                     }
                 }
@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    // ŠÈˆÕ—”
+    // ï¿½ÈˆÕ—ï¿½ï¿½ï¿½
     float GetRandom(float min, float max) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
@@ -106,18 +106,18 @@ private:
         return dis(gen);
     }
 
-    // ƒXƒLƒ‹ŠJnˆ—
+    // ï¿½Xï¿½Lï¿½ï¿½ï¿½Jï¿½nï¿½ï¿½ï¿½ï¿½
     void ActivateSkill(Registry& reg, unsigned int pcEntity, int index, PlayerSkill& pc, StateComponent& state, VelocityComponent& vel, float dir, sf::Vector2f origin, sf::Vector2f targetPos, const CharacterStatsComponent& stats) {
         auto& skill = pc.skills[index];
 
-        // ƒN[ƒ‹ƒ_ƒEƒ“ŠJn
+        // ï¿½Nï¿½[ï¿½ï¿½ï¿½_ï¿½Eï¿½ï¿½ï¿½Jï¿½n
         skill.currentCooldown = skill.cooldownTime;
 
-        // ‹““®‚²‚Æ‚Ìˆ—
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚Ìï¿½ï¿½ï¿½
         switch (skill.behaviorType) {
         case SkillBehaviorType::Dash:
         {
-            // Shadow Roll‚ÌŠJn
+            // Shadow Rollï¿½ÌŠJï¿½n
             state.currentState = ActorState::Roll;
             pc.castingSkillIndex = index;
             pc.castTimer = skill.duration;
@@ -176,6 +176,8 @@ private:
                 proj.duration = 3.5f;
                 proj.isBouncy = true;
                 proj.damage = stats.atk;
+                proj.ownerEntity = pcEntity;
+                proj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(p, proj);
                 SparkVisualComponent sparkVis;
                 sparkVis.trailHistory.push_back(spawnPos);
@@ -193,12 +195,12 @@ private:
             float baseAngle = std::atan2(dy, dx);
 
             int projectileCount = 1;
-            float angleStep = 0.2f; // Šp“x‚ÌŠJ‚«‹ï‡ (‹·‚ß‚É‚µ‚ÄwŒü«‚ğ‚½‚¹‚é)
+            float angleStep = 0.2f; // ï¿½pï¿½xï¿½ÌŠJï¿½ï¿½ï¿½ï‡ (ï¿½ï¿½ï¿½ß‚É‚ï¿½ï¿½Äwï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
             float startAngle = baseAngle - ((projectileCount - 1) * angleStep / 2.0f);
 
             for (int i = 0; i < projectileCount; ++i) {
                 auto p = reg.CreateEntity();
-                reg.AddComponent<TransformComponent>(p, TransformComponent{ spawnPos, sf::Vector2f(1.5f, 1.5f) }); // ’e‚ğ­‚µ‘å‚«‚­
+                reg.AddComponent<TransformComponent>(p, TransformComponent{ spawnPos, sf::Vector2f(1.5f, 1.5f) }); // ï¿½eï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½å‚«ï¿½ï¿½
 
                 float currentAngle = startAngle + (i * angleStep);
                 float speed = 600.0f;
@@ -211,6 +213,8 @@ private:
                 proj.duration = 3.0f;
                 proj.isBouncy = false;
                 proj.damage = stats.atk;
+                proj.ownerEntity = pcEntity;
+                proj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(p, proj);
 
                 SparkVisualComponent sparkVis;
@@ -229,7 +233,7 @@ private:
             sf::Vector2f diff = targetPos - currentPos;
             float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-            // 0œZ‘Îô
+            // 0ï¿½ï¿½ï¿½Zï¿½Îï¿½
             if (dist > 0.0001f) {
                 if (dist > skill.range) {
                     diff = (diff / dist) * skill.range;
@@ -240,18 +244,18 @@ private:
                 targetPos = currentPos;
             }
 
-            // ƒvƒŒƒCƒ„[ˆÚ“®
+            // ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½Ú“ï¿½
             if (reg.HasComponent<TransformComponent>(pcEntity)) {
                 reg.GetComponent<TransformComponent>(pcEntity).position = targetPos - centerOffset;
             }
-			// ƒGƒtƒFƒNƒg¶¬
+			// ï¿½Gï¿½tï¿½Fï¿½Nï¿½gï¿½ï¿½ï¿½ï¿½
             {
                 auto visualEntity = reg.CreateEntity();
                 reg.AddComponent<TransformComponent>(visualEntity, TransformComponent{ targetPos, sf::Vector2f(1.0f, 1.0f) });
 
                 ProjectileComponent timerProj;
-                timerProj.duration = 0.4f; // ƒAƒjƒ[ƒVƒ‡ƒ“ŠÔ
-                timerProj.damage = 0;      // ƒ_ƒ[ƒW‚È‚µ
+                timerProj.duration = 0.4f; // ï¿½Aï¿½jï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+                timerProj.damage = 0;      // ï¿½_ï¿½ï¿½ï¿½[ï¿½Wï¿½È‚ï¿½
                 reg.AddComponent<ProjectileComponent>(visualEntity, timerProj);
 
                 SparkVisualComponent sparkVis;
@@ -262,7 +266,7 @@ private:
 
                 reg.AddComponent<VelocityComponent>(visualEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
             }
-			// ƒ_ƒ[ƒW”»’èƒGƒ“ƒeƒBƒeƒB¶¬
+			// ï¿½_ï¿½ï¿½ï¿½[ï¿½Wï¿½ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½eï¿½Bï¿½eï¿½Bï¿½ï¿½ï¿½ï¿½
             {
                 auto damageEntity = reg.CreateEntity();
                 reg.AddComponent<TransformComponent>(damageEntity, TransformComponent{ targetPos, sf::Vector2f(1.0f, 1.0f) });
@@ -282,6 +286,7 @@ private:
                 dmgProj.isBouncy = true;
                 dmgProj.ownerEntity = pcEntity;
                 dmgProj.type = SkillBehaviorType::LightningWarp;
+                dmgProj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(damageEntity, dmgProj);
 
                 reg.AddComponent<VelocityComponent>(damageEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
@@ -313,16 +318,18 @@ private:
                 proj.duration = 2.0f;
                 proj.damage = stats.atk;
                 proj.isBouncy = false;
+                proj.ownerEntity = pcEntity;
+                proj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(ball, proj);
 
-                // Œ©‚½–Ú
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 SparkVisualComponent sparkVis;
                 sparkVis.style = VisualStyle::Explosion;
                 sparkVis.maxDuration = 2.0f;
                 sparkVis.color = sf::Color(150, 230, 255, 255);
                 reg.AddComponent<SparkVisualComponent>(ball, sparkVis);
 
-                // ˆÚ“®‘¬“x‚ğƒZƒbƒg
+                // ï¿½Ú“ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½Zï¿½bï¿½g
                 reg.AddComponent<VelocityComponent>(ball, VelocityComponent{ velocity });
             }
             break;
@@ -332,7 +339,7 @@ private:
         }
     }
 
-    // ƒXƒLƒ‹Às’†‚Ì–ˆƒtƒŒ[ƒ€ˆ—
+    // ï¿½Xï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½Ì–ï¿½ï¿½tï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     void UpdateActiveSkill(PlayerSkill& pc, VelocityComponent& vel, float dir) {
         auto& skill = pc.skills[pc.castingSkillIndex];
 
@@ -342,7 +349,7 @@ private:
         }
     }
 
-    // ƒXƒLƒ‹I—¹ˆ—
+    // ï¿½Xï¿½Lï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     void FinishSkill(PlayerSkill& pc, StateComponent& state, VelocityComponent& vel) {
         if (state.currentState == ActorState::Roll) {
             state.currentState = ActorState::Idle;

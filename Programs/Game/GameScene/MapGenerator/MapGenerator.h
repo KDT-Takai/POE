@@ -21,8 +21,29 @@ public:
         return entity;
     }
 
+    static EntityObject CreateTownWorld(Registry& registry, int w = 30, int h = 20) {
+        auto entity = registry.CreateEntityObject();
+        entity.AddComponent(MapComponent{});
+        auto& map = entity.GetComponent<MapComponent>();
+        map.Resize(w, h);
+
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < w; ++x) {
+                bool border = (x == 0 || y == 0 || x == w - 1 || y == h - 1);
+                map.SetTile(x, y, border ? TileType::Stone : TileType::Dirt);
+            }
+        }
+
+        int midY = h / 2;
+        map.SetTile(2, midY, TileType::Wood);
+        map.SetTile(w - 3, midY, TileType::Grass);
+
+        spdlog::info("Map Generated: Town Room ({}x{})", w, h);
+        return entity;
+    }
+
     static void GenerateRandomWalk(MapComponent& map, int width, int height, int steps) {
-        // ‰Šú‰»
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         map.Resize(width, height);
 
         std::random_device rd;
@@ -41,14 +62,14 @@ public:
             else if (dir == 2 && y > 1) y--;        // Up
             else if (dir == 3 && y < height - 2) y++; // Down
 
-            map.SetTile(x, y, TileType::Dirt); // °‚É‚·‚é
+            map.SetTile(x, y, TileType::Dirt); // ï¿½ï¿½ï¿½É‚ï¿½ï¿½ï¿½
         }
 
         SetStartGoal(map);
 
         spdlog::info("Map Generated: RandomWalk ({}x{})", width, height);
     }
-    // ƒGƒlƒ~[¶¬—p‚ÉˆÊ’u“Á’è‚·‚é‚Å
+    // ï¿½Gï¿½lï¿½~ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½pï¿½ÉˆÊ’uï¿½ï¿½ï¿½è‚·ï¿½ï¿½ï¿½
     static std::vector<sf::Vector2f> GetWalkablePositions(const MapComponent& map) {
         std::vector<sf::Vector2f> positions;
         for (int y = 0; y < map.height; ++y) {
@@ -66,7 +87,7 @@ public:
     }
 private:
     static void SetStartGoal(MapComponent& map) {
-        // ƒXƒ^[ƒg’n“_’Tõ
+        // ï¿½Xï¿½^ï¿½[ï¿½gï¿½nï¿½_ï¿½Tï¿½ï¿½
         bool startSet = false;
         for (int y = 0; y < map.height && !startSet; ++y) {
             for (int x = 0; x < map.width; ++x) {
@@ -78,7 +99,7 @@ private:
             }
         }
 
-        // ƒS[ƒ‹’n“_’Tõ
+        // ï¿½Sï¿½[ï¿½ï¿½ï¿½nï¿½_ï¿½Tï¿½ï¿½
         bool goalSet = false;
         for (int y = map.height - 1; y >= 0 && !goalSet; --y) {
             for (int x = map.width - 1; x >= 0; --x) {

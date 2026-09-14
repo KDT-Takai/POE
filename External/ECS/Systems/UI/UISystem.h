@@ -8,6 +8,7 @@
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/PlayerSkill/PlayerSkill.h"
 #include "../../Components/Tags/Player/Player.h"
+#include "../../Components/Combat/StatusEffects.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 
 class UISystem {
@@ -43,9 +44,14 @@ public:
         DrawOrb(target, 80.0f, height - 80.0f, 45.0f, sf::Color(180, 0, 0), stats.currentHP, stats.maxHP, "HP");
         DrawOrb(target, width - 80.0f, height - 80.0f, 45.0f, sf::Color(0, 80, 200), stats.currentMP, stats.maxMP, "MP");
 
+        if (registry.HasComponent<StatusEffectsComponent>(playerEntity)) {
+            auto& fx = registry.GetComponent<StatusEffectsComponent>(playerEntity);
+            DrawDebuffIcons(target, 160.0f, height - 140.0f, fx);
+        }
+
         float slotSize = 50.0f;
-        float gap = 8.0f;           // ƒXƒLƒ‹ŠÔ‚ÌŒ„ŠÔ
-        float rollGap = 20.0f;      // ƒ[ƒ‹(Space)‚ÆƒXƒLƒ‹(Z~)‚ÌŠÔ‚Ì‘å‚«‚ß‚ÌŒ„ŠÔ
+        float gap = 8.0f;           // ï¿½Xï¿½Lï¿½ï¿½ï¿½Ô‚ÌŒï¿½ï¿½ï¿½
+        float rollGap = 20.0f;      // ï¿½ï¿½ï¿½[ï¿½ï¿½(Space)ï¿½ÆƒXï¿½Lï¿½ï¿½(Z~)ï¿½ÌŠÔ‚Ì‘å‚«ï¿½ß‚ÌŒï¿½ï¿½ï¿½
         int skillCount = 5;         // Z, X, C, V, F
 
         float totalBarWidth = slotSize + rollGap + (slotSize * skillCount) + (gap * (skillCount - 1));
@@ -55,13 +61,13 @@ public:
 
         float rollX = startX;
 
-        // ˜g‚ÆƒL[–¼
+        // ï¿½gï¿½ÆƒLï¿½[ï¿½ï¿½
         DrawSlotFrame(target, rollX, startY, slotSize, "Space");
 
-        // ƒAƒCƒRƒ“ (…F)
+        // ï¿½Aï¿½Cï¿½Rï¿½ï¿½ (ï¿½ï¿½ï¿½F)
         DrawIcon(target, rollX, startY, slotSize, sf::Color(0, 200, 255));
 
-        // ƒN[ƒ‹ƒ_ƒEƒ“ (Stats‚Ìî•ñ‚ğ—˜—p)
+        // ï¿½Nï¿½[ï¿½ï¿½ï¿½_ï¿½Eï¿½ï¿½ (Statsï¿½Ìï¿½ï¿½ğ—˜—p)
         if (stats.rollCooldownTimer > 0.0f) {
             DrawCooldownOverlay(target, rollX, startY, slotSize, stats.rollCooldownTimer, stats.rollCooldownMax);
         }
@@ -96,9 +102,9 @@ public:
     }
 
 private:
-    // ˜g‚ÆƒL[–¼‚ğ•`‰æ‚·‚éƒwƒ‹ƒp[
+    // ï¿½gï¿½ÆƒLï¿½[ï¿½ï¿½ï¿½ï¿½`ï¿½æ‚·ï¿½ï¿½wï¿½ï¿½ï¿½pï¿½[
     void DrawSlotFrame(sf::RenderTarget& target, float x, float y, float size, const std::string& keyName) {
-        // ”wŒi˜g
+        // ï¿½wï¿½iï¿½g
         sf::RectangleShape slot(sf::Vector2f(size, size));
         slot.setPosition({ x, y });
         slot.setFillColor(sf::Color(20, 20, 20));
@@ -108,10 +114,10 @@ private:
 
         sf::Text keyText(*m_font, keyName, 12);
 
-        // ’†‰›‘µ‚¦ŒvZ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½vï¿½Z
         sf::FloatRect bounds = keyText.getLocalBounds();
         keyText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f });
-        keyText.setPosition({ x + size / 2.0f, y - 12.0f }); // ˜g‚Ì­‚µã
+        keyText.setPosition({ x + size / 2.0f, y - 12.0f }); // ï¿½gï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½
 
         keyText.setFillColor(sf::Color::Yellow);
         keyText.setOutlineColor(sf::Color::Black);
@@ -128,7 +134,7 @@ private:
     }
 
     void DrawCooldownOverlay(sf::RenderTarget& target, float x, float y, float size, float current, float max) {
-        if (max <= 0.0f) max = 1.0f; // ƒ[ƒœZ–h~
+        if (max <= 0.0f) max = 1.0f; // ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½hï¿½~
         float ratio = current / max;
         float cdHeight = size * ratio;
 
@@ -137,14 +143,14 @@ private:
         cdOverlay.setFillColor(sf::Color(0, 0, 0, 180));
         target.draw(cdOverlay);
 
-        // ”’lƒeƒLƒXƒg
+        // ï¿½ï¿½ï¿½lï¿½eï¿½Lï¿½Xï¿½g
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1) << current;
 
         sf::Text timeText(*m_font, ss.str(), 14);
         sf::FloatRect bounds = timeText.getLocalBounds();
 
-        // ˜g‚Ì’†‰›‚É”z’u
+        // ï¿½gï¿½Ì’ï¿½ï¿½ï¿½ï¿½É”zï¿½u
         timeText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f });
         timeText.setPosition({ x + size / 2.0f, y + size / 2.0f });
 
@@ -154,9 +160,9 @@ private:
         target.draw(timeText);
     }
 
-    // HP/MPƒI[ƒu•`‰æ
+    // HP/MPï¿½Iï¿½[ï¿½uï¿½`ï¿½ï¿½
     void DrawOrb(sf::RenderTarget& target, float cx, float cy, float r, sf::Color color, float current, float max, std::string label) {
-        // ŠO˜g
+        // ï¿½Oï¿½g
         sf::CircleShape border(r);
         border.setOrigin({ r, r });
         border.setPosition({ cx, cy });
@@ -165,7 +171,7 @@ private:
         border.setOutlineColor(sf::Color(50, 50, 50));
         target.draw(border);
 
-        // ’†gi‰t‘Ìj
+        // ï¿½ï¿½ï¿½gï¿½iï¿½tï¿½Ìj
         if (max > 0) {
             float ratio = current / max;
             if (ratio < 0) ratio = 0;
@@ -178,7 +184,7 @@ private:
             target.draw(fluid);
         }
 
-        // ƒ‰ƒxƒ‹ (HP/MP)
+        // ï¿½ï¿½ï¿½xï¿½ï¿½ (HP/MP)
         sf::Text text(*m_font, label, 14);
         sf::FloatRect bounds = text.getLocalBounds();
         text.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f });
@@ -186,7 +192,7 @@ private:
         text.setFillColor(sf::Color::White);
         target.draw(text);
 
-        // ”’l (100/100)
+        // ï¿½ï¿½ï¿½l (100/100)
         std::string valStr = std::to_string((int)current) + "/" + std::to_string((int)max);
         sf::Text valText(*m_font, valStr, 12);
         bounds = valText.getLocalBounds();
@@ -198,10 +204,63 @@ private:
         target.draw(valText);
     }
 
-    // ƒXƒe[ƒ^ƒXî•ñ‚Ì•`‰æ
+    void DrawDebuffIcons(sf::RenderTarget& target, float startX, float y, const StatusEffectsComponent& fx) {
+        float size = 28.0f;
+        float gap = 6.0f;
+        int col = 0;
+
+        auto drawIcon = [&](const std::string& label, sf::Color color, float remaining) {
+            float x = startX + col * (size + gap);
+            sf::RectangleShape icon(sf::Vector2f(size, size));
+            icon.setPosition({ x, y });
+            icon.setFillColor(color);
+            icon.setOutlineColor(sf::Color::Black);
+            icon.setOutlineThickness(1.5f);
+            target.draw(icon);
+
+            sf::Text text(*m_font, label, 11);
+            sf::FloatRect bounds = text.getLocalBounds();
+            text.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f });
+            text.setPosition({ x + size / 2.0f, y + size / 2.0f });
+            text.setFillColor(sf::Color::White);
+            text.setOutlineColor(sf::Color::Black);
+            text.setOutlineThickness(1.0f);
+            target.draw(text);
+
+            std::stringstream ss;
+            ss << std::fixed << std::setprecision(1) << remaining;
+            sf::Text timeText(*m_font, ss.str(), 10);
+            bounds = timeText.getLocalBounds();
+            timeText.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y / 2.0f });
+            timeText.setPosition({ x + size / 2.0f, y - 8.0f });
+            timeText.setFillColor(sf::Color::Yellow);
+            timeText.setOutlineColor(sf::Color::Black);
+            timeText.setOutlineThickness(1.0f);
+            target.draw(timeText);
+
+            ++col;
+        };
+
+        if (fx.igniteRemaining > 0.0f) drawIcon("IGN", sf::Color(255, 120, 0), fx.igniteRemaining);
+        if (fx.bleedRemaining > 0.0f) drawIcon("BLD", sf::Color(180, 0, 0), fx.bleedRemaining);
+        if (!fx.poisonStacks.empty()) {
+            float maxRemaining = 0.0f;
+            for (auto& stack : fx.poisonStacks) {
+                if (stack.remaining > maxRemaining) maxRemaining = stack.remaining;
+            }
+            drawIcon("PSN", sf::Color(120, 0, 160), maxRemaining);
+        }
+        if (fx.chillRemaining > 0.0f) drawIcon("CHL", sf::Color(120, 220, 255), fx.chillRemaining);
+        if (fx.freezeRemaining > 0.0f) drawIcon("FRZ", sf::Color(0, 120, 255), fx.freezeRemaining);
+        if (fx.shockRemaining > 0.0f) drawIcon("SHK", sf::Color(255, 230, 0), fx.shockRemaining);
+        if (fx.stunRemaining > 0.0f) drawIcon("STN", sf::Color(200, 200, 200), fx.stunRemaining);
+    }
+
+    // ï¿½Xï¿½eï¿½[ï¿½^ï¿½Xï¿½ï¿½ï¿½Ì•`ï¿½ï¿½
     void DrawStats(sf::RenderTarget& target, CharacterStatsComponent& stats) {
         std::string info =
-            "Lv: " + std::to_string(stats.level) + "\n" +
+            "Lv: " + std::to_string(stats.level) +
+            "  XP: " + std::to_string(stats.currentXP) + "/" + std::to_string(stats.xpToNextLevel) + "\n" +
             "STR: " + std::to_string(stats.str) + "\n" +
             "DEX: " + std::to_string(stats.dex) + "\n" +
             "INT: " + std::to_string(stats.intelligence);

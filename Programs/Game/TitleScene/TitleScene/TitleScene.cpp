@@ -5,6 +5,7 @@
 #include <System/Resource/ResourceManager/ResourceManager.h>
 #include <System/Time/Time.h>
 #include <System/SceneManager/SceneManager.h>
+#include <System/Campaign/CampaignManager.h>
 #include "../../GameScene/GameScene/GameScene.h"
 
 TitleScene::TitleScene() {
@@ -12,18 +13,18 @@ TitleScene::TitleScene() {
 
     //movingCircle.setRadius(30.0f);
     //movingCircle.setFillColor(sf::Color::Green);
-    //movingCircle.setPosition({ 100.0f, 100.0f }); // ‰ŠúˆÊ’u
-    //// ˆÚ“®‘¬“x‚Ìİ’è (X•ûŒü‚É3, Y•ûŒü‚É2)
+    //movingCircle.setPosition({ 100.0f, 100.0f }); // ï¿½ï¿½ï¿½ï¿½ï¿½Ê’u
+    //// ï¿½Ú“ï¿½ï¿½ï¿½ï¿½xï¿½Ìİ’ï¿½ (Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½3, Yï¿½ï¿½ï¿½ï¿½ï¿½ï¿½2)
     //circleVelocity = { 3.0f, 2.0f };
-    // ƒeƒXƒg•`‰æ
+    // ï¿½eï¿½Xï¿½gï¿½`ï¿½ï¿½
     auto test = ResourceManager::Instance().getTexture("Assets/Textures/title.png");
     if (test) {
 		testSprite = std::make_unique<sf::Sprite>(*test);
-        testSprite->setPosition({ 0,0 }); // ˆÊ’u’²®
+        testSprite->setPosition({ 0,0 }); // ï¿½Ê’uï¿½ï¿½ï¿½ï¿½
     }
 
     //spdlog::set_level(spdlog::level::trace);
-    // ‚±‚ê‚Å trace / debug / info / warn / error / critical ‘S•”o‚é
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ trace / debug / info / warn / error / critical ï¿½Sï¿½ï¿½ï¿½oï¿½ï¿½
 
     //spdlog::info("Hello");
     //spdlog::warn("Warning!");
@@ -33,73 +34,109 @@ TitleScene::TitleScene() {
     auto titleFont = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
 
     if (titleFont) {
-        pressText = std::make_unique<sf::Text>(*titleFont, "Press Space Key", 40);
+        pressText = std::make_unique<sf::Text>(*titleFont, "", 40);
         pressText->setFillColor(sf::Color::White);
         pressText->setPosition({ 450.f, 500.f });
+
+        modeText = std::make_unique<sf::Text>(*titleFont, "", 26);
+        modeText->setFillColor(sf::Color(255, 220, 120));
+        modeText->setPosition({ 450.f, 560.f });
     }
-    
+    UpdatePromptText();
+}
+
+void TitleScene::UpdatePromptText() {
+    bool hasSave = CampaignManager::SaveFileExists();
+    if (pressText) {
+        std::string prompt = hasSave ? "Press Space: Continue   /   Press N: New Game" : "Press Space Key";
+        pressText->setString(prompt);
+    }
+    if (modeText) {
+        std::string mode = std::string("New Game Mode: ") + (m_hardcoreSelected ? "HARDCORE" : "Softcore") + "   (H to toggle)";
+        modeText->setString(mode);
+    }
 }
 
 void TitleScene::Update() {
-    // ƒ^ƒCƒgƒ‹ƒXƒNƒŠ[ƒ“‚ÉˆÚ“®
-	bool input = InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Space);
-    if (input)
+    auto& keyInput = InputManager::Instance().GetKeyInput();
+
+    if (keyInput.IsGetKey(sf::Keyboard::Key::H))
     {
+        m_hardcoreSelected = !m_hardcoreSelected;
+        UpdatePromptText();
+    }
+    else if (keyInput.IsGetKey(sf::Keyboard::Key::Space))
+    {
+        auto& campaign = CampaignManager::Instance();
+        if (!campaign.LoadFromDisk()) {
+            campaign.ResetCampaign();
+            campaign.SetHardcore(m_hardcoreSelected);
+        }
 		SceneManager::Instance().ChangeScene(GameScene::GetName());
     }
+    else if (keyInput.IsGetKey(sf::Keyboard::Key::N) && CampaignManager::SaveFileExists())
+    {
+        auto& campaign = CampaignManager::Instance();
+        campaign.ResetCampaign();
+        campaign.SetHardcore(m_hardcoreSelected);
+        SceneManager::Instance().ChangeScene(GameScene::GetName());
+    }
 
-    //// Œ»İ‚ÌÀ•W‚ğæ“¾
+    //// ï¿½ï¿½ï¿½İ‚Ìï¿½ï¿½Wï¿½ï¿½ï¿½æ“¾
     //sf::Vector2f pos = movingCircle.getPosition();
 
     //float timeScale = Time::Instance().GetTimeScale();
-    //// ˆÚ“®ˆ—
+    //// ï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½
     //movingCircle.move(circleVelocity * timeScale);
 
     //float r = movingCircle.getRadius();
-    //// ¶’[ or ‰E’[
+    //// ï¿½ï¿½ï¿½[ or ï¿½Eï¿½[
     //if (pos.x < 0 || pos.x + r * 2 > WINDOW_WIDTH)
     //{
     //    circleVelocity.x *= -1;
 
-    //    // ‚ß‚è‚İ•â³
+    //    // ï¿½ß‚èï¿½İ•â³
     //    pos.x = std::clamp(pos.x, 0.f, WINDOW_WIDTH - r * 2);
     //    movingCircle.setPosition(pos);
     //}
-    //// ã’[ or ‰º’[
+    //// ï¿½ï¿½[ or ï¿½ï¿½ï¿½[
     //if (pos.y < 0 || pos.y + r * 2 > WINDOW_HEIGHT)
     //{
     //    circleVelocity.y *= -1;
 
-    //    // ‚ß‚è‚İ•â³
+    //    // ï¿½ß‚èï¿½İ•â³
     //    pos.y = std::clamp(pos.y, 0.f, WINDOW_HEIGHT - r * 2);
     //    movingCircle.setPosition(pos);
     //}
 }
 
 void TitleScene::Render(sf::RenderTarget& target) {
-    // ƒJƒƒ‰‚ÌƒY[ƒ€“K—p
+    // ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ÌƒYï¿½[ï¿½ï¿½ï¿½Kï¿½p
     target.setView(CameraManager::Instance().GetCurrentView());
 
-	// ‰æ‘œƒXƒvƒ‰ƒCƒg‚Ì•`‰æ
+	// ï¿½æ‘œï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ì•`ï¿½ï¿½
 	if (testSprite) {
 		target.draw(*testSprite);
 	}
     if (pressText) {
         target.draw(*pressText);
     }
-    //// Â‚¢‰~Fƒ[ƒ‹ƒhÀ•W (100, 100)
+    if (modeText) {
+        target.draw(*modeText);
+    }
+    //// ï¿½Â‚ï¿½ï¿½~ï¿½Fï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½hï¿½ï¿½ï¿½W (100, 100)
     //sf::CircleShape circle2(50.0f);
     //circle2.setFillColor(sf::Color::Blue);
-    //// circle2.setPosition({ 100.0f, 100.0f }); // ƒ[ƒ‹ƒhÀ•W (100, 100)
+    //// circle2.setPosition({ 100.0f, 100.0f }); // ï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½hï¿½ï¿½ï¿½W (100, 100)
     //circle2.setPosition({ WINDOW_WIDTH / 2.0f + 50.0f, WINDOW_HEIGHT / 2.0f + 50.0f });
     //target.draw(circle2);
 
 
-    //// Ô‚¢‰~
+    //// ï¿½Ô‚ï¿½ï¿½~
     //sf::CircleShape circle(50.0f);
     //circle.setFillColor(sf::Color::Red);
 
-    //// ƒfƒtƒHƒ‹ƒgViewi1280x720j‚Ì‰æ–Ê’†‰›‚É”z’u
+    //// ï¿½fï¿½tï¿½Hï¿½ï¿½ï¿½gViewï¿½i1280x720ï¿½jï¿½Ì‰ï¿½Ê’ï¿½ï¿½ï¿½ï¿½É”zï¿½u
     //sf::Vector2u defaultSize = static_cast<sf::Vector2u>(target.getDefaultView().getSize());
     //circle.setPosition({ (float)defaultSize.x / 2.0f - 50.0f, (float)defaultSize.y / 2.0f - 50.0f });
 
@@ -107,7 +144,7 @@ void TitleScene::Render(sf::RenderTarget& target) {
 
     //target.draw(movingCircle);
 
-    // ƒJƒƒ‰‚ÌƒY[ƒ€‰ğœ‚±‚Ì‰º‚Í“K‰‚³‚ê‚È‚¢
+    // ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ÌƒYï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì‰ï¿½ï¿½Í“Kï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È‚ï¿½
     target.setView(target.getDefaultView());
 
 }

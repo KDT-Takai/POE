@@ -2,7 +2,8 @@
 #include <string>
 #include <ECS.h>
 #include <System/SceneManager/SceneBase.h>
-// ‰¼
+#include <System/Campaign/CampaignManager.h>
+// ï¿½ï¿½
 #include "../../ECS/Systems/Contorol/InputSystem.h"
 #include "../../ECS/Systems/Physics/MovementSystem.h"
 #include "../../ECS/Systems/Physics/PhysicsSystem.h"
@@ -16,6 +17,11 @@
 #include "../../ECS/Systems/Chara/EnemyAISystem.h"
 #include "../../ECS/Systems/Physics/CollisionSystem.h"
 #include "../../ECS/Systems/UI/HealthBarRenderSystem.h"
+#include "../../ECS/Systems/Combat/StatusEffectSystem.h"
+#include "../../ECS/Systems/Item/ItemPickupSystem.h"
+#include "../../ECS/Systems/Chara/BossPhaseSystem.h"
+#include "../../ECS/Systems/UI/CharacterSheetSystem.h"
+#include "../../ECS/Components/Tags/Boss/Boss.h"
 
 class GameScene : public SceneBase {
 public:
@@ -28,8 +34,15 @@ public:
     void RenderImGui(const sf::Texture* renderTexture) override;
 
 private:
+    void AdvanceToNextZone();
+
     Entity playerEntity = -1;
-    
+
+    ZoneKind m_zoneKind = ZoneKind::Combat;
+    bool m_hasPortal = false;
+    bool m_playerNearPortal = false;
+    sf::Vector2f m_portalPos;
+
     // Registry
 	std::unique_ptr<Registry> registry;
     
@@ -50,4 +63,8 @@ private:
 	std::shared_ptr<EnemyAISystem> enemyAISystem;
 	std::shared_ptr<CollisionSystem> collisionSystem;
     std::shared_ptr<HealthBarRenderSystem> healthBarRenderSystem;
+    std::shared_ptr<StatusEffectSystem> statusEffectSystem;
+    std::shared_ptr<ItemPickupSystem> itemPickupSystem;
+    std::shared_ptr<BossPhaseSystem> bossPhaseSystem;
+    std::shared_ptr<CharacterSheetSystem> characterSheetSystem;
 };

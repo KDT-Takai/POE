@@ -1,25 +1,16 @@
 #pragma once
 #include <string>
 #include <vector>
-
-// ‘®«
-enum class ElementType {
-    None,
-    Fire,
-    Ice,
-    Lightning,
-    Dark,
-    Holy
-};
+#include "Components/Combat/DamageType.h"
 
 enum class SkillBehaviorType {
     None,
-    Melee,      // ‹ßÚUŒ‚
-    Projectile, // ’e‚ğ”­Ë
-    Dash,       // ˆÚ“®Œn
-    Buff,       // ©ŒÈ‹­‰»
-    AreaEffect,  // ”ÍˆÍUŒ‚
-    Spark,      // —‹
+    Melee,      // ï¿½ßÚUï¿½ï¿½
+    Projectile, // ï¿½eï¿½ğ”­ï¿½
+    Dash,       // ï¿½Ú“ï¿½ï¿½n
+    Buff,       // ï¿½ï¿½ï¿½È‹ï¿½ï¿½ï¿½
+    AreaEffect,  // ï¿½ÍˆÍUï¿½ï¿½
+    Spark,      // ï¿½ï¿½
     GroundSlam,
     LightningWarp,
     LightningBall
@@ -31,21 +22,21 @@ struct SkillData {
     int level = 1;
 
     SkillBehaviorType behaviorType = SkillBehaviorType::Melee;
-    ElementType element = ElementType::None;
+    DamageElement element = DamageElement::Physical;
 
-    float cooldownTime = 1.0f;      // ƒN[ƒ‹ƒ_ƒEƒ“
-    float currentCooldown = 0.0f;   // Œ»İ‚Ì‘Ò‚¿ŠÔ
-    float castTime = 0.0f;          // ‰r¥ŠÔ
-    int mpCost = 0;                 // Á”ïMP
+    float cooldownTime = 1.0f;      // ï¿½Nï¿½[ï¿½ï¿½ï¿½_ï¿½Eï¿½ï¿½
+    float currentCooldown = 0.0f;   // ï¿½ï¿½ï¿½İ‚Ì‘Ò‚ï¿½ï¿½ï¿½ï¿½ï¿½
+    float castTime = 0.0f;          // ï¿½rï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    int mpCost = 0;                 // ï¿½ï¿½ï¿½ï¿½MP
 
-    float damage = 0.0f;             // ˆĞ—Í
-    float duration = 0.0f;          // ‘±ŠÔ
-    float range = 0.0f;             // Ë’ö‹——£‚â‘¬“x
+    float damage = 0.0f;             // ï¿½Ğ—ï¿½
+    float duration = 0.0f;          // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    float range = 0.0f;             // ï¿½Ë’ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â‘¬ï¿½x
 
     float buffAtk = 0.0f;
     float buffDef = 0.0f;
     float buffSpeed = 0.0f;
 
-    // —LŒø‚©‚Ç‚¤‚©‚Ì”»•Ê
+    // ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ì”ï¿½ï¿½ï¿½
     bool isValid = false;
 };

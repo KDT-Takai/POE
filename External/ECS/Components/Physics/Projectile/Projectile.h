@@ -1,14 +1,16 @@
 #pragma once
 #include <ECS.h>
 #include "../ECS/Components/Stats/SkillData/Skill.h"
+#include "Components/Combat/DamageType.h"
 
 struct ProjectileComponent {
     float damage = 10.0f;
-    float duration = 3.0f;     // ¶‘¶ŠÔ
-    float currentTimer = 0.0f; // Œo‰ßŠÔ
+    float duration = 3.0f;     // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    float currentTimer = 0.0f; // ï¿½oï¿½ßï¿½ï¿½ï¿½
     bool isEnemy = false;
 
     bool isBouncy = false;
 	Entity ownerEntity = 0;
     SkillBehaviorType type;
+    DamageElement damageType = DamageElement::Physical;
 };

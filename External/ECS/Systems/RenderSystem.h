@@ -9,11 +9,12 @@
 #include "../Components/Physics/Transform/Transform.h"
 #include "../Components/Physics/Projectile/Projectile.h"
 #include "../Components/PlayerSkill/SparkVisual.h"
+#include "../Components/VFX/HitFlash.h"
 
 class RenderSystem {
 public:
     void Render(Registry& registry, sf::RenderTarget& target) {
-        // ƒXƒvƒ‰ƒCƒg‚Ì•`‰æ
+        // ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ì•`ï¿½ï¿½
         auto spriteEntities = registry.View<SpriteComponent>();
         struct RenderObject {
             TransformComponent* transform;
@@ -48,7 +49,7 @@ public:
             }
         }
 
-        // ‰~‚Ì•`‰æ
+        // ï¿½~ï¿½Ì•`ï¿½ï¿½
         auto circleEntities = registry.View<CircleComponent>();
         for (auto entity : circleEntities) {
             if (registry.HasComponent<TransformComponent>(entity)) {
@@ -57,7 +58,11 @@ public:
 
                 if (circle.isVisible) {
                     sf::CircleShape shape(circle.radius);
-                    shape.setFillColor(circle.color);
+                    sf::Color drawColor = circle.color;
+                    if (registry.HasComponent<HitFlashComponent>(entity) && registry.GetComponent<HitFlashComponent>(entity).timer > 0.0f) {
+                        drawColor = sf::Color::White;
+                    }
+                    shape.setFillColor(drawColor);
 
                     shape.setOrigin({ circle.radius, circle.radius });
 
@@ -79,11 +84,7 @@ public:
 
             if (sparkVis.style == VisualStyle::Explosion) {
 
-                float radius = 150.0f;
-
-                if (registry.HasComponent<BoxColliderComponent>(entity)) {
-                    radius = registry.GetComponent<BoxColliderComponent>(entity).width / 2.0f;
-                }
+                float radius = sparkVis.explosionRadius;
 
                 float alphaRatio = 1.0f;
                 if (registry.HasComponent<ProjectileComponent>(entity)) {
@@ -102,7 +103,7 @@ public:
                 circle.setPosition(transform.position);
                 circle.setFillColor(currentColor);
 
-                // ƒAƒjƒ[ƒVƒ‡ƒ“i‚¾‚ñ‚¾‚ñ‘å‚«‚­‚È‚éj
+                // ï¿½Aï¿½jï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½ñ‚¾‚ï¿½å‚«ï¿½ï¿½ï¿½È‚ï¿½j
                 float progress = 1.0f - alphaRatio;
                 float scale = 0.1f + progress * 0.9f;
                 circle.setScale({ scale, scale });
@@ -126,7 +127,7 @@ public:
             }
         }
     }
-    // “–‚½‚è”»’è
+    // ï¿½ï¿½ï¿½ï¿½ï¿½è”»ï¿½ï¿½
     void RenderDebug(Registry& registry, sf::RenderTarget& target)
     {
         auto view = registry.View<BoxColliderComponent>();
@@ -147,9 +148,9 @@ public:
 
             rect.setPosition({ left, top });
 
-            rect.setFillColor(sf::Color::Transparent); // ’†g‚Í“§–¾
-            rect.setOutlineColor(sf::Color::Red);      // Ô˜g
-            rect.setOutlineThickness(-3.0f);           // “à‘¤‚É1px‚ÌüiƒTƒCƒY‚ª•Ï‚í‚ç‚È‚¢j
+            rect.setFillColor(sf::Color::Transparent); // ï¿½ï¿½ï¿½gï¿½Í“ï¿½ï¿½ï¿½
+            rect.setOutlineColor(sf::Color::Red);      // ï¿½Ô˜g
+            rect.setOutlineThickness(-3.0f);           // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1pxï¿½Ìï¿½ï¿½iï¿½Tï¿½Cï¿½Yï¿½ï¿½ï¿½Ï‚ï¿½ï¿½È‚ï¿½ï¿½j
 
             target.draw(rect);
         }

@@ -35,6 +35,9 @@
     <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp" />
     <ClCompile Include="Programs\Game\TitleScene\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Programs\Game\ResultScene\ResultScene\ResultScene.cpp" />
+    <ClCompile Include="Programs\System\Campaign\CampaignManager.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="Programs\System\CameraManager\CameraManager.cpp" />
     <ClCompile Include="Programs\System\DebugManager\DebugManager.cpp" />
     <ClCompile Include="Programs\System\Input\InputManager.cpp" />
@@ -54,6 +57,25 @@
     <ClInclude Include="External\ECS\Components\Control\PlayerInput\PlayerInput.h" />
     <ClInclude Include="External\ECS\Components\Control\State\State.h" />
     <ClInclude Include="External\ECS\Components\Interaction\Interaction.h" />
+    <ClInclude Include="External\ECS\Components\Tags\Boss\Boss.h" />
+    <ClInclude Include="External\ECS\Components\Tags\Boss\BossPhase.h" />
+    <ClInclude Include="External\ECS\Components\VFX\HitFlash.h" />
+    <ClInclude Include="External\ECS\Systems\Chara\BossPhaseSystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\CharacterSheetSystem.h" />
+    <ClInclude Include="External\ECS\Components\Combat\DamageType.h" />
+    <ClInclude Include="External\ECS\Components\Combat\StatusEffects.h" />
+    <ClInclude Include="External\ECS\Systems\Combat\CombatMath.h" />
+    <ClInclude Include="External\ECS\Systems\Combat\StatusEffectSystem.h" />
+    <ClInclude Include="External\ECS\Components\Item\Item.h" />
+    <ClInclude Include="External\ECS\Components\Item\Equipment.h" />
+    <ClInclude Include="External\ECS\Components\Item\ItemPickup.h" />
+    <ClInclude Include="External\ECS\Components\Item\Currency.h" />
+    <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
+    <ClInclude Include="External\ECS\Systems\Item\ItemFactory.h" />
+    <ClInclude Include="External\ECS\Systems\Item\EquipmentSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Item\ItemPickupSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\LevelSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\PassiveSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\BoxCollider\BoxCollider.h" />
     <ClInclude Include="External\ECS\Components\Physics\Facing\Facing.h" />
     <ClInclude Include="External\ECS\Components\Physics\Gravity\Gravity.h" />
@@ -89,10 +111,12 @@
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />
     <ClInclude Include="Programs\Game\GameScene\GameScene\GameScene.h" />
     <ClInclude Include="Programs\Game\GameScene\MapGenerator\MapGenerator.h" />
+    <ClInclude Include="Programs\Game\GameScene\Zone\ZoneBuilder.h" />
     <ClInclude Include="External\ECS\Components\Stats\SkillData\Skill.h" />
     <ClInclude Include="Programs\Game\TitleScene\TitleScene\TitleScene.h" />
     <ClInclude Include="Programs\Game\ResultScene\ResultScene\ResultScene.h" />
     <ClInclude Include="Programs\System\CameraManager\CameraManager.h" />
+    <ClInclude Include="Programs\System\Campaign\CampaignManager.h" />
     <ClInclude Include="Programs\System\Config\Config.h" />
     <ClInclude Include="Programs\System\DebugGui\DebugGui.h" />
     <ClInclude Include="Programs\System\DebugManager\DebugManager.h" />
@@ -245,7 +269,7 @@
       <PreprocessorDefinitions>SFML_STATIC;IMGUI_ENABLE_DOCKING;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);SFML_STATIC;SFML_STATICSFML_STATIC;SFML_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>External\SpdLog\Include;External\ImGuizmo\Include;External\ImGui\Include;External\ImGui-SFML\Include;External\SFML\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Programs;External\ECS;External\SpdLog\Include;External\ImGuizmo\Include;External\ImGui\Include;External\ImGui-SFML\Include;External\SFML\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>

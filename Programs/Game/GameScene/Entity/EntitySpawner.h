@@ -1,6 +1,6 @@
 #pragma once
 #include <ECS.h>
-// ƒvƒŒƒCƒ„[—p
+// ï¿½vï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½p
 #include "../ECS/Components/Tags/Player/Player.h"
 #include "../ECS/Components/Physics/Transform/Transform.h"
 #include "../ECS/Components/Physics/Velocity/Velocity.h"
@@ -13,6 +13,8 @@
 #include "../ECS/Components/Interaction/Interaction.h"
 #include "../ECS/Components/PlayerSkill/PlayerSkill.h"
 #include "../ECS/Components/Stats/SkillData/Skill.h"
+#include "../ECS/Components/Combat/StatusEffects.h"
+#include "../ECS/Components/Item/Equipment.h"
 
 class EntitySpawner {
 public:
@@ -23,17 +25,17 @@ public:
 
         entity.AddComponent(TagComponent{ "Player" });
 
-        // •¨—EÀ•Wİ’è
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½ï¿½ï¿½Wï¿½İ’ï¿½
         entity.AddComponent(TransformComponent{ sf::Vector2f(startX, startY), sf::Vector2f(1.f, 1.f),  0.f });
 
         entity.AddComponent(VelocityComponent{ sf::Vector2f(0.f, 0.f) });
         entity.AddComponent(GravityComponent{ 980.0f });
 
-        // §ŒäEó‘Ôİ’è
+        // ï¿½ï¿½ï¿½ï¿½Eï¿½ï¿½Ôİ’ï¿½
         entity.AddComponent(PlayerInputComponent{});
         entity.AddComponent(StateComponent{ ActorState::Idle, 0.0f });
 
-        //ƒXƒe[ƒ^ƒXİ’è
+        //ï¿½Xï¿½eï¿½[ï¿½^ï¿½Xï¿½İ’ï¿½
         CharacterStatsComponent stats;
         stats.name = "Hero";
         stats.moveSpeed = 350.0f;
@@ -43,22 +45,33 @@ public:
         stats.rollDuration = 0.3f;
         stats.rollCooldownMax = 2.0f;
         stats.rollCooldownTimer = 0.0f;
+        stats.evasion = 200.0f;
+        stats.armour = 50.0f;
+        stats.accuracy = 200.0f;
+        stats.maxES = 40.0f;
+        stats.currentES = stats.maxES;
+        stats.leechPercent = 0.05f;
         entity.AddComponent(stats);
+        entity.AddComponent(StatusEffectsComponent{});
 
-        // •`‰æİ’è
+        EquipmentComponent equipment;
+        equipment.baseStats = stats;
+        entity.AddComponent(equipment);
+
+        // ï¿½`ï¿½ï¿½İ’ï¿½
         float radius = 16.0f;
         CircleComponent circleVis;
-        circleVis.radius = radius; // •32px‘Š“–
+        circleVis.radius = radius; // ï¿½ï¿½32pxï¿½ï¿½ï¿½ï¿½
         circleVis.color = sf::Color::Blue;
         circleVis.isVisible = true;
         entity.AddComponent(circleVis);
 
-        // “–‚½‚è”»’è
+        // ï¿½ï¿½ï¿½ï¿½ï¿½è”»ï¿½ï¿½
         float colliderSize = 20.0f;
         float offset = (radius * 2.0f - colliderSize) / 2.0f;
         entity.AddComponent(BoxColliderComponent{ colliderSize, colliderSize, offset, offset, false, false });
 
-		// ƒXƒLƒ‹‚P‚Â’Ç‰Á
+		// ï¿½Xï¿½Lï¿½ï¿½ï¿½Pï¿½Â’Ç‰ï¿½
         PlayerSkill skillComp;
 
         SkillData& spark = skillComp.skills[0];
@@ -68,7 +81,8 @@ public:
         spark.cooldownTime = 0.3f;
         spark.mpCost = 4.0f;
         spark.damage = 25.0f;
-        spark.duration = 3.5f;     
+        spark.duration = 3.5f;
+        spark.element = DamageElement::Lightning;
         spark.isValid = true;
 
         SkillData& Slam = skillComp.skills[1];
@@ -78,6 +92,7 @@ public:
         Slam.cooldownTime = 5.0f;
         Slam.mpCost = 35.0f;
         Slam.damage = 120.0f;
+        Slam.element = DamageElement::Physical;
         Slam.isValid = true;
 
         SkillData& Warp = skillComp.skills[2];
@@ -88,6 +103,7 @@ public:
         Warp.damage = 80.0f;
         Warp.cooldownTime = 8.0f;
         Warp.mpCost = 35;
+        Warp.element = DamageElement::Lightning;
         Warp.isValid = true;
 
 
@@ -98,13 +114,14 @@ public:
         ball.damage = 40.0f;
         ball.cooldownTime = 12.0f;
         ball.mpCost = 40;
+        ball.element = DamageElement::Lightning;
         ball.isValid = true;
 
         entity.AddComponent(skillComp);
 
         return entity;
     }
-    // “G‚ğì¬
+    // ï¿½Gï¿½ï¿½ï¿½ì¬
     static EntityObject CreateEnemy(Registry& registry, sf::Vector2f position) {
 
         auto entity = registry.CreateEntity();
@@ -130,14 +147,18 @@ public:
         stats.atk = 5.0f;
         stats.def = 1.0f;
         stats.moveSpeed = 80.0f;
+        stats.evasion = 30.0f;
+        stats.armour = 10.0f;
+        stats.accuracy = 80.0f;
 
         registry.AddComponent<CharacterStatsComponent>(entity, stats);
+        registry.AddComponent<StatusEffectsComponent>(entity, StatusEffectsComponent{});
 
         registry.AddComponent<VelocityComponent>(entity, VelocityComponent{ {0.0f, 0.0f} });
 
         return EntityObject(entity , &registry);
     }
-    // ¸—ì”èì¬
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ì¬
     static Entity CreateMonument(Registry& registry, sf::Vector2f position, int spiritID) {
         Entity entity = registry.CreateEntity();
 

@@ -10,14 +10,21 @@ protected:
     CameraManager();
 private:
     sf::View view;
+    sf::Vector2f baseCenter;
+    float shakeTimer = 0.0f;
+    float shakeIntensity = 0.0f;
+    void ApplyCenterWithShake();
 public:
-    // ƒJƒƒ‰‘€ìƒCƒ“ƒ^[ƒtƒF[ƒX
+    // ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½^ï¿½[ï¿½tï¿½Fï¿½[ï¿½X
     void SetZoomLevel(float zoom);
     float GetZoomLevel() const;
-    // Œ»İ‚ÌView‚ğæ“¾
+    // ï¿½ï¿½ï¿½İ‚ï¿½Viewï¿½ï¿½ï¿½æ“¾
     const sf::View& GetCurrentView() const { return view; }
-    // View‚Ì‰Šú‰»‚âƒŠƒZƒbƒg
+    // Viewï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½ï¿½âƒŠï¿½Zï¿½bï¿½g
     void ResetView();
-    // ƒJƒƒ‰‚ğ’†‰›‚ÉƒZƒbƒg
+    // ï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½ğ’†‰ï¿½ï¿½ÉƒZï¿½bï¿½g
 	void SetCenter(const sf::Vector2f& center);
+
+    void Shake(float intensity, float duration);
+    void UpdateShake(float dt);
 };

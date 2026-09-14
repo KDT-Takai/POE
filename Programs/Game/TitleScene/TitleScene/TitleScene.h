@@ -20,4 +20,7 @@ private:
 	std::unique_ptr<sf::Sprite> testSprite;
 
     std::unique_ptr<sf::Text> pressText;
+    std::unique_ptr<sf::Text> modeText;
+    bool m_hardcoreSelected = false;
+    void UpdatePromptText();
 };

@@ -1,33 +1,49 @@
 #pragma once
 #include <memory>
 #include <algorithm>
-#include <typeindex>
-#include <set>
-#include <unordered_map>
+#include <vector>
 #include "Core/Entity.h"
 #include "../Core/ComponentPool.h"
 
 class EntityObject;
 
+class ComponentTypeId {
+    inline static size_t s_counter = 0;
+public:
+    template <typename T>
+    static size_t Get() {
+        static const size_t id = s_counter++;
+        return id;
+    }
+};
+
 class Registry {
 private:
+    std::vector<uint8_t> m_alive;
+    std::vector<Entity> m_freeList;
     Entity m_nextEntityId = 0;
-    std::set<Entity> m_entities;
-    std::unordered_map<std::type_index, std::shared_ptr<IComponentPool>> m_componentPools;
+
+    std::vector<std::unique_ptr<IComponentPool>> m_pools;
 
     template <typename T>
-    std::shared_ptr<ComponentPool<T>> GetPool() {
-        std::type_index typeIndex(typeid(T));
-        if (m_componentPools.find(typeIndex) == m_componentPools.end()) {
-            m_componentPools[typeIndex] = std::make_shared<ComponentPool<T>>();
-        }
-        return std::static_pointer_cast<ComponentPool<T>>(m_componentPools[typeIndex]);
+    ComponentPool<T>& GetPool() {
+        size_t id = ComponentTypeId::Get<T>();
+        if (id >= m_pools.size()) m_pools.resize(id + 1);
+        if (!m_pools[id]) m_pools[id] = std::make_unique<ComponentPool<T>>();
+        return static_cast<ComponentPool<T>&>(*m_pools[id]);
     }
 
 public:
     Entity CreateEntityID() {
-        Entity id = m_nextEntityId++;
-        m_entities.insert(id);
+        Entity id;
+        if (!m_freeList.empty()) {
+            id = m_freeList.back();
+            m_freeList.pop_back();
+        } else {
+            id = m_nextEntityId++;
+            if (id >= m_alive.size()) m_alive.resize(static_cast<size_t>(id) + 1, 0);
+        }
+        m_alive[id] = 1;
         return id;
     }
 
@@ -36,43 +52,53 @@ public:
     EntityObject CreateEntityObject();
 
     bool IsValid(Entity entity) const {
-        return m_entities.find(entity) != m_entities.end();
+        return entity < m_alive.size() && m_alive[entity];
     }
 
     void DestroyEntity(Entity entity) {
-        for (auto& pair : m_componentPools) {
-            pair.second->OnEntityDestroyed(entity);
+        if (!IsValid(entity)) return;
+        for (auto& pool : m_pools) {
+            if (pool) pool->OnEntityDestroyed(entity);
         }
-        m_entities.erase(entity);
+        m_alive[entity] = 0;
+        m_freeList.push_back(entity);
     }
 
     template <typename T>
-    void AddComponent(Entity entity, T component) {
-        GetPool<T>()->Insert(entity, component);
+    T& AddComponent(Entity entity, T component) {
+        return GetPool<T>().Insert(entity, std::move(component));
     }
 
     template <typename T>
     void RemoveComponent(Entity entity) {
-        GetPool<T>()->Remove(entity);
+        GetPool<T>().Remove(entity);
     }
 
     template <typename T>
     T& GetComponent(Entity entity) {
-        return GetPool<T>()->Get(entity);
+        return GetPool<T>().Get(entity);
     }
 
     template <typename T>
     bool HasComponent(Entity entity) {
-        return GetPool<T>()->Has(entity);
+        return GetPool<T>().Has(entity);
     }
 
-    const std::set<Entity>& GetEntities() const { return m_entities; }
+    std::vector<Entity> GetEntities() const {
+        std::vector<Entity> result;
+        result.reserve(m_alive.size());
+        for (Entity e = 0; e < m_alive.size(); ++e) {
+            if (m_alive[e]) result.push_back(e);
+        }
+        return result;
+    }
 
     template<typename First, typename... Rest>
     std::vector<Entity> View() {
+        auto& firstPool = GetPool<First>();
         std::vector<Entity> entities;
-        auto pool = GetPool<First>();
-        for (auto const& [index, entity] : pool->indexToEntity) {
+        entities.reserve(firstPool.Size());
+        for (Entity entity : firstPool.Entities()) {
             if ((HasComponent<Rest>(entity) && ...)) {
                 entities.push_back(entity);
             }

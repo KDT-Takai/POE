@@ -1,22 +1,45 @@
 #include "CameraManager.h"
 
 CameraManager::CameraManager() {
-    // ƒRƒ“ƒXƒgƒ‰ƒNƒ^‚ÅView‚ğ‰Šú‰»
+    // ï¿½Rï¿½ï¿½ï¿½Xï¿½gï¿½ï¿½ï¿½Nï¿½^ï¿½ï¿½Viewï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     ResetView();
 }
 
 void CameraManager::ResetView() {
-    // Config.h ‚Ì’è”‚ğg—p‚µ‚Ä‰ŠúƒTƒCƒY‚ğİ’è
+    // Config.h ï¿½Ì’è”ï¿½ï¿½ï¿½gï¿½pï¿½ï¿½ï¿½Äï¿½ï¿½ï¿½ï¿½Tï¿½Cï¿½Yï¿½ï¿½İ’ï¿½
     view.setSize({ WINDOW_WIDTH, WINDOW_HEIGHT });
     view.setCenter({ WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f });
 }
 
 void CameraManager::SetCenter(const sf::Vector2f& center) {
-    view.setCenter(center);
+    baseCenter = center;
+    ApplyCenterWithShake();
+}
+
+void CameraManager::Shake(float intensity, float duration) {
+    shakeIntensity = intensity;
+    shakeTimer = duration;
+}
+
+void CameraManager::UpdateShake(float dt) {
+    if (shakeTimer > 0.0f) {
+        shakeTimer -= dt;
+        if (shakeTimer < 0.0f) shakeTimer = 0.0f;
+        ApplyCenterWithShake();
+    }
+}
+
+void CameraManager::ApplyCenterWithShake() {
+    sf::Vector2f offset(0.0f, 0.0f);
+    if (shakeTimer > 0.0f) {
+        offset.x = (static_cast<float>(rand() % 2000) / 1000.0f - 1.0f) * shakeIntensity;
+        offset.y = (static_cast<float>(rand() % 2000) / 1000.0f - 1.0f) * shakeIntensity;
+    }
+    view.setCenter(baseCenter + offset);
 }
 
 void CameraManager::SetZoomLevel(float zoom) {
-    // ƒY[ƒ€ƒŒƒxƒ‹‚ÉŠî‚Ã‚¢‚ÄView‚ÌƒTƒCƒY‚ğÄŒvZ
+    // ï¿½Yï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½ÉŠï¿½Ã‚ï¿½ï¿½ï¿½Viewï¿½ÌƒTï¿½Cï¿½Yï¿½ï¿½ï¿½ÄŒvï¿½Z
     float ratio = 1.0f / zoom;
     float newWidth = WINDOW_WIDTH * ratio;
     float newHeight = WINDOW_HEIGHT * ratio;
@@ -25,6 +48,6 @@ void CameraManager::SetZoomLevel(float zoom) {
 }
 
 float CameraManager::GetZoomLevel() const {
-    // ƒY[ƒ€ƒŒƒxƒ‹‚ğ‹tZ‚µ‚Ä•Ô‚·
+    // ï¿½Yï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½ï¿½ï¿½tï¿½Zï¿½ï¿½ï¿½Ä•Ô‚ï¿½
     return WINDOW_WIDTH / view.getSize().x;
 }

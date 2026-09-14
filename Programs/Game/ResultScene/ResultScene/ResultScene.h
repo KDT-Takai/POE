@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <string>
 #include <System/SceneManager/SceneBase.h>
 
@@ -14,5 +15,5 @@ public:
     void RenderImGui(const sf::Texture* renderTexture) override;
 
 private:
-
+    std::shared_ptr<sf::Font> m_font;
 };

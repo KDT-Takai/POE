@@ -1,5 +1,6 @@
 #include "GameScene.h"
 #include <ECS.h>
+#include <algorithm>
 #include <System/CameraManager/CameraManager.h>
 #include <System/Time/Time.h>
 #include <System/DebugGui/DebugGui.h>
@@ -8,8 +9,10 @@
 #include "../Entity/EntitySpawner.h"
 
 #include "../MapGenerator/MapGenerator.h"
+#include "../Zone/ZoneBuilder.h"
 
 #include "System/SceneManager/SceneManager.h"
+#include "System/Input/InputManager.h"
 #include "../../ResultScene/ResultScene/ResultScene.h"
 
 GameScene::GameScene() {
@@ -33,72 +36,60 @@ GameScene::GameScene() {
 	enemyAISystem = std::make_shared<EnemyAISystem>();
 	collisionSystem = std::make_shared<CollisionSystem>();
 	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
-    auto worldEntityObj = MapGenerator::CreateProceduralWorld(*registry, 500, 500);
+	statusEffectSystem = std::make_shared<StatusEffectSystem>();
+	itemPickupSystem = std::make_shared<ItemPickupSystem>();
+	bossPhaseSystem = std::make_shared<BossPhaseSystem>();
+	characterSheetSystem = std::make_shared<CharacterSheetSystem>();
 
-//    EntityObject player = registry->CreateEntityObject();
-//    player.AddComponent<TagComponent>({"Player"});
-//    player.AddComponent<TransformComponent>({ sf::Vector2f(100, 100), sf::Vector2f(1, 1), 0.0f });
-//    player.AddComponent<CircleComponent>({30.0f, sf::Color::Cyan, true});
-//    player.AddComponent<PlayerComponent>({ 300.0f });
+    auto& campaign = CampaignManager::Instance();
+    const ZoneDefinition& zone = campaign.CurrentZone();
+    m_zoneKind = zone.kind;
 
-    // éÊìæ
-//    auto& transform = player.GetComponent<TransformComponent>();
-//    transform.position.x += 10.0f;
+    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier());
+    m_hasPortal = built.hasPortal;
+    m_portalPos = built.portalPos;
 
-    float spawnX = 100.0f;
-    float spawnY = 100.0f;
-
-    if (worldEntityObj) {
-        spdlog::info("World created");
-        auto& map = worldEntityObj.GetComponent<MapComponent>();
-        bool foundStart = false;
-        for (int y = 0; y < map.height; ++y) {
-            for (int x = 0; x < map.width; ++x) {
-                if (map.GetTile(x, y) == TileType::Wood) {
-                    spawnX = x * map.tileSize;
-                    spawnY = y * map.tileSize;
-                    foundStart = true;
-                    break;
-                }
-            }
-            if (foundStart) break;
-        }
-        // ï‡ÇØÇÈà íu
-        std::vector<sf::Vector2f> freeSlots = MapGenerator::GetWalkablePositions(map);
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(freeSlots.begin(), freeSlots.end(), g);
-        int enemyCount = 500; // ê∂ê¨ÇµÇΩÇ¢ìGÇÃêî
-        for (int i = 0; i < enemyCount && i < freeSlots.size(); ++i) {
-            EntitySpawner::CreateEnemy(*registry, freeSlots[i]);
-        }
-        spdlog::info("Spawned {} enemies using EntitySpawner.", std::min((size_t)enemyCount, freeSlots.size()));
-    }
-
-    auto player = EntitySpawner::CreatePlayer(*registry, spawnX, spawnY);
+    auto player = EntitySpawner::CreatePlayer(*registry, built.playerSpawn.x, built.playerSpawn.y);
     if (player) {
         playerEntity = player.GetID();
-        spdlog::info("Player created with ID: {}", player.GetID());
+        if (campaign.HasSavedPlayer()) {
+            player.GetComponent<CharacterStatsComponent>() = campaign.GetSavedStats();
+            auto& equipment = player.GetComponent<EquipmentComponent>();
+            equipment.slots = campaign.GetSavedEquipment().slots;
+            EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
+        }
+        spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
+}
 
-//	auto world = MapGenerator::CreateTestWorld(*registry);
-	//auto world = MapGenerator::CreateProceduralWorld(*registry);
- //   if (world) {
- //       spdlog::info("world created");
- //   }
-//	auto monument = EntitySpawner::CreateMonument(*registry, sf::Vector2f(600.f, 800.f), 1);
+void GameScene::AdvanceToNextZone() {
+    auto& campaign = CampaignManager::Instance();
+    if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
+        campaign.SavePlayerStats(registry->GetComponent<CharacterStatsComponent>(playerEntity));
+    }
+    if (registry->HasComponent<EquipmentComponent>(playerEntity)) {
+        campaign.SaveEquipment(registry->GetComponent<EquipmentComponent>(playerEntity));
+    }
+    campaign.CompleteCurrentZoneAndAdvance();
+    campaign.SaveToDisk();
+    SceneManager::Instance().ChangeScene("GameScene");
 }
 
 void GameScene::Update() {
     auto dt = Time::Instance().GetDeltaTime();
-    // ì¸óÕ
+    CameraManager::Instance().UpdateShake(dt);
+
+    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
+        characterSheetSystem->Toggle();
+    }
+    // ÔøΩÔøΩÔøΩÔøΩ
     inputSystem->Update(*registry, dt);
-    // Ç∑Ç´ÇÈ
+    // ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
 	skillSystem->Update(*registry, dt);
-    // ÉXÉpÅ[ÉN
+    // ÔøΩXÔøΩpÔøΩ[ÔøΩN
     sparkVisualSystem->Update(*registry);
 	projectileSystem->Update(*registry, dt);
-    // ìñÇΩÇËîªíË
+    // ÔøΩÔøΩÔøΩÔøΩÔøΩËîªÔøΩÔøΩ
     if (registry->IsValid(playerEntity)) {
         auto& input = registry->GetComponent<PlayerInputComponent>(playerEntity);
         input.mouseWorldPos = InputManager::Instance().GetMouseWorldPosition();
@@ -111,17 +102,20 @@ void GameScene::Update() {
     if (registry->HasComponent<TransformComponent>(playerEntity)) {
         playerPos = registry->GetComponent<TransformComponent>(playerEntity).position;
     }
-    // ìG
+    // ÔøΩG
 //    enemySpawnSystem->Update(*registry, dt, playerPos);
 	enemyAISystem->Update(*registry, dt, playerPos);
-    // à⁄ìÆ
+    // ÔøΩ⁄ìÔøΩ
     movementSystem->Update(*registry, dt);
-    // ï®óùââéZ
+    statusEffectSystem->Update(*registry, dt);
+    // ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩZ
     physicsSystem->Update(*registry, dt);
-	// è’ìÀèàóù
-	collisionSystem->Update(*registry);
+	// ÔøΩ’ìÀèÔøΩÔøΩÔøΩ
+	collisionSystem->Update(*registry, dt);
+	itemPickupSystem->Update(*registry, dt);
+	bossPhaseSystem->Update(*registry, dt);
 
-    // ÉQÅ[ÉÄÇÃèIóπämîF
+    // ÔøΩQÔøΩ[ÔøΩÔøΩÔøΩÃèIÔøΩÔøΩÔøΩmÔøΩF
     if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
         auto& state = registry->GetComponent<CharacterStatsComponent>(playerEntity);
         if (state.currentHP <= 0) {
@@ -130,25 +124,42 @@ void GameScene::Update() {
             return;
         }
     }
-    // ìGéÄÇÒÇæÇ©
-    auto enemyView = registry->View<CharacterStatsComponent>();
-    bool anyEnemyAlive = false;
+    if (m_zoneKind == ZoneKind::Town) {
+        m_playerNearPortal = false;
+        if (m_hasPortal && registry->HasComponent<TransformComponent>(playerEntity)) {
+            auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
+            float dx = trans.position.x - m_portalPos.x;
+            float dy = trans.position.y - m_portalPos.y;
+            float distSq = dx * dx + dy * dy;
+            m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-    for (auto entity : enemyView) {
-        if (!registry->HasComponent<PlayerTag>(entity)) {
-            anyEnemyAlive = true;
-            break;
+            if (m_playerNearPortal && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
+                spdlog::info("Entering next zone.");
+                AdvanceToNextZone();
+                return;
+            }
         }
-    }
-    if (!anyEnemyAlive) {
-        spdlog::info("All enemies defeated! Victory!");
-        SceneManager::Instance().ChangeScene("ResultScene");
+    } else {
+        auto enemyView = registry->View<CharacterStatsComponent>();
+        bool anyEnemyAlive = false;
+
+        for (auto entity : enemyView) {
+            if (!registry->HasComponent<PlayerTag>(entity)) {
+                anyEnemyAlive = true;
+                break;
+            }
+        }
+        if (!anyEnemyAlive) {
+            spdlog::info("Zone cleared!");
+            AdvanceToNextZone();
+            return;
+        }
     }
 }
 
 void GameScene::Render(sf::RenderTarget& target) {
     target.setView(CameraManager::Instance().GetCurrentView());
-	// É}ÉbÉvï`âÊ
+	// ÔøΩ}ÔøΩbÔøΩvÔøΩ`ÔøΩÔøΩ
 	mapRenderSystem->Render(*registry, target);
     renderSystem->Render(*registry, target);
     if (DebugManager::Instance().IsDebugMode()) {
@@ -160,35 +171,123 @@ void GameScene::Render(sf::RenderTarget& target) {
     target.setView(target.getDefaultView());
 	uiSystem->Render(*registry, target);
 
-	// âÊñ è„ïîÇ…écÇËìGêîï\é¶
-    int aliveEnemies = 0;
-    auto enemyView = registry->View<CharacterStatsComponent>();
-    for (auto entity : enemyView) {
-        if (!registry->HasComponent<PlayerTag>(entity)) {
-            aliveEnemies++;
+    std::string hudLine;
+    if (m_zoneKind == ZoneKind::Town) {
+        hudLine = m_playerNearPortal ? "Press Enter to proceed" : "";
+    } else {
+        int aliveEnemies = 0;
+        auto enemyView = registry->View<CharacterStatsComponent>();
+        for (auto entity : enemyView) {
+            if (!registry->HasComponent<PlayerTag>(entity)) {
+                aliveEnemies++;
+            }
         }
+        hudLine = "Remaining Enemies: " + std::to_string(aliveEnemies);
     }
+
     std::shared_ptr<sf::Font> m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     if (m_font) {
-        sf::Text enemyText(*m_font, "Remaining Enemies: " + std::to_string(aliveEnemies), 20);
-        enemyText.setFillColor(sf::Color::White);
-        enemyText.setOutlineColor(sf::Color::Black);
-        enemyText.setOutlineThickness(2.0f);
-        sf::FloatRect textBounds = enemyText.getLocalBounds();
-        enemyText.setOrigin({ textBounds.position.x + textBounds.size.x / 2.0f, 0.0f });
-        enemyText.setPosition({ target.getSize().x / 2.0f, 10.0f });
-        target.draw(enemyText);
+        std::string zoneLabel = CampaignManager::Instance().GetProgressLabel();
+        sf::Text zoneText(*m_font, sf::String::fromUtf8(zoneLabel.begin(), zoneLabel.end()), 20);
+        zoneText.setFillColor(sf::Color::Yellow);
+        zoneText.setOutlineColor(sf::Color::Black);
+        zoneText.setOutlineThickness(2.0f);
+        sf::FloatRect zoneBounds = zoneText.getLocalBounds();
+        zoneText.setOrigin({ zoneBounds.position.x + zoneBounds.size.x / 2.0f, 0.0f });
+        zoneText.setPosition({ target.getSize().x / 2.0f, 10.0f });
+        target.draw(zoneText);
+
+        if (!hudLine.empty()) {
+            sf::Text hudText(*m_font, hudLine, 20);
+            hudText.setFillColor(sf::Color::White);
+            hudText.setOutlineColor(sf::Color::Black);
+            hudText.setOutlineThickness(2.0f);
+            sf::FloatRect hudBounds = hudText.getLocalBounds();
+            hudText.setOrigin({ hudBounds.position.x + hudBounds.size.x / 2.0f, 0.0f });
+            hudText.setPosition({ target.getSize().x / 2.0f, 36.0f });
+            target.draw(hudText);
+        }
+
+        if (itemPickupSystem->messageTimer > 0.0f && !itemPickupSystem->lastMessage.empty()) {
+            sf::Text pickupText(*m_font, itemPickupSystem->lastMessage, 22);
+            pickupText.setFillColor(sf::Color(255, 230, 120));
+            pickupText.setOutlineColor(sf::Color::Black);
+            pickupText.setOutlineThickness(2.0f);
+            sf::FloatRect pickupBounds = pickupText.getLocalBounds();
+            pickupText.setOrigin({ pickupBounds.position.x + pickupBounds.size.x / 2.0f, 0.0f });
+            pickupText.setPosition({ target.getSize().x / 2.0f, 64.0f });
+            target.draw(pickupText);
+        }
+
+        if (collisionSystem->levelUpMessageTimer > 0.0f && !collisionSystem->levelUpMessage.empty()) {
+            sf::Text levelText(*m_font, collisionSystem->levelUpMessage, 32);
+            levelText.setFillColor(sf::Color(255, 255, 255));
+            levelText.setOutlineColor(sf::Color(255, 160, 0));
+            levelText.setOutlineThickness(3.0f);
+            sf::FloatRect levelBounds = levelText.getLocalBounds();
+            levelText.setOrigin({ levelBounds.position.x + levelBounds.size.x / 2.0f, 0.0f });
+            levelText.setPosition({ target.getSize().x / 2.0f, 96.0f });
+            target.draw(levelText);
+        }
+
+        for (auto bossEntity : registry->View<BossTag, CharacterStatsComponent>()) {
+            auto& bossStats = registry->GetComponent<CharacterStatsComponent>(bossEntity);
+            if (bossStats.currentHP <= 0.0f) continue;
+
+            float barWidth = 500.0f;
+            float barHeight = 22.0f;
+            float barX = target.getSize().x / 2.0f - barWidth / 2.0f;
+            float barY = 130.0f;
+
+            sf::RectangleShape bg({ barWidth, barHeight });
+            bg.setPosition({ barX, barY });
+            bg.setFillColor(sf::Color(30, 30, 30));
+            bg.setOutlineColor(sf::Color::White);
+            bg.setOutlineThickness(2.0f);
+            target.draw(bg);
+
+            float ratio = std::clamp(bossStats.currentHP / bossStats.maxHP, 0.0f, 1.0f);
+            sf::RectangleShape fill({ barWidth * ratio, barHeight });
+            fill.setPosition({ barX, barY });
+            fill.setFillColor(sf::Color(200, 30, 30));
+            target.draw(fill);
+
+            sf::Text bossName(*m_font, sf::String::fromUtf8(bossStats.name.begin(), bossStats.name.end()), 18);
+            bossName.setFillColor(sf::Color::White);
+            bossName.setOutlineColor(sf::Color::Black);
+            bossName.setOutlineThickness(2.0f);
+            sf::FloatRect nameBounds = bossName.getLocalBounds();
+            bossName.setOrigin({ nameBounds.position.x + nameBounds.size.x / 2.0f, 0.0f });
+            bossName.setPosition({ target.getSize().x / 2.0f, barY - 22.0f });
+            target.draw(bossName);
+            break;
+        }
+
+        if (bossPhaseSystem->enrageMessageTimer > 0.0f && !bossPhaseSystem->enrageMessage.empty()) {
+            const std::string& enrageMsg = bossPhaseSystem->enrageMessage;
+            sf::Text enrageText(*m_font, sf::String::fromUtf8(enrageMsg.begin(), enrageMsg.end()), 26);
+            enrageText.setFillColor(sf::Color(255, 60, 60));
+            enrageText.setOutlineColor(sf::Color::Black);
+            enrageText.setOutlineThickness(2.0f);
+            sf::FloatRect enrageBounds = enrageText.getLocalBounds();
+            enrageText.setOrigin({ enrageBounds.position.x + enrageBounds.size.x / 2.0f, 0.0f });
+            enrageText.setPosition({ target.getSize().x / 2.0f, 160.0f });
+            target.draw(enrageText);
+        }
     }
+
+    characterSheetSystem->Render(*registry, target);
+
     target.setView(target.getDefaultView());
 }
 
 void GameScene::RenderImGui(const sf::Texture* renderTexture)
 {
-    DebugGui::Begin("Game Tools", "ÉQÅ[ÉÄÉcÅ[Éã");
+    DebugGui::Begin("Game Tools", "ÔøΩQÔøΩ[ÔøΩÔøΩÔøΩcÔøΩ[ÔøΩÔøΩ");
 
     ImGui::SameLine();
 
-    if (DebugGui::Button("Spawn Enemy", "ìGê∂ê¨")) {
+    if (DebugGui::Button("Spawn Enemy", "ÔøΩGÔøΩÔøΩÔøΩÔøΩ")) {
         auto e = EntitySpawner::CreateEnemy(*registry, { 400, 300 });
         editorSystem->SetSelectedEntity(e.GetID());
     }

@@ -1,71 +1,69 @@
 #pragma once
 #include <vector>
-#include <unordered_map>
-#include <memory>
-#include <algorithm>
-#include <typeindex>
-#include <set>
+#include <cstdint>
+#include <limits>
+#include <utility>
 
 #include "Entity.h"
-// コンポーネントのインターフェース
+
 struct IComponentPool {
     virtual ~IComponentPool() = default;
     virtual void OnEntityDestroyed(Entity entity) = 0;
 };
 
-// コンポーネントプール アクセス早くする
+// Sparse set: sparse[entity] -> dense index, O(1) insert/remove/get, no hashing
 template <typename T>
 class ComponentPool : public IComponentPool {
-public:
-    std::vector<T> data;
-    // EntityID -> Vector Index のマップ (Sparse Setの簡易版)
-    std::unordered_map<Entity, size_t> entityToIndex;
-    std::unordered_map<size_t, Entity> indexToEntity;
+    static constexpr size_t kInvalid = (std::numeric_limits<size_t>::max)();
 
-    void Insert(Entity entity, T component) {
-        if (entityToIndex.find(entity) != entityToIndex.end())
-        {
-            // 既に持っていれば上書き
-            data[entityToIndex[entity]] = component;
-            return;
+    std::vector<size_t> sparse;
+    std::vector<Entity> denseEntities;
+    std::vector<T> data;
+
+    void EnsureSparse(Entity entity) {
+        if (entity >= sparse.size()) sparse.resize(static_cast<size_t>(entity) + 1, kInvalid);
+    }
+
+public:
+    T& Insert(Entity entity, T component) {
+        EnsureSparse(entity);
+        size_t idx = sparse[entity];
+        if (idx != kInvalid) {
+            data[idx] = std::move(component);
+            return data[idx];
         }
-        size_t index = data.size();
-        entityToIndex[entity] = index;
-        indexToEntity[index] = entity;
-        data.push_back(component);
+        idx = data.size();
+        sparse[entity] = idx;
+        denseEntities.push_back(entity);
+        data.push_back(std::move(component));
+        return data.back();
     }
 
     void Remove(Entity entity) {
-        if (entityToIndex.find(entity) == entityToIndex.end())
-        {
-            return;
-        }
+        if (entity >= sparse.size() || sparse[entity] == kInvalid) return;
 
-        // 削除時は最後の要素を持ってきて穴埋めする (Swap & Pop)
-        // これによりメモリの連続性を保つ
-        size_t removedIndex = entityToIndex[entity];
+        size_t removedIndex = sparse[entity];
         size_t lastIndex = data.size() - 1;
-        Entity lastEntity = indexToEntity[lastIndex];
+        Entity lastEntity = denseEntities[lastIndex];
 
-        data[removedIndex] = data[lastIndex];
+        data[removedIndex] = std::move(data[lastIndex]);
+        denseEntities[removedIndex] = lastEntity;
+        sparse[lastEntity] = removedIndex;
 
-        entityToIndex[lastEntity] = removedIndex;
-        indexToEntity[removedIndex] = lastEntity;
-
-        entityToIndex.erase(entity);
-        indexToEntity.erase(lastIndex);
         data.pop_back();
+        denseEntities.pop_back();
+        sparse[entity] = kInvalid;
     }
 
-    T& Get(Entity entity) {
-        return data[entityToIndex[entity]];
+    T& Get(Entity entity) { return data[sparse[entity]]; }
+
+    bool Has(Entity entity) const {
+        return entity < sparse.size() && sparse[entity] != kInvalid;
     }
 
-    bool Has(Entity entity) {
-        return entityToIndex.find(entity) != entityToIndex.end();
-    }
+    const std::vector<Entity>& Entities() const { return denseEntities; }
+    std::vector<T>& Data() { return data; }
+    size_t Size() const { return data.size(); }
 
-    void OnEntityDestroyed(Entity entity) override {
-        if (Has(entity)) Remove(entity);
-    }
+    void OnEntityDestroyed(Entity entity) override { Remove(entity); }
 };

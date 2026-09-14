@@ -12,8 +12,9 @@ struct SparkVisualComponent {
 
     size_t maxTrailLength = 10;
 
-    float thickness = 2.0f;             // ‘¾‚³
-    VisualStyle style = VisualStyle::Line; // •`‰æƒ^ƒCƒv
-    float maxDuration = 1.0f;           // ƒtƒF[ƒhƒAƒEƒg—p
-    sf::Color color = sf::Color(200, 255, 255); // F
+    float thickness = 2.0f;             // ï¿½ï¿½ï¿½ï¿½
+    VisualStyle style = VisualStyle::Line; // ï¿½`ï¿½ï¿½^ï¿½Cï¿½v
+    float maxDuration = 1.0f;           // ï¿½tï¿½Fï¿½[ï¿½hï¿½Aï¿½Eï¿½gï¿½p
+    sf::Color color = sf::Color(200, 255, 255); // ï¿½F
+    float explosionRadius = 150.0f;
 };
