@@ -337,6 +337,70 @@ private:
             }
             break;
         }
+        case SkillBehaviorType::Melee:
+        {
+            sf::Vector2f centerOffset(16.0f, 16.0f);
+            sf::Vector2f spawnCenter = origin + centerOffset;
+
+            float dx = targetPos.x - spawnCenter.x;
+            float dy = targetPos.y - spawnCenter.y;
+            float angle = std::atan2(dy, dx);
+
+            float reach = skill.range > 0.0f ? skill.range : 70.0f;
+            sf::Vector2f hitCenter = spawnCenter + sf::Vector2f(std::cos(angle), std::sin(angle)) * (reach * 0.5f);
+
+            auto hitbox = reg.CreateEntity();
+            reg.AddComponent<TransformComponent>(hitbox, TransformComponent{ hitCenter, sf::Vector2f(1.0f, 1.0f) });
+            float offset = -reach / 2.0f;
+            reg.AddComponent<BoxColliderComponent>(hitbox, BoxColliderComponent{ reach, reach, offset, offset, false, false });
+
+            ProjectileComponent dmgProj;
+            dmgProj.duration = 0.12f;
+            dmgProj.damage = stats.atk * (skill.damage / 100.0f);
+            dmgProj.isBouncy = true; // hits every enemy caught in the swing
+            dmgProj.ownerEntity = pcEntity;
+            dmgProj.type = SkillBehaviorType::Melee;
+            dmgProj.damageType = skill.element;
+            reg.AddComponent<ProjectileComponent>(hitbox, dmgProj);
+            reg.AddComponent<VelocityComponent>(hitbox, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
+
+            SparkVisualComponent sparkVis;
+            sparkVis.style = VisualStyle::Explosion;
+            sparkVis.maxDuration = 0.12f;
+            sparkVis.color = sf::Color(220, 220, 220, 255);
+            reg.AddComponent<SparkVisualComponent>(hitbox, sparkVis);
+            break;
+        }
+        case SkillBehaviorType::Projectile:
+        {
+            sf::Vector2f offset(16.0f, 16.0f);
+            sf::Vector2f spawnPos = origin + offset;
+
+            float dx = targetPos.x - spawnPos.x;
+            float dy = targetPos.y - spawnPos.y;
+            float angle = std::atan2(dy, dx);
+            float speed = 700.0f;
+
+            auto p = reg.CreateEntity();
+            reg.AddComponent<TransformComponent>(p, TransformComponent{ spawnPos, sf::Vector2f(1.0f, 1.0f) });
+            reg.AddComponent<VelocityComponent>(p, VelocityComponent{ sf::Vector2f(std::cos(angle) * speed, std::sin(angle) * speed) });
+            reg.AddComponent<BoxColliderComponent>(p, BoxColliderComponent{ 8.0f, 8.0f, -4.0f, -4.0f, false, false });
+
+            ProjectileComponent proj;
+            proj.duration = 2.0f;
+            proj.isBouncy = false; // single-target, stops on first hit
+            proj.damage = stats.atk * (skill.damage / 100.0f);
+            proj.ownerEntity = pcEntity;
+            proj.type = SkillBehaviorType::Projectile;
+            proj.damageType = skill.element;
+            reg.AddComponent<ProjectileComponent>(p, proj);
+
+            SparkVisualComponent sparkVis;
+            sparkVis.trailHistory.push_back(spawnPos);
+            sparkVis.color = sf::Color(150, 230, 255, 255);
+            reg.AddComponent<SparkVisualComponent>(p, sparkVis);
+            break;
+        }
         case SkillBehaviorType::Buff:
         {
             if (!reg.HasComponent<StatusEffectsComponent>(pcEntity)) break;

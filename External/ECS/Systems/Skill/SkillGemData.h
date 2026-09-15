@@ -93,6 +93,27 @@ private:
         nova.isValid = true;
         gems.push_back({ 5, nova });
 
+        SkillData cleave;
+        cleave.name = "Cleave";
+        cleave.behaviorType = SkillBehaviorType::Melee;
+        cleave.cooldownTime = 0.6f;
+        cleave.mpCost = 8;
+        cleave.damage = 110.0f; // % of atk
+        cleave.range = 70.0f;
+        cleave.element = DamageElement::Physical;
+        cleave.isValid = true;
+        gems.push_back({ 6, cleave });
+
+        SkillData frostBolt;
+        frostBolt.name = "Frost Bolt";
+        frostBolt.behaviorType = SkillBehaviorType::Projectile;
+        frostBolt.cooldownTime = 0.5f;
+        frostBolt.mpCost = 6;
+        frostBolt.damage = 140.0f; // % of atk, single-target so higher than AoE skills
+        frostBolt.element = DamageElement::Cold;
+        frostBolt.isValid = true;
+        gems.push_back({ 7, frostBolt });
+
         return gems;
     }
 };
