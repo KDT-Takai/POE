@@ -17,6 +17,24 @@
 
 class PassiveTreeSystem {
 private:
+    // Tree area keeps its old footprint (branches reach up to 350px from center);
+    // the footer below it is new space for the selected-node info + Confirm/Cancel.
+    static constexpr float kPanelW = 700.0f;
+    static constexpr float kTreeAreaH = 560.0f;
+    static constexpr float kFooterH = 90.0f;
+    static constexpr float kPanelH = kTreeAreaH + kFooterH;
+    static constexpr float kButtonW = 150.0f;
+    static constexpr float kButtonH = 36.0f;
+    static constexpr float kButtonGap = 24.0f;
+
+    struct PanelLayout {
+        float panelX = 0.0f;
+        float panelY = 0.0f;
+        sf::Vector2f center;
+        sf::FloatRect confirmBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
+        sf::FloatRect cancelBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
+    };
+
     std::shared_ptr<sf::Font> m_font;
     int m_selectedNodeId = 0;
 
@@ -40,25 +58,30 @@ public:
         if (players.empty()) return;
         Entity player = players[0];
         auto& tree = registry.GetComponent<PassiveTreeComponent>(player);
+        auto& equipment = registry.GetComponent<EquipmentComponent>(player);
+        auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         auto& keyInput = InputManager::Instance().GetKeyInput();
-        sf::Vector2f dir(0.0f, 0.0f);
-        bool moved = false;
-        if (keyInput.IsGetKey(sf::Keyboard::Key::Left))  { dir = { -1.0f, 0.0f }; moved = true; }
-        if (keyInput.IsGetKey(sf::Keyboard::Key::Right)) { dir = { 1.0f, 0.0f }; moved = true; }
-        if (keyInput.IsGetKey(sf::Keyboard::Key::Up))    { dir = { 0.0f, -1.0f }; moved = true; }
-        if (keyInput.IsGetKey(sf::Keyboard::Key::Down))  { dir = { 0.0f, 1.0f }; moved = true; }
-
-        if (moved) {
-            MoveSelection(dir);
-        }
-
-        if (keyInput.IsGetKey(sf::Keyboard::Key::Enter)) {
-            TryAllocate(tree, registry.GetComponent<EquipmentComponent>(player), registry.GetComponent<CharacterStatsComponent>(player));
-        }
-
         if (keyInput.IsGetKey(sf::Keyboard::Key::Backspace)) {
-            TryDeallocate(tree, registry.GetComponent<EquipmentComponent>(player), registry.GetComponent<CharacterStatsComponent>(player));
+            TryDeallocate(tree, equipment, stats);
+        }
+
+        sf::RenderWindow* window = InputManager::Instance().GetWindow();
+        if (!window) return;
+        PanelLayout layout = ComputeLayout(window->getSize());
+
+        auto& mouseInput = InputManager::Instance().GetMouseInput();
+        if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
+            sf::Vector2f mouse = mouseInput.GetMousePointF();
+
+            int clickedNode = HitTestNode(layout, mouse);
+            if (clickedNode != -1) {
+                m_selectedNodeId = clickedNode;
+            } else if (layout.confirmBtn.contains(mouse)) {
+                TryAllocate(tree, equipment, stats);
+            } else if (layout.cancelBtn.contains(mouse)) {
+                Close();
+            }
         }
     }
 
@@ -74,13 +97,11 @@ public:
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
 
-        sf::Vector2u winSize = target.getSize();
-        float panelW = 700.0f;
-        float panelH = 560.0f;
-        float panelX = (winSize.x - panelW) / 2.0f;
-        float panelY = (winSize.y - panelH) / 2.0f;
+        PanelLayout layout = ComputeLayout(target.getSize());
+        float panelX = layout.panelX;
+        float panelY = layout.panelY;
 
-        sf::RectangleShape bg({ panelW, panelH });
+        sf::RectangleShape bg({ kPanelW, kPanelH });
         bg.setPosition({ panelX, panelY });
         bg.setFillColor(sf::Color(15, 15, 20, 235));
         bg.setOutlineColor(sf::Color(150, 150, 160));
@@ -89,12 +110,10 @@ public:
 
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::TogglePassiveTree));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Passive Tree (" + closeKey + " to close) - Arrows move, Enter allocate, Backspace respec", 15, sf::Color(255, 220, 120));
+            "Passive Tree (" + closeKey + " to close) - Click a node to select, Backspace respec", 15, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
             "Available Points: " + std::to_string(stats.passivePoints) +
             "   Orbs of Regret: " + std::to_string(stats.regretOrbs), 14, sf::Color(200, 200, 200));
-
-        sf::Vector2f center(panelX + panelW / 2.0f, panelY + panelH / 2.0f + 15.0f);
 
         for (const auto& node : PassiveTreeData::Nodes()) {
             for (int neighborId : node.neighbors) {
@@ -105,15 +124,15 @@ public:
                 bool bothAllocated = IsAllocated(tree, node.id) && IsAllocated(tree, neighborId);
                 sf::Color lineColor = bothAllocated ? sf::Color(120, 200, 255) : sf::Color(80, 80, 90);
                 std::array<sf::Vertex, 2> line = { {
-                    { center + sf::Vector2f(node.x, node.y), lineColor },
-                    { center + sf::Vector2f(neighbor->x, neighbor->y), lineColor }
+                    { layout.center + sf::Vector2f(node.x, node.y), lineColor },
+                    { layout.center + sf::Vector2f(neighbor->x, neighbor->y), lineColor }
                 } };
                 target.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
             }
         }
 
         for (const auto& node : PassiveTreeData::Nodes()) {
-            sf::Vector2f pos = center + sf::Vector2f(node.x, node.y);
+            sf::Vector2f pos = layout.center + sf::Vector2f(node.x, node.y);
             float radius = (node.id == 0) ? 12.0f : 10.0f;
 
             sf::CircleShape circle(radius);
@@ -135,39 +154,69 @@ public:
             std::string info = selectedNode->effect.label + ": +" +
                 std::to_string(static_cast<int>(selectedNode->effect.value)) + (isPercent ? "%" : "");
             if (IsAllocated(tree, m_selectedNodeId)) info += " (allocated)";
-            DrawText(target, panelX + 20.0f, panelY + panelH - 50.0f, info, 14, sf::Color(220, 220, 220));
+            DrawText(target, panelX + 20.0f, panelY + kTreeAreaH + 4.0f, info, 14, sf::Color(220, 220, 220));
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 20.0f, panelY + panelH - 24.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
+            DrawText(target, panelX + 20.0f, panelY + kTreeAreaH + 26.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
         }
+
+        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+
+        bool canConfirm = m_selectedNodeId != 0 && !IsAllocated(tree, m_selectedNodeId);
+        DrawButton(target, layout.confirmBtn, "Confirm", layout.confirmBtn.contains(mouse),
+            canConfirm ? sf::Color(60, 130, 70) : sf::Color(60, 60, 65));
+        DrawButton(target, layout.cancelBtn, "Cancel", layout.cancelBtn.contains(mouse), sf::Color(130, 60, 60));
 
         target.setView(oldView);
     }
 
 private:
-    void MoveSelection(const sf::Vector2f& dir) {
-        const PassiveNodeDef* current = PassiveTreeData::Find(m_selectedNodeId);
-        if (!current) return;
+    PanelLayout ComputeLayout(sf::Vector2u winSize) const {
+        PanelLayout layout;
+        layout.panelX = (static_cast<float>(winSize.x) - kPanelW) / 2.0f;
+        layout.panelY = (static_cast<float>(winSize.y) - kPanelH) / 2.0f;
+        layout.center = { layout.panelX + kPanelW / 2.0f, layout.panelY + kTreeAreaH / 2.0f + 15.0f };
 
-        int bestId = -1;
-        float bestDot = 0.3f;
-        for (int neighborId : current->neighbors) {
-            const PassiveNodeDef* neighbor = PassiveTreeData::Find(neighborId);
-            if (!neighbor) continue;
+        float totalBtnW = kButtonW * 2.0f + kButtonGap;
+        float btnX = layout.panelX + (kPanelW - totalBtnW) / 2.0f;
+        float btnY = layout.panelY + kTreeAreaH + 54.0f;
+        layout.confirmBtn = sf::FloatRect({ btnX, btnY }, { kButtonW, kButtonH });
+        layout.cancelBtn = sf::FloatRect({ btnX + kButtonW + kButtonGap, btnY }, { kButtonW, kButtonH });
+        return layout;
+    }
 
-            sf::Vector2f delta(neighbor->x - current->x, neighbor->y - current->y);
-            float len = std::sqrt(delta.x * delta.x + delta.y * delta.y);
-            if (len < 0.001f) continue;
-            delta /= len;
-
-            float dot = delta.x * dir.x + delta.y * dir.y;
-            if (dot > bestDot) {
-                bestDot = dot;
-                bestId = neighborId;
-            }
+    int HitTestNode(const PanelLayout& layout, sf::Vector2f mouse) const {
+        for (const auto& node : PassiveTreeData::Nodes()) {
+            sf::Vector2f pos = layout.center + sf::Vector2f(node.x, node.y);
+            float radius = (node.id == 0 ? 12.0f : 10.0f) + 6.0f; // slack for easier clicking
+            sf::Vector2f d = mouse - pos;
+            if (d.x * d.x + d.y * d.y <= radius * radius) return node.id;
         }
-        if (bestId != -1) m_selectedNodeId = bestId;
+        return -1;
+    }
+
+    void DrawButton(sf::RenderTarget& target, const sf::FloatRect& rect, const std::string& label, bool hovered, sf::Color fillColor) {
+        sf::RectangleShape box(rect.size);
+        box.setPosition(rect.position);
+        sf::Color drawColor = hovered
+            ? sf::Color((std::min)(255, fillColor.r + 35), (std::min)(255, fillColor.g + 35), (std::min)(255, fillColor.b + 35), fillColor.a)
+            : fillColor;
+        box.setFillColor(drawColor);
+        box.setOutlineColor(sf::Color(200, 200, 200));
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
+
+        sf::Text text(*m_font, label, 16);
+        text.setFillColor(sf::Color::White);
+        text.setOutlineColor(sf::Color::Black);
+        text.setOutlineThickness(1.0f);
+        sf::FloatRect textBounds = text.getLocalBounds();
+        text.setPosition({
+            rect.position.x + (rect.size.x - textBounds.size.x) / 2.0f - textBounds.position.x,
+            rect.position.y + (rect.size.y - textBounds.size.y) / 2.0f - textBounds.position.y
+            });
+        target.draw(text);
     }
 
     void TryAllocate(PassiveTreeComponent& tree, EquipmentComponent& equipment, CharacterStatsComponent& stats) {

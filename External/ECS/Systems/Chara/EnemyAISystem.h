@@ -6,6 +6,7 @@
 #include "../../ECS/Components/Control/PlayerInput/PlayerInput.h"
 #include "../../ECS/Components/Physics/Facing/Facing.h"
 #include "../../ECS/Components/Chara/RangedAttacker.h"
+#include "../../ECS/Components/Chara/AreaAttacker.h"
 #include <cmath>
 
 class EnemyAISystem {
@@ -46,6 +47,26 @@ public:
                     }
                 } else {
                     vel.velocity = { 0.0f, 0.0f };
+                }
+                continue;
+            }
+
+            if (registry.HasComponent<AreaAttackerComponent>(entity)) {
+                auto& area = registry.GetComponent<AreaAttackerComponent>(entity);
+
+                // Rooted while winding up the slam; otherwise closes to triggerRange like a
+                // normal chaser and then holds position for EnemyAreaAttackSystem to fire.
+                if (area.currentTelegraph >= 0.0f || distance <= area.triggerRange) {
+                    vel.velocity = { 0.0f, 0.0f };
+                } else if (distance > 0.001f) {
+                    sf::Vector2f direction = diff / distance;
+                    vel.velocity = direction * stats.moveSpeed;
+
+                    if (registry.HasComponent<FacingComponent>(entity)) {
+                        auto& facing = registry.GetComponent<FacingComponent>(entity);
+                        if (direction.x > 0) facing.direction = 1;
+                        else if (direction.x < 0) facing.direction = -1;
+                    }
                 }
                 continue;
             }

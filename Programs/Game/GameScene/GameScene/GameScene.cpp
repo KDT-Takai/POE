@@ -37,6 +37,7 @@ GameScene::GameScene() {
 	enemySpawnSystem = std::make_shared<EnemySpawnSystem>();
 	enemyAISystem = std::make_shared<EnemyAISystem>();
 	enemyRangedAttackSystem = std::make_shared<EnemyRangedAttackSystem>();
+	enemyAreaAttackSystem = std::make_shared<EnemyAreaAttackSystem>();
 	collisionSystem = std::make_shared<CollisionSystem>();
 	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
 	statusEffectSystem = std::make_shared<StatusEffectSystem>();
@@ -164,13 +165,21 @@ void GameScene::Update() {
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
     skillGemSystem->Update(*registry, dt);
-    // ����
-    inputSystem->Update(*registry, dt);
-    // ������
-	skillSystem->Update(*registry, dt);
-    // �X�p�[�N
-    sparkVisualSystem->Update(*registry);
-	projectileSystem->Update(*registry, dt);
+
+    // いずれかのメニューが開いている間はワールドシミュレーションを止める
+    // (パッシブツリー等をゆっくり操作できるようにするため)
+    bool isPaused = characterSheetSystem->isOpen || inventorySystem->isOpen || passiveTreeSystem->isOpen
+        || vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen;
+
+    if (!isPaused) {
+        // ����
+        inputSystem->Update(*registry, dt);
+        // ������
+        skillSystem->Update(*registry, dt);
+        // �X�p�[�N
+        sparkVisualSystem->Update(*registry);
+        projectileSystem->Update(*registry, dt);
+    }
     // �����蔻��
     if (registry->IsValid(playerEntity)) {
         auto& input = registry->GetComponent<PlayerInputComponent>(playerEntity);
@@ -184,19 +193,22 @@ void GameScene::Update() {
     if (registry->HasComponent<TransformComponent>(playerEntity)) {
         playerPos = registry->GetComponent<TransformComponent>(playerEntity).position;
     }
-    // �G
-//    enemySpawnSystem->Update(*registry, dt, playerPos);
-	enemyAISystem->Update(*registry, dt, playerPos);
-	enemyRangedAttackSystem->Update(*registry, dt, playerPos);
-    // �ړ�
-    movementSystem->Update(*registry, dt);
-    statusEffectSystem->Update(*registry, dt);
-    // �������Z
-    physicsSystem->Update(*registry, dt);
-	// �Փˏ���
-	collisionSystem->Update(*registry, dt);
-	itemPickupSystem->Update(*registry, dt);
-	bossPhaseSystem->Update(*registry, dt);
+    if (!isPaused) {
+        // �G
+    //    enemySpawnSystem->Update(*registry, dt, playerPos);
+        enemyAISystem->Update(*registry, dt, playerPos);
+        enemyRangedAttackSystem->Update(*registry, dt, playerPos);
+        enemyAreaAttackSystem->Update(*registry, dt, playerPos);
+        // �ړ�
+        movementSystem->Update(*registry, dt);
+        statusEffectSystem->Update(*registry, dt);
+        // �������Z
+        physicsSystem->Update(*registry, dt);
+        // �Փˏ���
+        collisionSystem->Update(*registry, dt);
+        itemPickupSystem->Update(*registry, dt);
+        bossPhaseSystem->Update(*registry, dt);
+    }
 
     // �Q�[���̏I���m�F
     if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {

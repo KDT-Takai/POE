@@ -10,6 +10,7 @@
 #include "../../ECS/Components/Tags/Boss/BossPhase.h"
 #include "../../ECS/Components/Interaction/Interaction.h"
 #include "../../ECS/Components/Chara/RangedAttacker.h"
+#include "../../ECS/Components/Chara/AreaAttacker.h"
 
 struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
@@ -131,9 +132,23 @@ private:
                 255);
         }
 
-        // レア/ユニークとは独立して、一定確率で遠距離攻撃アーケタイプにする
-        // (接触ダメージのみだった既存モンスターに行動パターンの幅を持たせる)
-        if (roll(rng) < 0.2f) {
+        // レア/ユニークとは独立して、一定確率で行動パターンの異なるアーケタイプにする
+        // (接触ダメージのみだった既存モンスターに行動パターンの幅を持たせる。
+        //  遠距離/範囲攻撃は互いに排他)
+        float archetypeRoll = roll(rng);
+        if (archetypeRoll < 0.15f) {
+            stats.name = "叩き潰す" + stats.name;
+            circle.radius *= 1.1f;
+
+            AreaAttackerComponent area;
+            area.triggerRange = 90.0f;
+            area.telegraphTime = (std::max)(0.5f, 0.9f - tierScale * 0.05f);
+            area.cooldownTime = 3.2f;
+            area.radius = 100.0f;
+            area.damagePercent = 90.0f;
+            area.baseColor = circle.color;
+            enemy.AddComponent(area);
+        } else if (archetypeRoll < 0.35f) {
             stats.name = "射手の" + stats.name;
             circle.radius *= 0.85f;
 

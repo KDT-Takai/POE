@@ -12,6 +12,7 @@
 
 ### 戦闘・キャラクター
 - モンスターの遠距離攻撃アーケタイプ: `SpawnTrash`で雑魚モンスターの20%に`RangedAttackerComponent`を付与。`EnemyAISystem`は保持中このコンポーネント持ちを検知するとプレイヤーへ直進せず、近すぎれば離れ(kite)・遠すぎれば詰め・射程内なら停止して距離を保つ。`EnemyRangedAttackSystem`が射程内でクールダウン経過時にプレイヤーへ向けてプロジェクタイル(`ProjectileComponent::isEnemy=true`)を発射。`CollisionSystem`にプロジェクタイル対プレイヤーの当たり判定を新設(従来は接触ダメージのみで、敵の飛び道具がプレイヤーに当たる経路が存在しなかった)。
+- モンスターの範囲攻撃(叩き潰し)アーケタイプ: `SpawnTrash`で雑魚モンスターの15%に`AreaAttackerComponent`を付与(遠距離アーケタイプとは排他、合計35%がどちらか一方)。`EnemyAISystem`は保持中このコンポーネント持ちを検知すると`triggerRange`まで直進で詰め、範囲内に入ると停止してテレグラフ(予兆)に入る。`EnemyAreaAttackSystem`がテレグラフ中は`CircleComponent`の色を赤く点滅させ、`telegraphTime`経過時点でプレイヤーが`radius`内にいればダメージ(`CombatMath::ApplyDamage`+状態異常抽選、既存の接触ダメージ処理と同じ経路)を与えてクールダウンへ。**このセッションでは環境のコンパイラ制約(VS2019ではv143必須プロジェクトがwinrtヘッダでICE)によりビルド未検証。実機でのビルド・動作確認が必要。**
 - PoEライクな戦闘計算 (`CombatMath`): 命中率 (Accuracy vs Evasion)、Armour非線形軽減、属性耐性%、エナジーシールド (Chaos貫通)、Leech (レート上限あり)、状態異常発生率。
 - 状態異常システム (`StatusEffectSystem`/`StatusEffects.h`): Ignite/Chill/Freeze/Shock/Poison(スタック)/Bleed/Stun。HUDにアイコン表示済み (`UISystem::DrawDebuffIcons`)。
 - モンスターレアリティ (Normal/Magic/Rare/Unique) と接触属性ダメージのバリエーション、Act/幕間ごとの属性テーマ付け。
