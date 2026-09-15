@@ -47,15 +47,27 @@ public:
         return ItemFactory::SellValue(item) * 3;
     }
 
+    static int RerollPrice(int playerLevel) {
+        return 20 + playerLevel * 4;
+    }
+
     void Update(Registry& registry, float dt) {
         if (messageTimer > 0.0f) messageTimer -= dt;
-        if (!isOpen || m_stock.empty()) return;
+        if (!isOpen) return;
 
         auto players = registry.View<PlayerTag, InventoryComponent, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity player = players[0];
+        auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         auto& keyInput = InputManager::Instance().GetKeyInput();
+
+        if (keyInput.IsGetKey(sf::Keyboard::Key::R)) {
+            TryReroll(stats);
+        }
+
+        if (m_stock.empty()) return;
+
         int count = static_cast<int>(m_stock.size());
         m_selectedIndex = std::clamp(m_selectedIndex, 0, count - 1);
 
@@ -63,7 +75,7 @@ public:
         if (keyInput.IsGetKey(sf::Keyboard::Key::Up)) m_selectedIndex = (m_selectedIndex - 1 + count) % count;
 
         if (keyInput.IsGetKey(sf::Keyboard::Key::Enter)) {
-            TryBuy(registry.GetComponent<InventoryComponent>(player), registry.GetComponent<CharacterStatsComponent>(player));
+            TryBuy(registry.GetComponent<InventoryComponent>(player), stats);
         }
     }
 
@@ -87,18 +99,25 @@ public:
         target.draw(bg);
 
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Vendor (B to close) - Up/Down select, Enter buy", 15, sf::Color(255, 220, 120));
+            "Vendor (B to close) - Up/Down select, Enter buy, R reroll stock", 15, sf::Color(255, 220, 120));
 
         int gold = 0;
+        int playerLevel = 1;
         auto players = registry.View<PlayerTag, CharacterStatsComponent>();
-        if (!players.empty()) gold = registry.GetComponent<CharacterStatsComponent>(players[0]).gold;
-        DrawText(target, panelX + 20.0f, panelY + 40.0f, "Gold: " + std::to_string(gold), 13, sf::Color(255, 215, 90));
+        if (!players.empty()) {
+            const auto& playerStats = registry.GetComponent<CharacterStatsComponent>(players[0]);
+            gold = playerStats.gold;
+            playerLevel = playerStats.level;
+        }
+        DrawText(target, panelX + 20.0f, panelY + 40.0f,
+            "Gold: " + std::to_string(gold) + "   Reroll cost: " + std::to_string(RerollPrice(playerLevel)) + "g",
+            13, sf::Color(255, 215, 90));
 
         float listY = panelY + 70.0f;
         float lineHeight = 24.0f;
 
         if (m_stock.empty()) {
-            DrawText(target, panelX + 20.0f, listY, "(sold out)", 14, sf::Color(150, 150, 150));
+            DrawText(target, panelX + 20.0f, listY, "(sold out - press R to reroll)", 14, sf::Color(150, 150, 150));
         } else {
             m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(m_stock.size()) - 1);
 
@@ -171,6 +190,21 @@ private:
         } else {
             m_selectedIndex = 0;
         }
+    }
+
+    void TryReroll(CharacterStatsComponent& stats) {
+        int price = RerollPrice(stats.level);
+        if (stats.gold < price) {
+            lastActionMessage = "Not enough gold to reroll";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        stats.gold -= price;
+        GenerateStock(stats.level);
+        m_selectedIndex = 0;
+        lastActionMessage = "Stock rerolled";
+        messageTimer = 2.0f;
     }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {
