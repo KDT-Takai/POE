@@ -180,8 +180,9 @@ void GameScene::Update() {
 
     // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
     // ワールドシミュレーションを止める。ただしインベントリ(アイテム)/キャラクター
-    // シート(ステータス)はPoE2同様、開いたまま戦闘・移動を続けられるようにする。
-    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen;
+    // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
+    // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。
+    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen;
     // インベントリは開いたままでもワールドは動き続けるが、マウス操作(ドラッグ&
     // ドロップ等)はインベントリ側が優先的に受け取るべきなので、地面アイテムの
     // クリック拾得/Skill1割当の左クリックはここが開いている間だけ別途止める。
