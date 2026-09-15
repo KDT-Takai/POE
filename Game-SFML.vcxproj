@@ -110,7 +110,6 @@
     <ClInclude Include="External\ECS\EntityObject\EntityObject.h" />
     <ClInclude Include="External\ECS\Registry\Registry.h" />
     <ClInclude Include="External\ECS\Systems\Physics\CollisionSystem.h" />
-    <ClInclude Include="External\ECS\Systems\Physics\MovementSystem.h" />
     <ClInclude Include="External\ECS\Systems\Physics\PhysicsSystem.h" />
     <ClInclude Include="External\ECS\Systems\Physics\ProjectileSystem.h" />
     <ClInclude Include="External\ECS\Systems\RenderSystem.h" />

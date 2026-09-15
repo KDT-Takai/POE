@@ -26,7 +26,6 @@ GameScene::GameScene() {
     renderSystem = std::make_shared<RenderSystem>();
 	
     inputSystem = std::make_shared<InputSystem>();
-    movementSystem = std::make_shared<MovementSystem>();
     physicsSystem = std::make_shared<PhysicsSystem>();
     mapRenderSystem = std::make_shared<MapRenderSystem>();
 	skillSystem = std::make_shared<SkillSystem>();
@@ -201,8 +200,6 @@ void GameScene::Update() {
         enemyRangedAttackSystem->Update(*registry, dt, playerPos);
         enemyAreaAttackSystem->Update(*registry, dt, playerPos);
         enemySummonSystem->Update(*registry, dt, playerPos);
-        // �ړ�
-        movementSystem->Update(*registry, dt);
         statusEffectSystem->Update(*registry, dt);
         // �������Z
         physicsSystem->Update(*registry, dt);

@@ -5,7 +5,6 @@
 #include <System/Campaign/CampaignManager.h>
 // ��
 #include "../../ECS/Systems/Contorol/InputSystem.h"
-#include "../../ECS/Systems/Physics/MovementSystem.h"
 #include "../../ECS/Systems/Physics/PhysicsSystem.h"
 #include "../../ECS/Systems/World/MapRenderSystem.h"
 #include "../../ECS/Systems/Skill/SkillSystem.h"
@@ -62,7 +61,6 @@ private:
     std::shared_ptr<RenderSystem> renderSystem;
 
     std::shared_ptr<InputSystem> inputSystem;
-    std::shared_ptr<MovementSystem> movementSystem;
     std::shared_ptr<PhysicsSystem> physicsSystem;
     std::shared_ptr<MapRenderSystem> mapRenderSystem;
     std::shared_ptr<SkillSystem> skillSystem;
