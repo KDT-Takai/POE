@@ -305,7 +305,7 @@ private:
         }
 
         if (chanceRoll(rng) < 0.3f) {
-            std::uniform_int_distribution<int> currencyPick(0, 3);
+            std::uniform_int_distribution<int> currencyPick(0, static_cast<int>(CurrencyType::Count) - 1);
             CurrencyType currencyType = static_cast<CurrencyType>(currencyPick(rng));
 
             auto currencyPickup = registry.CreateEntityObject();

@@ -23,7 +23,7 @@
 ### アイテム・進行
 - 装備システム: 9スロット、Prefix/Suffix affix、レアリティ4段階、PowerScoreによる比較 (`EquipmentSystem`)。
 - インベントリ管理UI (`InventorySystem`, Iキーで開閉): 拾得アイテムは`InventoryComponent`(24枠)へ格納。Up/Downで選択、Enterで装備(既存装備は同じ枠に戻る=入れ替え)、Xで売却、Delで破棄。選択中アイテムと該当スロットの現装備のPowerScoreを比較表示。満杯時は自動売却にフォールバック。セーブ/ロード対応 (`CampaignManager`)。
-- 通貨/クラフト: Transmutation/Regal/Chaos を装備済みアイテムに自動適用 (`CurrencySystem`)。
+- 通貨/クラフト: Transmutation/Regal/Chaos/Alchemy/Augmentation/Annulment/Chance/Scouring を装備済みアイテムに自動適用 (`CurrencySystem`)。各通貨ごとの対象条件 (`FindEligibleSlot`) を満たす最初の装備スロットへ即座に効果を適用する設計 (所持・選択UIは無し)。`CurrencyType`に`Count`番兵を追加し、ドロップ抽選 (`CollisionSystem`) がハードコードした範囲ではなく`CurrencyType::Count`から動的に算出するよう修正 (新規追加時の抜け漏れ防止)。Artificer's Orb (Socket追加) はSocket/Runeシステム自体が未実装のため、Vaal Orb/Mirror of KalandraはリスクリワードUI設計が必要なため今回は見送り。ビルド未検証(環境制約は下記)だが、`CurrencySystem.h`単体はcl.exe構文チェックでエラー無しを確認済み。
 - XP/レベリング: 指数カーブ。レベルアップでランダム自動付与だったパッシブ廃止 (`PassiveSystem`削除)、代わりにレベルアップ毎に1ポイント獲得しパッシブツリーUI (`PassiveTreeSystem`, Pキーで開閉) で手動選択。中央スタートノードから4方向(攻撃/防御/速度・マナ/耐性)へ5ノードずつ伸びるグラフ構造 (`PassiveTreeData`)。矢印キーでノード間移動、Enterで隣接済みノードのみ割り振り可能。`baseStats`/`live`分離によりレベル・XP・パッシブが装備変更で消えないよう修正済み（ゾーン遷移時に`equipment.baseStats`が未復元だったバグも合わせて修正）。
 - NPC/Vendor(商人)システム: タウン中央に商人NPCを配置 (`ZoneBuilder::SpawnVendor`)。近づいてBキーで開く`VendorSystem`から、プレイヤーレベルに応じて生成された在庫6点(訪問毎に再生成、購入で減る)をゴールドで購入しインベントリへ追加できる。買値はSellValueの3倍。売却は引き続きインベントリUI側で行う。在庫はTキーでゴールドを払ってリロール可能 (`VendorSystem::TryReroll`、価格は`RerollPrice(playerLevel) = 20 + level*4`)。在庫が売り切れていてもリロールは可能。
 - ゴールド経済: 拾った弱い装備を自動売却。

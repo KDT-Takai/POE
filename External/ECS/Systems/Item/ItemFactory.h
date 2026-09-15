@@ -88,6 +88,18 @@ public:
         return affix;
     }
 
+    // Rolls from just the prefix or just the suffix pool (e.g. Orb of Augmentation,
+    // which must add the missing affix side rather than either at random).
+    static ItemAffix RollAffixOfType(bool isPrefix, int itemLevel, std::mt19937& rng) {
+        auto pool = isPrefix ? PrefixPool() : SuffixPool();
+        std::uniform_int_distribution<int> pick(0, static_cast<int>(pool.size()) - 1);
+        ItemAffix affix = pool[pick(rng)];
+
+        std::uniform_real_distribution<float> variance(0.85f, 1.15f);
+        affix.value *= (1.0f + itemLevel * 0.03f) * variance(rng);
+        return affix;
+    }
+
 private:
     static std::string BaseNameFor(EquipSlot slot) {
         switch (slot) {
