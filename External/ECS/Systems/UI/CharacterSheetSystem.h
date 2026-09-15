@@ -41,7 +41,7 @@ public:
         sf::Vector2u winSize = target.getSize();
         float panelW = 620.0f;
         float panelH = 480.0f;
-        float panelX = (winSize.x - panelW) / 2.0f;
+        float panelX = 40.0f;
         float panelY = (winSize.y - panelH) / 2.0f;
 
         sf::RectangleShape bg({ panelW, panelH });
