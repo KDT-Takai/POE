@@ -18,10 +18,16 @@
 
 class VendorSystem {
 private:
+    // Selling only happens through this vendor window (talk to the NPC), never from the
+    // field inventory screen -- matches real PoE2, where a vendor visit is required to
+    // liquidate items rather than being able to sell from anywhere.
+    enum class VendorTab { Buy, Sell };
+
     std::shared_ptr<sf::Font> m_font;
     std::vector<ItemComponent> m_stock;
     bool m_stockGenerated = false;
     int m_selectedIndex = 0;
+    VendorTab m_activeTab = VendorTab::Buy;
 
 public:
     bool isOpen = false;
@@ -36,6 +42,7 @@ public:
         if (!m_stockGenerated) GenerateStock(playerLevel);
         isOpen = true;
         m_selectedIndex = 0;
+        m_activeTab = VendorTab::Buy;
     }
 
     void Close() { isOpen = false; }
@@ -61,6 +68,7 @@ public:
         if (players.empty()) return;
         Entity player = players[0];
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
+        auto& inventory = registry.GetComponent<InventoryComponent>(player);
 
         auto& keyInput = InputManager::Instance().GetKeyInput();
 
@@ -68,28 +76,42 @@ public:
             TryReroll(stats);
         }
 
-        if (m_stock.empty()) return;
+        if (keyInput.IsGetKey(sf::Keyboard::Key::Left) || keyInput.IsGetKey(sf::Keyboard::Key::Right)) {
+            m_activeTab = (m_activeTab == VendorTab::Buy) ? VendorTab::Sell : VendorTab::Buy;
+            m_selectedIndex = 0;
+        }
 
-        int count = static_cast<int>(m_stock.size());
+        int count = (m_activeTab == VendorTab::Buy)
+            ? static_cast<int>(m_stock.size())
+            : static_cast<int>(inventory.items.size());
+        if (count == 0) return;
         m_selectedIndex = std::clamp(m_selectedIndex, 0, count - 1);
 
         if (keyInput.IsGetKey(sf::Keyboard::Key::Down)) m_selectedIndex = (m_selectedIndex + 1) % count;
         if (keyInput.IsGetKey(sf::Keyboard::Key::Up)) m_selectedIndex = (m_selectedIndex - 1 + count) % count;
 
         if (keyInput.IsGetKey(sf::Keyboard::Key::Enter)) {
-            TryBuy(registry.GetComponent<InventoryComponent>(player), stats);
+            if (m_activeTab == VendorTab::Buy) TryBuy(inventory, stats);
+            else TrySell(inventory, stats);
         }
     }
 
     void Render(Registry& registry, sf::RenderTarget& target) {
         if (!isOpen || !m_font) return;
 
+        auto players = registry.View<PlayerTag, InventoryComponent, CharacterStatsComponent>();
+        if (players.empty()) return;
+        Entity player = players[0];
+        const auto& playerStats = registry.GetComponent<CharacterStatsComponent>(player);
+        const auto& inventory = registry.GetComponent<InventoryComponent>(player);
+
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
 
         sf::Vector2u winSize = target.getSize();
         float panelW = 620.0f;
-        float panelH = 480.0f;
+        // Tall enough to list a full 24-slot bag on the Sell tab without scrolling.
+        float panelH = 660.0f;
         float panelX = (winSize.x - panelW) / 2.0f;
         float panelY = (winSize.y - panelH) / 2.0f;
 
@@ -103,46 +125,25 @@ public:
         std::string closeKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorToggle));
         std::string rerollKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorReroll));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Vendor (" + closeKeyName + " to close) - Up/Down select, Enter buy, " + rerollKeyName + " reroll stock", 15, sf::Color(255, 220, 120));
+            "Vendor (" + closeKeyName + " to close) - Left/Right switch tab, Up/Down select, Enter buy/sell, " + rerollKeyName + " reroll stock",
+            14, sf::Color(255, 220, 120));
 
-        int gold = 0;
-        int playerLevel = 1;
-        auto players = registry.View<PlayerTag, CharacterStatsComponent>();
-        if (!players.empty()) {
-            const auto& playerStats = registry.GetComponent<CharacterStatsComponent>(players[0]);
-            gold = playerStats.gold;
-            playerLevel = playerStats.level;
-        }
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
-            "Gold: " + std::to_string(gold) + "   Reroll cost: " + std::to_string(RerollPrice(playerLevel)) + "g",
+            "Gold: " + std::to_string(playerStats.gold) + "   Reroll cost: " + std::to_string(RerollPrice(playerStats.level)) + "g",
             13, sf::Color(255, 215, 90));
 
-        float listY = panelY + 70.0f;
-        float lineHeight = 24.0f;
+        // Tabs
+        bool buyActive = m_activeTab == VendorTab::Buy;
+        DrawText(target, panelX + 20.0f, panelY + 58.0f, buyActive ? "[ Buy ]" : "  Buy  ", 14, buyActive ? sf::Color::White : sf::Color(140, 140, 140));
+        DrawText(target, panelX + 100.0f, panelY + 58.0f, buyActive ? "  Sell  " : "[ Sell ]", 14, buyActive ? sf::Color(140, 140, 140) : sf::Color::White);
 
-        if (m_stock.empty()) {
-            DrawText(target, panelX + 20.0f, listY, "(sold out - press " + rerollKeyName + " to reroll)", 14, sf::Color(150, 150, 150));
+        float listY = panelY + 82.0f;
+        float lineHeight = 20.0f;
+
+        if (buyActive) {
+            DrawItemList(target, m_stock, panelX, panelW, listY, lineHeight, true, "(sold out - press " + rerollKeyName + " to reroll)");
         } else {
-            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(m_stock.size()) - 1);
-
-            for (size_t i = 0; i < m_stock.size(); ++i) {
-                const ItemComponent& item = m_stock[i];
-                float y = listY + static_cast<float>(i) * lineHeight;
-
-                bool selected = (static_cast<int>(i) == m_selectedIndex);
-                if (selected) {
-                    sf::RectangleShape highlight({ panelW - 40.0f, lineHeight });
-                    highlight.setPosition({ panelX + 20.0f, y });
-                    highlight.setFillColor(sf::Color(60, 60, 90, 180));
-                    target.draw(highlight);
-                }
-
-                std::string line = ItemUIHelpers::SlotName(item.slot) + ": " + item.baseName + " (" +
-                    ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ", " +
-                    std::to_string(item.affixes.size()) + " mods) - " + std::to_string(BuyPrice(item)) + "g";
-
-                DrawText(target, panelX + 26.0f, y + 2.0f, line, 14, ItemUIHelpers::RarityColor(item.rarity));
-            }
+            DrawItemList(target, inventory.items, panelX, panelW, listY, lineHeight, false, "(bag is empty)");
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
@@ -193,6 +194,54 @@ private:
             m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(m_stock.size()) - 1);
         } else {
             m_selectedIndex = 0;
+        }
+    }
+
+    void TrySell(InventoryComponent& inventory, CharacterStatsComponent& stats) {
+        if (inventory.items.empty()) return;
+        if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(inventory.items.size())) return;
+
+        const ItemComponent& item = inventory.items[m_selectedIndex];
+        int goldValue = ItemFactory::SellValue(item);
+        stats.gold += goldValue;
+        lastActionMessage = "Sold: " + item.baseName + " (+" + std::to_string(goldValue) + "g)";
+        messageTimer = 2.0f;
+
+        inventory.items.erase(inventory.items.begin() + m_selectedIndex);
+        if (!inventory.items.empty()) {
+            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        } else {
+            m_selectedIndex = 0;
+        }
+    }
+
+    // Shared renderer for both the vendor's buy stock and the player's sellable
+    // inventory -- same layout, only the price source (buy vs sell value) differs.
+    void DrawItemList(sf::RenderTarget& target, const std::vector<ItemComponent>& items, float panelX, float panelW,
+        float listY, float lineHeight, bool isBuyList, const std::string& emptyMessage) {
+        if (items.empty()) {
+            DrawText(target, panelX + 20.0f, listY, emptyMessage, 14, sf::Color(150, 150, 150));
+            return;
+        }
+
+        for (size_t i = 0; i < items.size(); ++i) {
+            const ItemComponent& item = items[i];
+            float y = listY + static_cast<float>(i) * lineHeight;
+
+            bool selected = (static_cast<int>(i) == m_selectedIndex);
+            if (selected) {
+                sf::RectangleShape highlight({ panelW - 40.0f, lineHeight });
+                highlight.setPosition({ panelX + 20.0f, y });
+                highlight.setFillColor(sf::Color(60, 60, 90, 180));
+                target.draw(highlight);
+            }
+
+            int price = isBuyList ? BuyPrice(item) : ItemFactory::SellValue(item);
+            std::string line = ItemUIHelpers::SlotName(item.slot) + ": " + item.baseName + " (" +
+                ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ", " +
+                std::to_string(item.affixes.size()) + " mods) - " + std::to_string(price) + "g";
+
+            DrawText(target, panelX + 26.0f, y + 2.0f, line, 13, ItemUIHelpers::RarityColor(item.rarity));
         }
     }
 

@@ -15,9 +15,9 @@ AIは同じ提案を繰り返さないこと。詳しい経緯・議論の記録
 
 - **ECS実装**: 外部ECSライブラリ (EnTT等) は使わず自作 (`External/ECS/`)（学習目的 + 依存を増やさないため）。
 - **ECSの内部構造**: `ComponentPool` はスパースセット化してO(1) Insert/Remove/Get/Has、`ComponentTypeId` はtypeidハッシュではなく静的カウンタで採番、`View<>` はdense配列イテレーション（パフォーマンス最適化を実施済み。同種の見直し提案は不要）。
-- **アイテムの流れ**: 拾ったアイテムは即自動装備/自動売却ではなく、まず `InventoryComponent` に格納し、`InventorySystem`（Iキー）で手動比較・装備入替・売却・破棄する（PoEらしい手動管理を優先）。インベントリが満杯の場合のみ自動売却にフォールバックする。
+- **アイテムの流れ**: 拾ったアイテムは即自動装備/自動売却ではなく、まず `InventoryComponent` に格納し、`InventorySystem`（Iキー）で手動比較・装備入替（破棄はパネル外へドラッグ&ドロップ）する（PoEらしい手動管理を優先）。売却はインベントリ画面では行えず、商人NPCに話しかける必要がある（後述）。インベントリが満杯の場合のみ自動売却にフォールバックする。
 - **パッシブ成長**: レベルアップ時の自動ランダム付与 (`PassiveSystem`) は廃止。代わりに1ポイント獲得し `PassiveTreeSystem`（Pキー）で手動選択・割り振りする。ノードは隣接済み（スタートノード含む）でないと割り振れない。respec（再割り振り）は `CurrencyType::Regret`（Orb of Regret、`CharacterStatsComponent::regretOrbs`に蓄積）を1個消費してBackspaceキーで解放する形で実装済み。他の割り振り済みノードを孤立させる解放は不可（BFSで到達可能性を検証）。
-- **Vendorの購入/売却分担**: 購入はタウンの商人NPC（Bキー、`VendorSystem`）でのみ可能。売却は場所を問わずインベントリUI（`InventorySystem`、Ctrl+左クリックでクイック売却）で行う（Vendor側に売却機能を重複実装しない）。
+- **Vendorの購入/売却分担**: 購入・売却ともにタウン/隠れ家の商人NPC（Bキー、`VendorSystem`）に話しかけて行う（PoE2本家準拠。インベントリUIからは売却できない）。`VendorSystem`内はBuy/Sellの2タブ(Left/Rightで切替)で、SellタブはプレイヤーのInventoryComponentを直接参照して一覧表示する。
 - **スキルの割り当て方式**: PoE2を参考に、5スキルスロットへのジェム割り当ては無料でいつでも変更可能とする(パッシブツリーのrespecとは異なりコスト無し)。ジェムの「発見」だけがモンスタードロップによる一度きりの恒久アンロック(`SkillGemInventoryComponent`)で、割り当て自体を制限しない。
 - **一時バフの実装方式**: 自己バフ系スキル(War Cry等)は`live`のCharacterStatsComponentを直接乗算で変更し、持続時間経過時は逆算除算ではなく`EquipmentSystem::RecalculateStats`の再実行で装備/パッシブ基準へ戻す。バフ中に他要因(レベルアップ等)でRecalculateStatsが走ってもステータスが恒久的に壊れないようにするため。
 - **Vendorの在庫リロール**: 同じ訪問中でもTキー + ゴールド消費で在庫6点を再生成できる（`VendorSystem::TryReroll`）。Rキーはプレイヤーのスキルスロット入力と衝突するため使わない。価格はプレイヤーレベルに応じて増加し、無限リロールでの経済破壊を抑える。

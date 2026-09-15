@@ -14,7 +14,10 @@ public:
         entity.AddComponent(MapComponent{});
         auto& map = entity.GetComponent<MapComponent>();
 
-        GenerateRoomsAndCorridors(map, w, h);
+        // ユーザーの好みでランダムウォーク方式に戻した(部屋+通路方式は区画的で
+        // 狭く感じるため、より広く開けたマップになるこちらを採用)。
+        int steps = (w * h) / 2;
+        GenerateRandomWalk(map, w, h, steps);
 
         return entity;
     }

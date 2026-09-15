@@ -28,9 +28,10 @@
 //   - 左ドラッグ&ドロップ: アイテムを移動(装備⇔バッグ、バッグ内入れ替え、
 //     パネル外へドロップで足元の地面に捨てる)
 //   - 右クリック: そのスロットに応じて装備/外すを即実行(クイック装備)
-//   - Ctrl+左クリック: そのアイテムを即売却(クイック売却)
 //   - カーソルを乗せる: 名前/レアリティ/追加効果/売却額のツールチップを表示
 //     (バッグアイテムの場合、同スロットの装備中アイテムとの比較も表示)
+// 売却はここでは行わない: PoE2本家同様、タウン/隠れ家の商人NPCに話しかけて
+// (Bキー、VendorSystem)売却する。
 class InventorySystem {
 private:
     static constexpr float kPanelW = 760.0f;
@@ -142,18 +143,8 @@ public:
         int hoveredCell = HitTestGridCell(layout, mouse);
         bool hoveredCellHasItem = hoveredCell >= 0 && hoveredCell < static_cast<int>(inventory.items.size());
 
-        auto& keyInput = InputManager::Instance().GetKeyInput();
-        bool ctrlHeld = keyInput.GetKey(sf::Keyboard::Key::LControl) || keyInput.GetKey(sf::Keyboard::Key::RControl);
-
         if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
-            if (ctrlHeld) {
-                // PoE2のCtrl+クリック(ヴェンダー/倉庫への即移動)を、売却の即実行として踏襲。
-                if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
-                    QuickSellDoll(hoveredDollSlot, equipment, stats);
-                } else if (hoveredCellHasItem) {
-                    QuickSellBag(hoveredCell, inventory, stats);
-                }
-            } else if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
+            if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
                 m_dragging = true;
                 m_dragFromEquipped = true;
                 m_dragSlot = hoveredDollSlot;
@@ -200,7 +191,7 @@ public:
 
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleInventory));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "所持品 (" + closeKey + " で閉じる) - ドラッグで移動/右クリックで装備・外す/Ctrl+クリックで売却",
+            "所持品 (" + closeKey + " で閉じる) - ドラッグで移動/右クリックで装備・外す/売却は商人に話しかける(Bキー)",
             15, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
             std::to_string(inventory.items.size()) + " / " + std::to_string(InventoryComponent::kCapacity) + " 個所持",
@@ -466,31 +457,6 @@ private:
 
         lastActionMessage = "外した: " + name;
         messageTimer = 2.5f;
-    }
-
-    void QuickSellBag(int bagIndex, InventoryComponent& inventory, CharacterStatsComponent& stats) {
-        if (bagIndex < 0 || bagIndex >= static_cast<int>(inventory.items.size())) return;
-        const ItemComponent& item = inventory.items[bagIndex];
-        int goldValue = ItemFactory::SellValue(item);
-        stats.gold += goldValue;
-
-        lastActionMessage = "売却した: " + item.baseName + " (" + std::to_string(goldValue) + "ゴールド)";
-        messageTimer = 2.5f;
-
-        inventory.items.erase(inventory.items.begin() + bagIndex);
-    }
-
-    void QuickSellDoll(EquipSlot slot, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
-        auto& slotOpt = equipment.slots[static_cast<size_t>(slot)];
-        if (!slotOpt.has_value()) return;
-
-        int goldValue = ItemFactory::SellValue(*slotOpt);
-        stats.gold += goldValue;
-        lastActionMessage = "売却した: " + slotOpt->baseName + " (" + std::to_string(goldValue) + "ゴールド)";
-        messageTimer = 2.5f;
-
-        slotOpt.reset();
-        EquipmentSystem::RecalculateStats(stats, equipment);
     }
 
     // カーソルを乗せたアイテムの詳細ツールチップ。バッグアイテムの場合は同スロットの
