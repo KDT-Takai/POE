@@ -8,6 +8,7 @@
 - キーバインド設定: `KeyBindings`(シングルトン)が移動/ロール/スキル5スロット/UIパネルトグル/Vendorリロールの計16アクションのキー割り当てを保持し`keybinds.cfg`に永続化。各システムは`sf::Keyboard::Key`リテラルを直接見ず`KeyBindings::Instance().Get(GameAction::X)`経由で参照するよう統一(移動はWASD側のみ対応、矢印キーのフォールバックとメニュー内カーソル移動は従来通り固定)。Oキーで`KeyBindSystem`(リバインドUI)を開閉、Up/Downで対象選択、Enterで次に押したキーを割り当て(既に別アクションで使用中のキーやUI固定キーへの割り当ては拒否)。各パネルのヘルプテキスト(「_ to close」等)も現在のバインドを動的表示するよう変更。
 - ECSパフォーマンス改善: `ComponentPool` をスパースセット化 (O(1) Insert/Remove/Get/Has)、`Registry` の `ComponentTypeId` を typeid ハッシュ廃止で静的カウンタ化、`View<>` をdense配列イテレーションに変更。
 - キャンペーン構造: `CampaignManager` で Act1〜4 + 幕間2つ + Endgame をゾーン単位で定義 (`ZoneDefinition`/`ActDefinition`)。タウン/戦闘ゾーン/ボスゾーンの遷移、`ZoneBuilder`/`MapGenerator` (タウン生成含む) と統合。
+- **マップ生成を部屋+通路方式へ刷新**: 従来の1タイル幅ランダムウォークから、矩形の部屋(5〜9タイル角、マップ面積に応じて4〜14室)を非重複配置しL字型通路で順に接続する方式(`MapGenerator::GenerateRoomsAndCorridors`)へ変更。部屋を1室も置けない極小マップの場合のみ旧ランダムウォークへフォールバック。開始/ゴールは最初/最後の部屋の中心に設置。**この変更はwinrt依存が無いため唯一実際にコンパイル・リンク・実行して検証済み**: 5サイズ×20試行=計100パターンでStart→Goal間のBFS到達可能性・Wood/Grassタイルが必ず1つずつ・部屋の範囲外はみ出し無し、を全て確認(`ECS.h`本体を経由するフルビルドは環境制約により別途未検証)。
 - タイトル/リザルト画面: セーブの有無による Continue/New Game 分岐、Hardcore選択 (H キー)。
 
 ### 戦闘・キャラクター

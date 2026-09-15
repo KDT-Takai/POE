@@ -3,6 +3,7 @@
 #include "../../ECS/Components/World/Map.h"
 #include <random>
 #include <algorithm>
+#include <vector>
 #include <spdlog/spdlog.h>
 
 class MapGenerator {
@@ -10,13 +11,10 @@ public:
     static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100) {
         auto entity = registry.CreateEntityObject();
 
-        //entity.AddComponent<MapComponent>();
         entity.AddComponent(MapComponent{});
         auto& map = entity.GetComponent<MapComponent>();
 
-        int steps = (w * h) / 2;
-
-        GenerateRandomWalk(map, w, h, steps);
+        GenerateRoomsAndCorridors(map, w, h);
 
         return entity;
     }
@@ -40,6 +38,75 @@ public:
 
         spdlog::info("Map Generated: Town Room ({}x{})", w, h);
         return entity;
+    }
+
+    // Carves a handful of rectangular rooms (non-overlapping, with a margin) connected
+    // in sequence by L-shaped corridors, which guarantees every room is reachable from
+    // the first. Falls back to the old single-corridor random walk if the map is too
+    // small to fit any room (so a playable start/goal path always exists).
+    static void GenerateRoomsAndCorridors(MapComponent& map, int width, int height) {
+        map.Resize(width, height); // defaults to all Stone (walls)
+
+        std::random_device rd;
+        std::mt19937 mt(rd());
+
+        struct Room {
+            int x, y, w, h;
+            sf::Vector2i Center() const { return { x + w / 2, y + h / 2 }; }
+        };
+        std::vector<Room> rooms;
+
+        std::uniform_int_distribution<int> roomSizeDist(5, 9);
+        int targetRoomCount = std::clamp((width * height) / 400, 4, 14);
+        int attempts = targetRoomCount * 10;
+
+        for (int a = 0; a < attempts && static_cast<int>(rooms.size()) < targetRoomCount; ++a) {
+            int rw = roomSizeDist(mt);
+            int rh = roomSizeDist(mt);
+            int maxX = width - rw - 2;
+            int maxY = height - rh - 2;
+            if (maxX <= 2 || maxY <= 2) break; // map too small for this room size
+
+            std::uniform_int_distribution<int> xDist(2, maxX);
+            std::uniform_int_distribution<int> yDist(2, maxY);
+            int rx = xDist(mt);
+            int ry = yDist(mt);
+
+            bool overlaps = false;
+            for (const auto& other : rooms) {
+                if (rx < other.x + other.w + 2 && rx + rw + 2 > other.x &&
+                    ry < other.y + other.h + 2 && ry + rh + 2 > other.y) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps) continue;
+
+            for (int y = ry; y < ry + rh; ++y) {
+                for (int x = rx; x < rx + rw; ++x) {
+                    map.SetTile(x, y, TileType::Dirt);
+                }
+            }
+            rooms.push_back({ rx, ry, rw, rh });
+        }
+
+        if (rooms.empty()) {
+            // Map too small to fit even one room; keep the old generator as a fallback
+            // so there is always some walkable area with a start/goal.
+            GenerateRandomWalk(map, width, height, (width * height) / 2);
+            return;
+        }
+
+        for (size_t i = 1; i < rooms.size(); ++i) {
+            CarveCorridor(map, rooms[i - 1].Center(), rooms[i].Center(), mt);
+        }
+
+        sf::Vector2i startCenter = rooms.front().Center();
+        sf::Vector2i goalCenter = rooms.back().Center();
+        map.SetTile(startCenter.x, startCenter.y, TileType::Wood);
+        map.SetTile(goalCenter.x, goalCenter.y, TileType::Grass);
+
+        spdlog::info("Map Generated: Rooms&Corridors ({}x{}, {} rooms)", width, height, static_cast<int>(rooms.size()));
     }
 
     static void GenerateRandomWalk(MapComponent& map, int width, int height, int steps) {
@@ -86,6 +153,25 @@ public:
         return positions;
     }
 private:
+    // Carves an L-shaped 1-tile-wide corridor between two points (random bend order),
+    // guaranteeing the two rooms it connects become mutually reachable.
+    static void CarveCorridor(MapComponent& map, sf::Vector2i from, sf::Vector2i to, std::mt19937& mt) {
+        std::uniform_int_distribution<int> coin(0, 1);
+        bool horizontalFirst = coin(mt) == 0;
+
+        int x = from.x, y = from.y;
+        auto carve = [&](int cx, int cy) { map.SetTile(cx, cy, TileType::Dirt); };
+
+        if (horizontalFirst) {
+            while (x != to.x) { carve(x, y); x += (to.x > x) ? 1 : -1; }
+            while (y != to.y) { carve(x, y); y += (to.y > y) ? 1 : -1; }
+        } else {
+            while (y != to.y) { carve(x, y); y += (to.y > y) ? 1 : -1; }
+            while (x != to.x) { carve(x, y); x += (to.x > x) ? 1 : -1; }
+        }
+        carve(to.x, to.y);
+    }
+
     static void SetStartGoal(MapComponent& map) {
         // �X�^�[�g�n�_�T��
         bool startSet = false;
