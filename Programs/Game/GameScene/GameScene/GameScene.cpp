@@ -40,6 +40,7 @@ GameScene::GameScene() {
 	itemPickupSystem = std::make_shared<ItemPickupSystem>();
 	bossPhaseSystem = std::make_shared<BossPhaseSystem>();
 	characterSheetSystem = std::make_shared<CharacterSheetSystem>();
+	inventorySystem = std::make_shared<InventorySystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -57,6 +58,7 @@ GameScene::GameScene() {
             auto& equipment = player.GetComponent<EquipmentComponent>();
             equipment.slots = campaign.GetSavedEquipment().slots;
             EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
+            player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
@@ -70,6 +72,9 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<EquipmentComponent>(playerEntity)) {
         campaign.SaveEquipment(registry->GetComponent<EquipmentComponent>(playerEntity));
     }
+    if (registry->HasComponent<InventoryComponent>(playerEntity)) {
+        campaign.SaveInventory(registry->GetComponent<InventoryComponent>(playerEntity).items);
+    }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
@@ -81,7 +86,13 @@ void GameScene::Update() {
 
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
         characterSheetSystem->Toggle();
+        if (characterSheetSystem->isOpen) inventorySystem->Close();
     }
+    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::I)) {
+        inventorySystem->Toggle();
+        if (inventorySystem->isOpen) characterSheetSystem->isOpen = false;
+    }
+    inventorySystem->Update(*registry, dt);
     // ����
     inputSystem->Update(*registry, dt);
     // ������
@@ -133,7 +144,8 @@ void GameScene::Update() {
             float distSq = dx * dx + dy * dy;
             m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-            if (m_playerNearPortal && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
+            if (m_playerNearPortal && !inventorySystem->isOpen &&
+                InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
                 spdlog::info("Entering next zone.");
                 AdvanceToNextZone();
                 return;
@@ -277,6 +289,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     }
 
     characterSheetSystem->Render(*registry, target);
+    inventorySystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
 }

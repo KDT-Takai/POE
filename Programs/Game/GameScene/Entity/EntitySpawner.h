@@ -15,6 +15,7 @@
 #include "../ECS/Components/Stats/SkillData/Skill.h"
 #include "../ECS/Components/Combat/StatusEffects.h"
 #include "../ECS/Components/Item/Equipment.h"
+#include "../ECS/Components/Item/Inventory.h"
 
 class EntitySpawner {
 public:
@@ -57,6 +58,7 @@ public:
         EquipmentComponent equipment;
         equipment.baseStats = stats;
         entity.AddComponent(equipment);
+        entity.AddComponent(InventoryComponent{});
 
         // �`��ݒ�
         float radius = 16.0f;

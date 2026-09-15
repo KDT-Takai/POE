@@ -62,6 +62,17 @@ public:
         return static_cast<EquipSlot>(pick(rng));
     }
 
+    static int SellValue(const ItemComponent& item) {
+        float multiplier = 1.0f;
+        switch (item.rarity) {
+        case ItemRarity::Magic: multiplier = 2.0f; break;
+        case ItemRarity::Rare: multiplier = 4.0f; break;
+        case ItemRarity::Unique: multiplier = 8.0f; break;
+        default: break;
+        }
+        return static_cast<int>((item.itemLevel * 2.0f + item.affixes.size() * 3.0f) * multiplier) + 1;
+    }
+
     static ItemAffix RollRandomAffix(int itemLevel, std::mt19937& rng) {
         auto prefixPool = PrefixPool();
         auto suffixPool = SuffixPool();

@@ -59,6 +59,44 @@ namespace {
         return it == m.end() ? def : it->second;
     }
 
+    void WriteItem(std::ofstream& out, const std::string& prefix, const ItemComponent& item) {
+        out << prefix << "slot=" << static_cast<int>(item.slot) << "\n";
+        out << prefix << "baseName=" << item.baseName << "\n";
+        out << prefix << "rarity=" << static_cast<int>(item.rarity) << "\n";
+        out << prefix << "itemLevel=" << item.itemLevel << "\n";
+        out << prefix << "baseValue=" << item.baseValue << "\n";
+        out << prefix << "affixCount=" << item.affixes.size() << "\n";
+        for (size_t a = 0; a < item.affixes.size(); ++a) {
+            std::string aprefix = prefix + "affix" + std::to_string(a) + ".";
+            const ItemAffix& affix = item.affixes[a];
+            out << aprefix << "stat=" << static_cast<int>(affix.stat) << "\n";
+            out << aprefix << "value=" << affix.value << "\n";
+            out << aprefix << "tier=" << affix.tier << "\n";
+            out << aprefix << "isPrefix=" << (affix.isPrefix ? 1 : 0) << "\n";
+        }
+    }
+
+    ItemComponent ReadItem(const std::unordered_map<std::string, std::string>& kv, const std::string& prefix, EquipSlot defaultSlot) {
+        ItemComponent item;
+        item.slot = static_cast<EquipSlot>(GetI(kv, prefix + "slot", static_cast<int>(defaultSlot)));
+        item.baseName = GetS(kv, prefix + "baseName", "Item");
+        item.rarity = static_cast<ItemRarity>(GetI(kv, prefix + "rarity", 0));
+        item.itemLevel = GetI(kv, prefix + "itemLevel", 1);
+        item.baseValue = GetF(kv, prefix + "baseValue", 0.0f);
+
+        int affixCount = GetI(kv, prefix + "affixCount", 0);
+        for (int a = 0; a < affixCount; ++a) {
+            std::string aprefix = prefix + "affix" + std::to_string(a) + ".";
+            ItemAffix affix;
+            affix.stat = static_cast<AffixStat>(GetI(kv, aprefix + "stat", 0));
+            affix.value = GetF(kv, aprefix + "value", 0.0f);
+            affix.tier = GetI(kv, aprefix + "tier", 1);
+            affix.isPrefix = GetI(kv, aprefix + "isPrefix", 1) != 0;
+            item.affixes.push_back(affix);
+        }
+        return item;
+    }
+
     void ReadStats(const std::unordered_map<std::string, std::string>& m, const std::string& prefix, CharacterStatsComponent& s) {
         s.name = GetS(m, prefix + "name", s.name);
         s.level = GetI(m, prefix + "level", s.level);
@@ -287,6 +325,7 @@ void CampaignManager::ResetCampaign() {
     m_endgameMapTier = 1;
     m_hasSavedPlayer = false;
     m_savedEquipment = EquipmentComponent{};
+    m_savedInventory.clear();
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -321,21 +360,13 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         const auto& slot = m_savedEquipment.slots[i];
         out << prefix << "present=" << (slot.has_value() ? 1 : 0) << "\n";
         if (!slot.has_value()) continue;
+        WriteItem(out, prefix, *slot);
+    }
 
-        const ItemComponent& item = *slot;
-        out << prefix << "baseName=" << item.baseName << "\n";
-        out << prefix << "rarity=" << static_cast<int>(item.rarity) << "\n";
-        out << prefix << "itemLevel=" << item.itemLevel << "\n";
-        out << prefix << "baseValue=" << item.baseValue << "\n";
-        out << prefix << "affixCount=" << item.affixes.size() << "\n";
-        for (size_t a = 0; a < item.affixes.size(); ++a) {
-            std::string aprefix = prefix + "affix" + std::to_string(a) + ".";
-            const ItemAffix& affix = item.affixes[a];
-            out << aprefix << "stat=" << static_cast<int>(affix.stat) << "\n";
-            out << aprefix << "value=" << affix.value << "\n";
-            out << aprefix << "tier=" << affix.tier << "\n";
-            out << aprefix << "isPrefix=" << (affix.isPrefix ? 1 : 0) << "\n";
-        }
+    out << "inventory.count=" << m_savedInventory.size() << "\n";
+    for (size_t i = 0; i < m_savedInventory.size(); ++i) {
+        std::string prefix = "inventory.item" + std::to_string(i) + ".";
+        WriteItem(out, prefix, m_savedInventory[i]);
     }
 }
 
@@ -370,26 +401,14 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
             m_savedEquipment.slots[i].reset();
             continue;
         }
+        m_savedEquipment.slots[i] = ReadItem(kv, prefix, static_cast<EquipSlot>(i));
+    }
 
-        ItemComponent item;
-        item.slot = static_cast<EquipSlot>(i);
-        item.baseName = GetS(kv, prefix + "baseName", "Item");
-        item.rarity = static_cast<ItemRarity>(GetI(kv, prefix + "rarity", 0));
-        item.itemLevel = GetI(kv, prefix + "itemLevel", 1);
-        item.baseValue = GetF(kv, prefix + "baseValue", 0.0f);
-
-        int affixCount = GetI(kv, prefix + "affixCount", 0);
-        for (int a = 0; a < affixCount; ++a) {
-            std::string aprefix = prefix + "affix" + std::to_string(a) + ".";
-            ItemAffix affix;
-            affix.stat = static_cast<AffixStat>(GetI(kv, aprefix + "stat", 0));
-            affix.value = GetF(kv, aprefix + "value", 0.0f);
-            affix.tier = GetI(kv, aprefix + "tier", 1);
-            affix.isPrefix = GetI(kv, aprefix + "isPrefix", 1) != 0;
-            item.affixes.push_back(affix);
-        }
-
-        m_savedEquipment.slots[i] = item;
+    m_savedInventory.clear();
+    int inventoryCount = GetI(kv, "inventory.count", 0);
+    for (int i = 0; i < inventoryCount; ++i) {
+        std::string prefix = "inventory.item" + std::to_string(i) + ".";
+        m_savedInventory.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
     }
 
     return true;

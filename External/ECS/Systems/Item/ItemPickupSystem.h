@@ -2,12 +2,14 @@
 #include "../../Registry/Registry.h"
 #include "Components/Item/ItemPickup.h"
 #include "Components/Item/Equipment.h"
+#include "Components/Item/Inventory.h"
 #include "Components/Item/Currency.h"
 #include "Components/Physics/Transform/Transform.h"
 #include "Components/Control/PlayerInput/PlayerInput.h"
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "EquipmentSystem.h"
 #include "CurrencySystem.h"
+#include "ItemFactory.h"
 #include <vector>
 #include <string>
 #include <random>
@@ -22,7 +24,7 @@ public:
 
         Entity player = 0;
         bool found = false;
-        for (auto e : registry.View<PlayerInputComponent, TransformComponent, EquipmentComponent, CharacterStatsComponent>()) {
+        for (auto e : registry.View<PlayerInputComponent, TransformComponent, EquipmentComponent, InventoryComponent, CharacterStatsComponent>()) {
             player = e;
             found = true;
             break;
@@ -31,6 +33,7 @@ public:
 
         auto& playerTrans = registry.GetComponent<TransformComponent>(player);
         auto& equipment = registry.GetComponent<EquipmentComponent>(player);
+        auto& inventory = registry.GetComponent<InventoryComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         std::vector<Entity> toRemove;
@@ -40,13 +43,13 @@ public:
             float dy = pickupTrans.position.y - playerTrans.position.y;
             if (dx * dx + dy * dy < 40.0f * 40.0f) {
                 auto& pickup = registry.GetComponent<ItemPickupComponent>(e);
-                bool equipped = EquipmentSystem::TryEquip(stats, equipment, pickup.item);
-                if (equipped) {
-                    lastMessage = "Equipped: " + pickup.item.baseName;
+                if (inventory.items.size() < InventoryComponent::kCapacity) {
+                    inventory.items.push_back(pickup.item);
+                    lastMessage = "Picked up: " + pickup.item.baseName;
                 } else {
-                    int goldValue = SellValue(pickup.item);
+                    int goldValue = ItemFactory::SellValue(pickup.item);
                     stats.gold += goldValue;
-                    lastMessage = "Sold " + pickup.item.baseName + " for " + std::to_string(goldValue) + " gold";
+                    lastMessage = "Inventory full - sold " + pickup.item.baseName + " for " + std::to_string(goldValue) + " gold";
                 }
                 messageTimer = 2.5f;
                 toRemove.push_back(e);
@@ -69,17 +72,5 @@ public:
         for (auto e : toRemove) {
             if (registry.IsValid(e)) registry.DestroyEntity(e);
         }
-    }
-
-private:
-    static int SellValue(const ItemComponent& item) {
-        float multiplier = 1.0f;
-        switch (item.rarity) {
-        case ItemRarity::Magic: multiplier = 2.0f; break;
-        case ItemRarity::Rare: multiplier = 4.0f; break;
-        case ItemRarity::Unique: multiplier = 8.0f; break;
-        default: break;
-        }
-        return static_cast<int>((item.itemLevel * 2.0f + item.affixes.size() * 3.0f) * multiplier) + 1;
     }
 };

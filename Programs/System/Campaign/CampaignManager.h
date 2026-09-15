@@ -4,6 +4,7 @@
 #include <SFML/Graphics/Color.hpp>
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Item/Equipment.h"
+#include "Components/Item/Inventory.h"
 #include "../Singleton/Singleton.h"
 
 enum class ZoneKind { Town, Combat };
@@ -49,6 +50,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     bool m_hasSavedPlayer = false;
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
+    std::vector<ItemComponent> m_savedInventory;
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -75,6 +77,9 @@ public:
 
     void SaveEquipment(const EquipmentComponent& equipment) { m_savedEquipment = equipment; }
     const EquipmentComponent& GetSavedEquipment() const { return m_savedEquipment; }
+
+    void SaveInventory(const std::vector<ItemComponent>& items) { m_savedInventory = items; }
+    const std::vector<ItemComponent>& GetSavedInventory() const { return m_savedInventory; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");
