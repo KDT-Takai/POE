@@ -71,13 +71,15 @@
     <ClInclude Include="External\ECS\Components\Item\ItemPickup.h" />
     <ClInclude Include="External\ECS\Components\Item\Currency.h" />
     <ClInclude Include="External\ECS\Components\Item\Inventory.h" />
+    <ClInclude Include="External\ECS\Components\Progression\PassiveTree.h" />
     <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemFactory.h" />
     <ClInclude Include="External\ECS\Systems\Item\EquipmentSystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemPickupSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\InventorySystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\LevelSystem.h" />
-    <ClInclude Include="External\ECS\Systems\Progression\PassiveSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeData.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\BoxCollider\BoxCollider.h" />
     <ClInclude Include="External\ECS\Components\Physics\Facing\Facing.h" />
     <ClInclude Include="External\ECS\Components\Physics\Gravity\Gravity.h" />

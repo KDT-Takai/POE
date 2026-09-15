@@ -34,7 +34,8 @@
 - **アイテム生成（affixロール、レアリティ抽選、売却額計算）**: `External/ECS/Systems/Item/ItemFactory.h`
 - **アイテム拾得（インベントリへ格納、満杯時は自動売却）**: `External/ECS/Systems/Item/ItemPickupSystem.h`
 - **通貨/クラフト（Transmutation/Regal/Chaos）**: `External/ECS/Systems/Item/CurrencySystem.h`
-- **XP/レベリング/パッシブ付与**: `External/ECS/Systems/Progression/LevelSystem.h`, `PassiveSystem.h`
+- **XP/レベリング**: `External/ECS/Systems/Progression/LevelSystem.h`
+- **パッシブツリーUI（Pキー、ノード割り振り）**: `External/ECS/Systems/Progression/PassiveTreeSystem.h`, `PassiveTreeData.h`, `External/ECS/Components/Progression/PassiveTree.h`
 - **キャラクターシートUI（Cキー）**: `External/ECS/Systems/UI/CharacterSheetSystem.h`
 - **ボスフェーズ（HP50%でEnrage）**: `External/ECS/Systems/Chara/BossPhaseSystem.h`
 - **入力管理（キーボード/マウス/パッド）**: `Programs/System/Input/`

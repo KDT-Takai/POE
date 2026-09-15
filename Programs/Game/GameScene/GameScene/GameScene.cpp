@@ -41,6 +41,7 @@ GameScene::GameScene() {
 	bossPhaseSystem = std::make_shared<BossPhaseSystem>();
 	characterSheetSystem = std::make_shared<CharacterSheetSystem>();
 	inventorySystem = std::make_shared<InventorySystem>();
+	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -57,8 +58,10 @@ GameScene::GameScene() {
             player.GetComponent<CharacterStatsComponent>() = campaign.GetSavedStats();
             auto& equipment = player.GetComponent<EquipmentComponent>();
             equipment.slots = campaign.GetSavedEquipment().slots;
+            equipment.baseStats = campaign.GetSavedEquipment().baseStats;
             EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
+            player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
@@ -75,6 +78,9 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<InventoryComponent>(playerEntity)) {
         campaign.SaveInventory(registry->GetComponent<InventoryComponent>(playerEntity).items);
     }
+    if (registry->HasComponent<PassiveTreeComponent>(playerEntity)) {
+        campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);
+    }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
@@ -86,13 +92,18 @@ void GameScene::Update() {
 
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) inventorySystem->Close();
+        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); }
     }
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::I)) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) characterSheetSystem->isOpen = false;
+        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); }
+    }
+    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::P)) {
+        passiveTreeSystem->Toggle();
+        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); }
     }
     inventorySystem->Update(*registry, dt);
+    passiveTreeSystem->Update(*registry, dt);
     // ����
     inputSystem->Update(*registry, dt);
     // ������
@@ -144,7 +155,7 @@ void GameScene::Update() {
             float distSq = dx * dx + dy * dy;
             m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-            if (m_playerNearPortal && !inventorySystem->isOpen &&
+            if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen &&
                 InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
                 spdlog::info("Entering next zone.");
                 AdvanceToNextZone();
@@ -290,6 +301,7 @@ void GameScene::Render(sf::RenderTarget& target) {
 
     characterSheetSystem->Render(*registry, target);
     inventorySystem->Render(*registry, target);
+    passiveTreeSystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
 }

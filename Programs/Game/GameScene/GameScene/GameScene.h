@@ -22,6 +22,7 @@
 #include "../../ECS/Systems/Chara/BossPhaseSystem.h"
 #include "../../ECS/Systems/UI/CharacterSheetSystem.h"
 #include "../../ECS/Systems/UI/InventorySystem.h"
+#include "../../ECS/Systems/Progression/PassiveTreeSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 
 class GameScene : public SceneBase {
@@ -69,4 +70,5 @@ private:
     std::shared_ptr<BossPhaseSystem> bossPhaseSystem;
     std::shared_ptr<CharacterSheetSystem> characterSheetSystem;
     std::shared_ptr<InventorySystem> inventorySystem;
+    std::shared_ptr<PassiveTreeSystem> passiveTreeSystem;
 };

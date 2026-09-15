@@ -44,6 +44,7 @@ namespace {
         out << prefix << "rarity=" << static_cast<int>(s.rarity) << "\n";
         out << prefix << "contactDamageType=" << static_cast<int>(s.contactDamageType) << "\n";
         out << prefix << "gold=" << s.gold << "\n";
+        out << prefix << "passivePoints=" << s.passivePoints << "\n";
     }
 
     float GetF(const std::unordered_map<std::string, std::string>& m, const std::string& k, float def) {
@@ -136,6 +137,7 @@ namespace {
         s.rarity = static_cast<MonsterRarity>(GetI(m, prefix + "rarity", static_cast<int>(s.rarity)));
         s.contactDamageType = static_cast<DamageElement>(GetI(m, prefix + "contactDamageType", static_cast<int>(s.contactDamageType)));
         s.gold = GetI(m, prefix + "gold", s.gold);
+        s.passivePoints = GetI(m, prefix + "passivePoints", s.passivePoints);
     }
 }
 
@@ -326,6 +328,7 @@ void CampaignManager::ResetCampaign() {
     m_hasSavedPlayer = false;
     m_savedEquipment = EquipmentComponent{};
     m_savedInventory.clear();
+    m_savedPassiveTree.clear();
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -368,6 +371,11 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         std::string prefix = "inventory.item" + std::to_string(i) + ".";
         WriteItem(out, prefix, m_savedInventory[i]);
     }
+
+    out << "passiveTree.count=" << m_savedPassiveTree.size() << "\n";
+    for (size_t i = 0; i < m_savedPassiveTree.size(); ++i) {
+        out << "passiveTree.node" << i << "=" << m_savedPassiveTree[i] << "\n";
+    }
 }
 
 bool CampaignManager::LoadFromDisk(const std::string& path) {
@@ -409,6 +417,12 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     for (int i = 0; i < inventoryCount; ++i) {
         std::string prefix = "inventory.item" + std::to_string(i) + ".";
         m_savedInventory.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
+    }
+
+    m_savedPassiveTree.clear();
+    int passiveTreeCount = GetI(kv, "passiveTree.count", 0);
+    for (int i = 0; i < passiveTreeCount; ++i) {
+        m_savedPassiveTree.push_back(GetI(kv, "passiveTree.node" + std::to_string(i), 0));
     }
 
     return true;

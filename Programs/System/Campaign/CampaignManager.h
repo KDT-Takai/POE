@@ -51,6 +51,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
     std::vector<ItemComponent> m_savedInventory;
+    std::vector<int> m_savedPassiveTree;
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -80,6 +81,9 @@ public:
 
     void SaveInventory(const std::vector<ItemComponent>& items) { m_savedInventory = items; }
     const std::vector<ItemComponent>& GetSavedInventory() const { return m_savedInventory; }
+
+    void SavePassiveTree(const std::vector<int>& nodeIds) { m_savedPassiveTree = nodeIds; }
+    const std::vector<int>& GetSavedPassiveTree() const { return m_savedPassiveTree; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

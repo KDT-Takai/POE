@@ -53,7 +53,11 @@ public:
         std::ostringstream statText;
         statText << std::fixed << std::setprecision(1);
         statText << "Lv " << stats.level << "   XP " << stats.currentXP << "/" << stats.xpToNextLevel
-            << "   Gold " << stats.gold << "\n\n";
+            << "   Gold " << stats.gold << "\n";
+        if (stats.passivePoints > 0) {
+            statText << "Passive Points: " << stats.passivePoints << " (P to spend)\n";
+        }
+        statText << "\n";
         statText << "Life: " << stats.currentHP << " / " << stats.maxHP << "\n";
         statText << "Mana: " << stats.currentMP << " / " << stats.maxMP << "\n";
         statText << "Energy Shield: " << stats.currentES << " / " << stats.maxES << "\n\n";

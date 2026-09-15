@@ -15,7 +15,6 @@
 #include "../Item/ItemFactory.h"
 #include "../Item/EquipmentSystem.h"
 #include "../Progression/LevelSystem.h"
-#include "../Progression/PassiveSystem.h"
 #include <vector>
 #include <random>
 #include <algorithm>
@@ -91,13 +90,10 @@ public:
                                 auto& ownerEquip = registry.GetComponent<EquipmentComponent>(proj.ownerEntity);
                                 std::string levelMsg;
                                 if (LevelSystem::GrantXP(ownerStats, ownerEquip, LevelSystem::CalcKillXP(stats), levelMsg)) {
-                                    static std::random_device rdP;
-                                    static std::mt19937 rngP(rdP());
-                                    std::string passiveMsg = PassiveSystem::ApplyRandomPassive(ownerEquip, rngP);
                                     EquipmentSystem::RecalculateStats(ownerStats, ownerEquip);
                                     ownerStats.currentHP = ownerStats.maxHP;
                                     ownerStats.currentMP = ownerStats.maxMP;
-                                    levelUpMessage = levelMsg + "  " + passiveMsg;
+                                    levelUpMessage = levelMsg;
                                     levelUpMessageTimer = 2.5f;
                                 }
                             }

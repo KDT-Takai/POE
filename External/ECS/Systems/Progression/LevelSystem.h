@@ -19,6 +19,7 @@ public:
             live.currentXP -= live.xpToNextLevel;
             live.level++;
             live.xpToNextLevel = CalcXPToNextLevel(live.level);
+            live.passivePoints++;
 
             equipment.baseStats.maxHP += 8.0f;
             equipment.baseStats.maxMP += 6.0f;
@@ -27,7 +28,7 @@ public:
             leveledUp = true;
         }
         if (leveledUp) {
-            outMessage = "LEVEL UP! Lv." + std::to_string(live.level);
+            outMessage = "LEVEL UP! Lv." + std::to_string(live.level) + " (+1 Passive Point - P to spend)";
         }
         return leveledUp;
     }

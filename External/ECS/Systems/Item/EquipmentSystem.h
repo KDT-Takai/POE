@@ -12,12 +12,16 @@ public:
         int savedLevel = live.level;
         int savedXP = live.currentXP;
         int savedXPToNext = live.xpToNextLevel;
+        int savedGold = live.gold;
+        int savedPassivePoints = live.passivePoints;
 
         live = equipment.baseStats;
 
         live.level = savedLevel;
         live.currentXP = savedXP;
         live.xpToNextLevel = savedXPToNext;
+        live.gold = savedGold;
+        live.passivePoints = savedPassivePoints;
 
         for (auto& slotItem : equipment.slots) {
             if (!slotItem.has_value()) continue;
@@ -54,7 +58,6 @@ public:
         return true;
     }
 
-private:
     static void ApplyAffix(CharacterStatsComponent& live, const ItemAffix& affix) {
         switch (affix.stat) {
         case AffixStat::FlatLife: live.maxHP += affix.value; break;

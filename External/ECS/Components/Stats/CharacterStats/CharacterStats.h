@@ -63,4 +63,5 @@ struct CharacterStatsComponent {
     DamageElement contactDamageType = DamageElement::Physical;
 
     int gold = 0;
+    int passivePoints = 0;
 };

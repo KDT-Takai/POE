@@ -16,6 +16,7 @@
 #include "../ECS/Components/Combat/StatusEffects.h"
 #include "../ECS/Components/Item/Equipment.h"
 #include "../ECS/Components/Item/Inventory.h"
+#include "../ECS/Components/Progression/PassiveTree.h"
 
 class EntitySpawner {
 public:
@@ -59,6 +60,7 @@ public:
         equipment.baseStats = stats;
         entity.AddComponent(equipment);
         entity.AddComponent(InventoryComponent{});
+        entity.AddComponent(PassiveTreeComponent{});
 
         // �`��ݒ�
         float radius = 16.0f;
