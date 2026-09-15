@@ -5,6 +5,7 @@
 ## 済 (Done)
 
 ### 基盤
+- キーバインド設定: `KeyBindings`(シングルトン)が移動/ロール/スキル5スロット/UIパネルトグル/Vendorリロールの計16アクションのキー割り当てを保持し`keybinds.cfg`に永続化。各システムは`sf::Keyboard::Key`リテラルを直接見ず`KeyBindings::Instance().Get(GameAction::X)`経由で参照するよう統一(移動はWASD側のみ対応、矢印キーのフォールバックとメニュー内カーソル移動は従来通り固定)。Oキーで`KeyBindSystem`(リバインドUI)を開閉、Up/Downで対象選択、Enterで次に押したキーを割り当て(既に別アクションで使用中のキーやUI固定キーへの割り当ては拒否)。各パネルのヘルプテキスト(「_ to close」等)も現在のバインドを動的表示するよう変更。
 - ECSパフォーマンス改善: `ComponentPool` をスパースセット化 (O(1) Insert/Remove/Get/Has)、`Registry` の `ComponentTypeId` を typeid ハッシュ廃止で静的カウンタ化、`View<>` をdense配列イテレーションに変更。
 - キャンペーン構造: `CampaignManager` で Act1〜4 + 幕間2つ + Endgame をゾーン単位で定義 (`ZoneDefinition`/`ActDefinition`)。タウン/戦闘ゾーン/ボスゾーンの遷移、`ZoneBuilder`/`MapGenerator` (タウン生成含む) と統合。
 - タイトル/リザルト画面: セーブの有無による Continue/New Game 分岐、Hardcore選択 (H キー)。

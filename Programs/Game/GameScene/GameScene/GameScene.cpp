@@ -14,6 +14,7 @@
 
 #include "System/SceneManager/SceneManager.h"
 #include "System/Input/InputManager.h"
+#include "System/Input/KeyBindings/KeyBindings.h"
 #include "../../ResultScene/ResultScene/ResultScene.h"
 
 GameScene::GameScene() {
@@ -46,6 +47,7 @@ GameScene::GameScene() {
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
 	vendorSystem = std::make_shared<VendorSystem>();
 	skillGemSystem = std::make_shared<SkillGemSystem>();
+	keyBindSystem = std::make_shared<KeyBindSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -128,28 +130,36 @@ void GameScene::Update() {
     auto dt = Time::Instance().GetDeltaTime();
     CameraManager::Instance().UpdateShake(dt);
 
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
+    auto& binds = KeyBindings::Instance();
+    bool awaitingRebind = keyBindSystem->IsAwaitingKey();
+
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
     }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::I)) {
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
     }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::P)) {
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::TogglePassiveTree))) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
     }
-    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::K)) {
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); }
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
-    if (m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::B)) {
+    if (!awaitingRebind && m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
-        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); skillGemSystem->Close(); }
+        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
     }
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::O)) {
+        keyBindSystem->Toggle();
+        if (keyBindSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+    }
+    keyBindSystem->Update(*registry, dt);
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
@@ -215,7 +225,7 @@ void GameScene::Update() {
                 float distSq = dx * dx + dy * dy;
                 m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen &&
+                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
                     InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
                     spdlog::info("Entering next zone.");
                     AdvanceToNextZone();
@@ -366,6 +376,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     passiveTreeSystem->Render(*registry, target);
     vendorSystem->Render(*registry, target);
     skillGemSystem->Render(*registry, target);
+    keyBindSystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
 }

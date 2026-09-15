@@ -13,6 +13,8 @@
 #include "../UI/ItemUIHelpers.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
+#include "System/Input/InputUtils/InputUtils.h"
+#include "System/Input/KeyBindings/KeyBindings.h"
 
 class VendorSystem {
 private:
@@ -62,7 +64,7 @@ public:
 
         auto& keyInput = InputManager::Instance().GetKeyInput();
 
-        if (keyInput.IsGetKey(sf::Keyboard::Key::T)) {
+        if (keyInput.IsGetKey(KeyBindings::Instance().Get(GameAction::VendorReroll))) {
             TryReroll(stats);
         }
 
@@ -98,8 +100,10 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
+        std::string closeKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorToggle));
+        std::string rerollKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorReroll));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Vendor (B to close) - Up/Down select, Enter buy, T reroll stock", 15, sf::Color(255, 220, 120));
+            "Vendor (" + closeKeyName + " to close) - Up/Down select, Enter buy, " + rerollKeyName + " reroll stock", 15, sf::Color(255, 220, 120));
 
         int gold = 0;
         int playerLevel = 1;
@@ -117,7 +121,7 @@ public:
         float lineHeight = 24.0f;
 
         if (m_stock.empty()) {
-            DrawText(target, panelX + 20.0f, listY, "(sold out - press T to reroll)", 14, sf::Color(150, 150, 150));
+            DrawText(target, panelX + 20.0f, listY, "(sold out - press " + rerollKeyName + " to reroll)", 14, sf::Color(150, 150, 150));
         } else {
             m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(m_stock.size()) - 1);
 

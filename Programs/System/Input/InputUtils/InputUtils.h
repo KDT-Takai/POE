@@ -3,7 +3,7 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <string>
 
-// SFML‚Ìsf::Keyboard::Key ¨ •¶š—ñ•ÏŠ·
+// SFMLï¿½ï¿½sf::Keyboard::Key ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏŠï¿½
 inline std::string KeyToString(sf::Keyboard::Key key) {
     switch (key) {
     case sf::Keyboard::Key::A: return "A";
@@ -73,6 +73,15 @@ inline std::string KeyToString(sf::Keyboard::Key key) {
 
     default: return "Unknown";
     }
+}
+
+// Inverse of KeyToString, for loading KeyBindings' config file. Returns Unknown if no match.
+inline sf::Keyboard::Key StringToKey(const std::string& name) {
+    for (int i = 0; i < static_cast<int>(sf::Keyboard::KeyCount); ++i) {
+        auto key = static_cast<sf::Keyboard::Key>(i);
+        if (KeyToString(key) == name) return key;
+    }
+    return sf::Keyboard::Key::Unknown;
 }
 
 inline std::string MouseButtonToString(sf::Mouse::Button button)

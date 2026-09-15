@@ -8,6 +8,8 @@
 #include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
+#include "System/Input/InputUtils/InputUtils.h"
+#include "System/Input/KeyBindings/KeyBindings.h"
 #include "ItemUIHelpers.h"
 
 class CharacterSheetSystem {
@@ -49,7 +51,8 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
-        DrawText(target, panelX + 20.0f, panelY + 15.0f, "Character Sheet (C to close)", 22, sf::Color(255, 220, 120));
+        std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleCharacterSheet));
+        DrawText(target, panelX + 20.0f, panelY + 15.0f, "Character Sheet (" + closeKey + " to close)", 22, sf::Color(255, 220, 120));
 
         std::ostringstream statText;
         statText << std::fixed << std::setprecision(1);

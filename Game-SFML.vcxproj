@@ -42,6 +42,7 @@
     <ClCompile Include="Programs\System\DebugManager\DebugManager.cpp" />
     <ClCompile Include="Programs\System\Input\InputManager.cpp" />
     <ClCompile Include="Programs\System\Input\KeyInput\KeyInput.cpp" />
+    <ClCompile Include="Programs\System\Input\KeyBindings\KeyBindings.cpp" />
     <ClCompile Include="Programs\System\Input\MouseInput\MouseInput.cpp" />
     <ClCompile Include="Programs\System\Input\PadInput\PadInput.cpp" />
     <ClCompile Include="Programs\System\Main\Application.cpp" />
@@ -115,6 +116,7 @@
     <ClInclude Include="External\ECS\Systems\Skill\SparkVisualSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\HealthBarRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\SkillGemSystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\KeyBindSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\Transform\Transform.h" />
@@ -135,6 +137,7 @@
     <ClInclude Include="Programs\System\Input\InputManager.h" />
     <ClInclude Include="Programs\System\Input\InputUtils\InputUtils.h" />
     <ClInclude Include="Programs\System\Input\KeyInput\KeyInput.h" />
+    <ClInclude Include="Programs\System\Input\KeyBindings\KeyBindings.h" />
     <ClInclude Include="Programs\System\Input\MouseInput\MouseInput.h" />
     <ClInclude Include="Programs\System\Input\PadInput\PadInput.h" />
     <ClInclude Include="Programs\System\Language\Language.h" />

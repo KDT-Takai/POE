@@ -11,6 +11,8 @@
 #include "../Skill/SkillGemData.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
+#include "System/Input/InputUtils/InputUtils.h"
+#include "System/Input/KeyBindings/KeyBindings.h"
 
 // Lets the player freely reassign any of the 5 skill slots to any gem they have
 // ever picked up (SkillGemInventoryComponent::unlockedGemIds). Unlike the passive
@@ -76,10 +78,17 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
+        auto& binds = KeyBindings::Instance();
+        std::string closeKey = KeyToString(binds.Get(GameAction::ToggleSkillGems));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Skill Gems (K to close) - Up/Down select slot, Left/Right change gem", 15, sf::Color(255, 220, 120));
-
-        static const char* kSlotKeys[5] = { "E", "Q", "R", "V", "F" };
+            "Skill Gems (" + closeKey + " to close) - Up/Down select slot, Left/Right change gem", 15, sf::Color(255, 220, 120));
+        const std::string kSlotKeys[5] = {
+            KeyToString(binds.Get(GameAction::Skill1)),
+            KeyToString(binds.Get(GameAction::Skill2)),
+            KeyToString(binds.Get(GameAction::Skill3)),
+            KeyToString(binds.Get(GameAction::Skill4)),
+            KeyToString(binds.Get(GameAction::Skill5)),
+        };
         float rowY = panelY + 55.0f;
         float rowHeight = 30.0f;
 

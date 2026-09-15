@@ -12,6 +12,8 @@
 #include "PassiveTreeData.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
+#include "System/Input/InputUtils/InputUtils.h"
+#include "System/Input/KeyBindings/KeyBindings.h"
 
 class PassiveTreeSystem {
 private:
@@ -85,8 +87,9 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
+        std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::TogglePassiveTree));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Passive Tree (P to close) - Arrows move, Enter allocate, Backspace respec", 15, sf::Color(255, 220, 120));
+            "Passive Tree (" + closeKey + " to close) - Arrows move, Enter allocate, Backspace respec", 15, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
             "Available Points: " + std::to_string(stats.passivePoints) +
             "   Orbs of Regret: " + std::to_string(stats.regretOrbs), 14, sf::Color(200, 200, 200));

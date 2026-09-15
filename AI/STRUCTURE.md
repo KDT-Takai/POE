@@ -43,6 +43,7 @@
 - **ボスフェーズ（HP50%でEnrage）**: `External/ECS/Systems/Chara/BossPhaseSystem.h`
 - **遠距離攻撃モンスター（kite/射撃AI）**: `External/ECS/Systems/Chara/EnemyRangedAttackSystem.h`（移動のkiting挙動は`EnemyAISystem.h`側）、マーカーは`External/ECS/Components/Chara/RangedAttacker.h`
 - **入力管理（キーボード/マウス/パッド）**: `Programs/System/Input/`
+- **キーバインド設定（リバインド可能なゲームプレイ操作、Oキーで設定UI）**: `Programs/System/Input/KeyBindings/KeyBindings.h/.cpp`（保持/永続化）、`External/ECS/Systems/UI/KeyBindSystem.h`（リバインドUI）
 - **デバッグUI（ImGui、F1系）**: `Programs/System/DebugManager/`, `Programs/System/DebugGui/`
 
 ## 命名・配置のルール（あれば）

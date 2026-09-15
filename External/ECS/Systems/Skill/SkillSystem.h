@@ -13,6 +13,7 @@
 #include "../../Components/PlayerSkill/SparkVisual.h"
 #include "../../Components/Combat/StatusEffects.h"
 #include "../../../../Programs/System/Input/InputManager.h"
+#include "../../../../Programs/System/Input/KeyBindings/KeyBindings.h"
 #include <cmath>
 #include <random>
 
@@ -124,12 +125,13 @@ private:
             pc.castTimer = skill.duration;
 
             auto& keyInput = InputManager::Instance().GetKeyInput();
+            auto& binds = KeyBindings::Instance();
             sf::Vector2f inputDir(0.0f, 0.0f);
 
-            if (keyInput.GetKey(sf::Keyboard::Key::A)) inputDir.x -= 1.0f;
-            if (keyInput.GetKey(sf::Keyboard::Key::D)) inputDir.x += 1.0f;
-            if (keyInput.GetKey(sf::Keyboard::Key::W)) inputDir.y -= 1.0f;
-            if (keyInput.GetKey(sf::Keyboard::Key::S)) inputDir.y += 1.0f;
+            if (keyInput.GetKey(binds.Get(GameAction::MoveLeft))) inputDir.x -= 1.0f;
+            if (keyInput.GetKey(binds.Get(GameAction::MoveRight))) inputDir.x += 1.0f;
+            if (keyInput.GetKey(binds.Get(GameAction::MoveUp))) inputDir.y -= 1.0f;
+            if (keyInput.GetKey(binds.Get(GameAction::MoveDown))) inputDir.y += 1.0f;
 
             float speed = stats.rollSpeed;
 

@@ -4,16 +4,18 @@
 #include "../../Components/PlayerSkill/PlayerSkill.h" 
 #include <spdlog/spdlog.h>
 #include <System/Input/InputManager.h>
+#include <System/Input/KeyBindings/KeyBindings.h>
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/Control/State/State.h"
 #include "../../Components/Physics/Velocity/Velocity.h"
-#include <cmath> // sqrt—p
+#include <cmath> // sqrtï¿½p
 
 class InputSystem {
 public:
     void Update(Registry& registry, float dt) {
         auto& keyInput = InputManager::Instance().GetKeyInput();
 		auto& mouseInput = InputManager::Instance().GetMouseInput();
+        auto& binds = KeyBindings::Instance();
         auto view = registry.View<PlayerInputComponent, CharacterStatsComponent, StateComponent, VelocityComponent, TransformComponent>();
 
         for (auto entity : view) {
@@ -35,10 +37,10 @@ public:
                 if (state.stateTimer >= stats.rollDuration) {
                     state.currentState = ActorState::Idle;
                     state.stateTimer = 0.0f;
-                    velocity.velocity = { 0.0f, 0.0f }; // ’â~‚³‚¹‚é
+                    velocity.velocity = { 0.0f, 0.0f }; // ï¿½ï¿½~ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 }
                 else {
-                    continue; // ƒ[ƒ‹’†‚Í‘€ì‚ğó‚¯•t‚¯‚È‚¢
+                    continue; // ï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Í‘ï¿½ï¿½ï¿½ï¿½ï¿½ó‚¯•tï¿½ï¿½ï¿½È‚ï¿½
                 }
             }
 
@@ -55,24 +57,24 @@ public:
             velocity.velocity.x = 0.0f;
             velocity.velocity.y = 0.0f;
 
-            bool rollInput = keyInput.IsGetKey(sf::Keyboard::Key::Space);
+            bool rollInput = keyInput.IsGetKey(binds.Get(GameAction::Roll));
 
             if (rollInput && stats.rollCooldownTimer <= 0.0f) {
 
                 state.currentState = ActorState::Roll;
                 state.stateTimer = 0.0f;
-                stats.rollCooldownTimer = stats.rollCooldownMax; 
+                stats.rollCooldownTimer = stats.rollCooldownMax;
                 sf::Vector2f inputDir(0.0f, 0.0f);
-                if (keyInput.GetKey(sf::Keyboard::Key::A) || keyInput.GetKey(sf::Keyboard::Key::Left))  inputDir.x -= 1.0f;
-                if (keyInput.GetKey(sf::Keyboard::Key::D) || keyInput.GetKey(sf::Keyboard::Key::Right)) inputDir.x += 1.0f;
-                if (keyInput.GetKey(sf::Keyboard::Key::W) || keyInput.GetKey(sf::Keyboard::Key::Up))    inputDir.y -= 1.0f;
-                if (keyInput.GetKey(sf::Keyboard::Key::S) || keyInput.GetKey(sf::Keyboard::Key::Down))  inputDir.y += 1.0f;
+                if (keyInput.GetKey(binds.Get(GameAction::MoveLeft)) || keyInput.GetKey(sf::Keyboard::Key::Left))  inputDir.x -= 1.0f;
+                if (keyInput.GetKey(binds.Get(GameAction::MoveRight)) || keyInput.GetKey(sf::Keyboard::Key::Right)) inputDir.x += 1.0f;
+                if (keyInput.GetKey(binds.Get(GameAction::MoveUp)) || keyInput.GetKey(sf::Keyboard::Key::Up))    inputDir.y -= 1.0f;
+                if (keyInput.GetKey(binds.Get(GameAction::MoveDown)) || keyInput.GetKey(sf::Keyboard::Key::Down))  inputDir.y += 1.0f;
 
                 if (inputDir.x != 0.0f || inputDir.y != 0.0f) {
                     float length = std::sqrt(inputDir.x * inputDir.x + inputDir.y * inputDir.y);
-                    inputDir /= length; // ³‹K‰»
+                    inputDir /= length; // ï¿½ï¿½ï¿½Kï¿½ï¿½
                     velocity.velocity = inputDir * stats.rollSpeed;
-                    // Œü‚«‚ÌXV
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ÌXï¿½V
                     if (inputDir.x > 0) state.isFacingRight = true;
                     if (inputDir.x < 0) state.isFacingRight = false;
                 }
@@ -83,26 +85,26 @@ public:
                 if (state.isFacingRight) trans.scale.x = std::abs(trans.scale.x);
                 else                     trans.scale.x = -std::abs(trans.scale.x);
 
-                continue; // ¡ƒtƒŒ[ƒ€‚Í‚±‚ê‚ÅI—¹
+                continue; // ï¿½ï¿½ï¿½tï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Í‚ï¿½ï¿½ï¿½ÅIï¿½ï¿½
             }
             float moveSpeed = stats.moveSpeed;
-            sf::Vector2f moveDir(0.0f, 0.0f); // ˆÚ“®•ûŒüƒxƒNƒgƒ‹
+            sf::Vector2f moveDir(0.0f, 0.0f); // ï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½xï¿½Nï¿½gï¿½ï¿½
 
-            // X²“ü—Í
-            if (keyInput.GetKey(sf::Keyboard::Key::A) || keyInput.GetKey(sf::Keyboard::Key::Left)) {
+            // Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            if (keyInput.GetKey(binds.Get(GameAction::MoveLeft)) || keyInput.GetKey(sf::Keyboard::Key::Left)) {
                 moveDir.x -= 1.0f;
                 input.moveLeft = true;
             }
-            if (keyInput.GetKey(sf::Keyboard::Key::D) || keyInput.GetKey(sf::Keyboard::Key::Right)) {
+            if (keyInput.GetKey(binds.Get(GameAction::MoveRight)) || keyInput.GetKey(sf::Keyboard::Key::Right)) {
                 moveDir.x += 1.0f;
                 input.moveRight = true;
             }
 
-            // Y²“ü—Í
-            if (keyInput.GetKey(sf::Keyboard::Key::W)) {
+            // Yï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            if (keyInput.GetKey(binds.Get(GameAction::MoveUp)) || keyInput.GetKey(sf::Keyboard::Key::Up)) {
                 moveDir.y -= 1.0f;
             }
-            if (keyInput.GetKey(sf::Keyboard::Key::S)) {
+            if (keyInput.GetKey(binds.Get(GameAction::MoveDown)) || keyInput.GetKey(sf::Keyboard::Key::Down)) {
                 moveDir.y += 1.0f;
             }
 
@@ -122,7 +124,7 @@ public:
                 velocity.velocity = { 0.0f, 0.0f };
             }
 
-            // Œü‚«XV
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
             if (state.isFacingRight) trans.scale.x = std::abs(trans.scale.x);
             else                     trans.scale.x = -std::abs(trans.scale.x);
 
@@ -131,11 +133,11 @@ public:
             //    input.attack = true;
             //}
             if (registry.HasComponent<PlayerSkill>(entity)) {
-                if (keyInput.IsGetKey(sf::Keyboard::Key::E) || mouseInput.GetMouse(sf::Mouse::Button::Left)) input.skillInputs[0] = true;
-                if (keyInput.IsGetKey(sf::Keyboard::Key::Q)) input.skillInputs[1] = true;
-                if (keyInput.IsGetKey(sf::Keyboard::Key::R)) input.skillInputs[2] = true;
-                if (keyInput.IsGetKey(sf::Keyboard::Key::V)) input.skillInputs[3] = true;
-                if (keyInput.IsGetKey(sf::Keyboard::Key::F)) input.skillInputs[4] = true;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill1)) || mouseInput.GetMouse(sf::Mouse::Button::Left)) input.skillInputs[0] = true;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill2))) input.skillInputs[1] = true;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill3))) input.skillInputs[2] = true;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill4))) input.skillInputs[3] = true;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill5))) input.skillInputs[4] = true;
             }
         }
     }
