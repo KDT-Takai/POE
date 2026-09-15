@@ -1,23 +1,23 @@
-#pragma once
+ï»¿#pragma once
 #include <array>
 #include <SFML/Window/Keyboard.hpp>
 
-// ƒL[ƒ{[ƒh“ü—ÍŠÇ—ƒNƒ‰ƒX
+// ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰å…¥åŠ›ç®¡ç†ã‚¯ãƒ©ã‚¹
 class KeyInput {
 public:
 	KeyInput();
-	// ƒL[‚Ìó‘Ô‚ğXV
+	// ã‚­ãƒ¼ã®çŠ¶æ…‹ã‚’æ›´æ–°
 	void Update();
-	// ƒL[“ü—ÍŠÖŒW
-	bool IsGetKey(sf::Keyboard::Key key) const;     // ‰Ÿ‚µ‚½uŠÔ
-	bool GetKey(sf::Keyboard::Key key) const;       // ‰Ÿ‚³‚ê‚Ä‚¢‚éŠÔ
-	bool GetKeyRepeat(sf::Keyboard::Key key) const; // ’·‰Ÿ‚µ
+	// ã‚­ãƒ¼å…¥åŠ›é–¢ä¿‚
+	bool IsGetKey(sf::Keyboard::Key key) const;     // æŠ¼ã—ãŸç¬é–“
+	bool GetKey(sf::Keyboard::Key key) const;       // æŠ¼ã•ã‚Œã¦ã„ã‚‹é–“
+	bool GetKeyRepeat(sf::Keyboard::Key key) const; // é•·æŠ¼ã—
 	
-	// Dedub—p‚ÌƒƒOo—Í
+	// Dedubç”¨ã®ãƒ­ã‚°å‡ºåŠ›
 	void RenderImGui();
 
 private:
-	static constexpr int KEY_MAX = sf::Keyboard::KeyCount;	// ƒL[‚ÌÅ‘å”
-	std::array<bool, KEY_MAX> nowKeyInput;					// Œ»İ‚ÌƒL[“ü—Íó‘Ô
-	std::array<bool, KEY_MAX> beforKeyInput;				// ‘O‰ñ‚ÌƒL[“ü—Íó‘Ô
+	static constexpr int KEY_MAX = sf::Keyboard::KeyCount;	// ã‚­ãƒ¼ã®æœ€å¤§æ•°
+	std::array<bool, KEY_MAX> nowKeyInput;					// ç¾åœ¨ã®ã‚­ãƒ¼å…¥åŠ›çŠ¶æ…‹
+	std::array<bool, KEY_MAX> beforKeyInput;				// å‰å›ã®ã‚­ãƒ¼å…¥åŠ›çŠ¶æ…‹
 };

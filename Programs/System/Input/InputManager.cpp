@@ -1,4 +1,4 @@
-#include "InputManager.h"
+ï»¿#include "InputManager.h"
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Mouse.hpp>
 #include "../CameraManager/CameraManager.h"
@@ -29,7 +29,7 @@ sf::Vector2f InputManager::GetMouseWorldPosition() const {
 
 	sf::Vector2i pixelPos = sf::Mouse::getPosition(*m_window);
 
-	// ‚±‚±‚È‚ç CameraManager ‚Ì³‘Ì‚ª‚í‚©‚Á‚Ä‚¢‚é‚Ì‚ÅƒGƒ‰[‚É‚È‚ç‚È‚¢
+	// ã“ã“ãªã‚‰ CameraManager ã®æ­£ä½“ãŒã‚ã‹ã£ã¦ã„ã‚‹ã®ã§ã‚¨ãƒ©ãƒ¼ã«ãªã‚‰ãªã„
 	auto& view = CameraManager::Instance().GetCurrentView();
 
 	return m_window->mapPixelToCoords(pixelPos, view);

@@ -1,15 +1,15 @@
-#pragma once
+ï»¿#pragma once
 #include <vector>
 #include <cstdint>
 #include <SFML/System/Vector2.hpp>
 
 enum class TileType : uint8_t {
-    Air = 0,        // ‰½‚à‚È‚¢i¡‰ñ‚Íg‚í‚È‚¢‚©‚àj
-    Dirt = 1,       // ° (Floor)
-    Stone = 2,      // •Ç (Wall)
-    Bedrock = 3,    // Šâ”Õ (‹«ŠEü‚È‚Ç)
-    Wood = 4,       // ƒXƒ^[ƒg’n“_‚Ì–Úˆó
-    Grass = 5       // ƒS[ƒ‹’n“_‚Ì–Úˆó
+    Air = 0,        // ä½•ã‚‚ãªã„ï¼ˆä»Šå›ã¯ä½¿ã‚ãªã„ã‹ã‚‚ï¼‰
+    Dirt = 1,       // åºŠ (Floor)
+    Stone = 2,      // å£ (Wall)
+    Bedrock = 3,    // å²©ç›¤ (å¢ƒç•Œç·šãªã©)
+    Wood = 4,       // ã‚¹ã‚¿ãƒ¼ãƒˆåœ°ç‚¹ã®ç›®å°
+    Grass = 5       // ã‚´ãƒ¼ãƒ«åœ°ç‚¹ã®ç›®å°
 };
 
 struct MapComponent {
@@ -19,11 +19,11 @@ struct MapComponent {
 
     std::vector<uint8_t> tiles;
 
-    // ƒ}ƒbƒvƒTƒCƒY‚ğƒŠƒZƒbƒg‚·‚éƒwƒ‹ƒp[
+    // ãƒãƒƒãƒ—ã‚µã‚¤ã‚ºã‚’ãƒªã‚»ãƒƒãƒˆã™ã‚‹ãƒ˜ãƒ«ãƒ‘ãƒ¼
     void Resize(int w, int h) {
         width = w;
         height = h;
-        tiles.assign(width * height, static_cast<uint8_t>(TileType::Stone)); // ƒfƒtƒHƒ‹ƒg‚Í•Ç(Stone)‚Å–„‚ß‚é
+        tiles.assign(width * height, static_cast<uint8_t>(TileType::Stone)); // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã¯å£(Stone)ã§åŸ‹ã‚ã‚‹
     }
 
     TileType GetTile(int tx, int ty) const {
@@ -39,7 +39,7 @@ struct MapComponent {
         }
     }
 
-    // À•W•ÏŠ·Œn‚Í‚»‚Ì‚Ü‚Ü...
+    // åº§æ¨™å¤‰æ›ç³»ã¯ãã®ã¾ã¾...
     sf::Vector2i WorldToTile(float worldX, float worldY) const {
         return sf::Vector2i(static_cast<int>(worldX / tileSize), static_cast<int>(worldY / tileSize));
     }

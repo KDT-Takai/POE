@@ -1,5 +1,5 @@
-#pragma once
+ï»¿#pragma once
 
 struct FacingComponent {
-    int direction = 1; // 1: ‰EŒü‚«, -1: ¶Œü‚«
+    int direction = 1; // 1: å³å‘ã, -1: å·¦å‘ã
 };

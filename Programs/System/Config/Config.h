@@ -1,17 +1,17 @@
-// Config.h
+Ôªø// Config.h
 #pragma once
 #include <string>
 #include "../Input/InputManager.h"
 
 // ---------------------------------
-// Window settings ÉEÉBÉìÉhÉEÇÃê›íË
+// Window settings „Ç¶„Ç£„É≥„Éâ„Ç¶„ÅÆË®≠ÂÆö
 // ---------------------------------
 constexpr unsigned int WINDOW_WIDTH = 1280;
 constexpr unsigned int WINDOW_HEIGHT = 720;
 constexpr unsigned int FRAMERATE_LIMIT = 120;
 const std::string WINDOW_TITLE = "SFML Application";
 
-// Ç¢Ç¬Ç©InputAlias.hÇ…à⁄ìÆ
+// „ÅÑ„Å§„ÅãInputAlias.h„Å´ÁßªÂãï
 namespace Input {
     inline KeyInput& Key() { return InputManager::Instance().GetKeyInput(); }
     inline MouseInput& Mouse() { return InputManager::Instance().GetMouseInput(); }
@@ -32,12 +32,12 @@ namespace Gui {
         std::wstring wstr(size_needed, 0);
         MultiByteToWideChar(CP_ACP, 0, buffer, -1, &wstr[0], size_needed);
 
-        // UTF-16 -> UTF-8 (ImGuióp)
+        // UTF-16 -> UTF-8 (ImGuiÁî®)
         size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], -1, NULL, 0, NULL, NULL);
         std::string strUtf8(size_needed, 0);
         WideCharToMultiByte(CP_UTF8, 0, &wstr[0], -1, &strUtf8[0], size_needed, NULL, NULL);
 
-        // ImGuiÇ…ìnÇ∑
+        // ImGui„Å´Ê∏°„Åô
         ImGui::TextUnformatted(strUtf8.c_str());
     }
 }

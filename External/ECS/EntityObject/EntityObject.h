@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "../Registry/Registry.h"
 #include <spdlog/spdlog.h>
 
@@ -8,22 +8,22 @@ private:
     Registry* m_registry;
 
 public:
-    // ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+    // ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
     EntityObject() : m_entityHandle(-1), m_registry(nullptr) {}
     EntityObject(Entity handle, Registry* registry)
         : m_entityHandle(handle), m_registry(registry) {
     }
 
-    // ID‚ğæ“¾
+    // IDã‚’å–å¾—
     Entity GetID() const { return m_entityHandle; }
 
-    // —LŒø‚©Šm”F
+    // æœ‰åŠ¹ã‹ç¢ºèª
     bool IsValid() const { return m_registry != nullptr && m_entityHandle != -1; }
 
-    // ƒRƒ“ƒ|[ƒlƒ“ƒg‘€ì
+    // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆæ“ä½œ
     template<typename T>
     T& AddComponent(T component) {
-        // move‚ğg‚¤‚±‚Æ‚Å–³‘Ê‚ÈƒRƒs[‚ğ”ğ‚¯‚é
+        // moveã‚’ä½¿ã†ã“ã¨ã§ç„¡é§„ãªã‚³ãƒ”ãƒ¼ã‚’é¿ã‘ã‚‹
         m_registry->AddComponent<T>(m_entityHandle, std::move(component));
         return m_registry->GetComponent<T>(m_entityHandle);
     }
@@ -36,10 +36,10 @@ public:
 
     template<typename T>
     T& GetComponent() {
-        // ƒRƒ“ƒ|[ƒlƒ“ƒg‚ğ‚Á‚Ä‚¢‚È‚¢ê‡‚ÌspdlogƒGƒ‰[•\¦
+        // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚’æŒã£ã¦ã„ãªã„å ´åˆã®spdlogã‚¨ãƒ©ãƒ¼è¡¨ç¤º
         if (!HasComponent<T>()) {
             spdlog::error("Entity {} does not have component '{}'", m_entityHandle, typeid(T).name());
-            throw std::runtime_error("Component not found");    // ‚Â‚¢‚Å‚Éthrow‚Å—‚Æ‚·
+            throw std::runtime_error("Component not found");    // ã¤ã„ã§ã«throwã§è½ã¨ã™
         }
         return m_registry->GetComponent<T>(m_entityHandle);
     }

@@ -1,54 +1,54 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <filesystem>                       // ƒtƒ@ƒCƒ‹©“®“Ç‚İ‚İ—p
+#include <filesystem>                       // ãƒ•ã‚¡ã‚¤ãƒ«è‡ªå‹•èª­ã¿è¾¼ã¿ç”¨
 #include <algorithm>
 #include "../../Singleton/Singleton.h"
 #include "../ResourceCache/ResourceCache.h"
 
-// ƒŠƒ\[ƒXƒ}ƒl[ƒWƒƒ[
+// ãƒªã‚½ãƒ¼ã‚¹ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼
 class ResourceManager : public Singleton<ResourceManager> {
 protected:
     friend class Singleton<ResourceManager>;
 private:
 
-    ResourceCache<sf::Texture>      textures;     // ‰æ‘œ
-    ResourceCache<sf::Font>         fonts;        // ƒtƒHƒ“ƒg
-    ResourceCache<sf::SoundBuffer>  soundBuffers; // Œø‰Ê‰¹ (SE)
-	std::unordered_map<std::string, std::shared_ptr<sf::Shader>> shaders; // ƒVƒF[ƒ_[ƒLƒƒƒbƒVƒ…
-	std::unique_ptr<sf::Music> music;      // BGMÄ¶—p
+    ResourceCache<sf::Texture>      textures;     // ç”»åƒ
+    ResourceCache<sf::Font>         fonts;        // ãƒ•ã‚©ãƒ³ãƒˆ
+    ResourceCache<sf::SoundBuffer>  soundBuffers; // åŠ¹æœéŸ³ (SE)
+	std::unordered_map<std::string, std::shared_ptr<sf::Shader>> shaders; // ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚­ãƒ£ãƒƒã‚·ãƒ¥
+	std::unique_ptr<sf::Music> music;      // BGMå†ç”Ÿç”¨
 
     template <typename T>
-	// w’èƒtƒHƒ‹ƒ_(ƒTƒuƒtƒHƒ‹ƒ_ŠÜ‚Ş)‚ÌƒŠƒ\[ƒX‚ğ‘S‚Ä“Ç‚İ‚Ş
+	// æŒ‡å®šãƒ•ã‚©ãƒ«ãƒ€(ã‚µãƒ–ãƒ•ã‚©ãƒ«ãƒ€å«ã‚€)ã®ãƒªã‚½ãƒ¼ã‚¹ã‚’å…¨ã¦èª­ã¿è¾¼ã‚€
     void loadResourcesFromDirectory( ResourceCache<T>& cache, const std::string& folderPath, const std::vector<std::string>& extensions);
 public:
-    // w’èƒtƒHƒ‹ƒ_(ƒTƒuƒtƒHƒ‹ƒ_ŠÜ‚Ş)‚Ì‰æ‘œ‚ğ‘S‚Ä“Ç‚İ‚Ş
+    // æŒ‡å®šãƒ•ã‚©ãƒ«ãƒ€(ã‚µãƒ–ãƒ•ã‚©ãƒ«ãƒ€å«ã‚€)ã®ç”»åƒã‚’å…¨ã¦èª­ã¿è¾¼ã‚€
     void loadAllTextures(const std::string& folderPath = "Assets/Textures");
-    // w’èƒtƒHƒ‹ƒ_‚ÌƒtƒHƒ“ƒg‚ğ‘S‚Ä“Ç‚İ‚Ş
+    // æŒ‡å®šãƒ•ã‚©ãƒ«ãƒ€ã®ãƒ•ã‚©ãƒ³ãƒˆã‚’å…¨ã¦èª­ã¿è¾¼ã‚€
     void loadAllFonts(const std::string& folderPath = "Assets/Fonts");
-    // w’èƒtƒHƒ‹ƒ_‚ÌSE‚ğ‘S‚Ä“Ç‚İ‚Ş
+    // æŒ‡å®šãƒ•ã‚©ãƒ«ãƒ€ã®SEã‚’å…¨ã¦èª­ã¿è¾¼ã‚€
     void loadAllSounds(const std::string& folderPath = "Assets/Sounds");
 
-    // ‰æ‘œ
+    // ç”»åƒ
     void loadTexture(const std::string& path) { textures.load(path); }
     std::shared_ptr<sf::Texture> getTexture(const std::string& path) { return textures.get(path); }
-    // ƒtƒHƒ“ƒg
+    // ãƒ•ã‚©ãƒ³ãƒˆ
     void loadFont(const std::string& path) { fonts.load(path); }
     std::shared_ptr<sf::Font> getFont(const std::string& path) { return fonts.get(path); }
-    // Œø‰Ê‰¹
+    // åŠ¹æœéŸ³
     void loadSound(const std::string& path) { soundBuffers.load(path); }
     std::shared_ptr<sf::SoundBuffer> getSound(const std::string& path) { return soundBuffers.get(path); }
 
-    // ƒeƒNƒXƒ`ƒƒQÆ—p
+    // ãƒ†ã‚¯ã‚¹ãƒãƒ£å‚ç…§ç”¨
     ResourceCache<sf::Texture>& texture() { return textures; }
-    // ƒtƒHƒ“ƒgQÆ—p
+    // ãƒ•ã‚©ãƒ³ãƒˆå‚ç…§ç”¨
     ResourceCache<sf::Font>& font() { return fonts; }
-    // Œø‰Ê‰¹QÆ—p
+    // åŠ¹æœéŸ³å‚ç…§ç”¨
     ResourceCache<sf::SoundBuffer>& sound() { return soundBuffers; }
-	// ƒVƒF[ƒ_[æ“¾
+	// ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼å–å¾—
     std::shared_ptr<sf::Shader> getShader(const std::string& filename, sf::Shader::Type type);
 
-    // BGM‘€ì
+    // BGMæ“ä½œ
     void playMusic(const std::string& filename);
     void stopMusic();
     void pauseMusic();
@@ -56,12 +56,12 @@ public:
     
 };
 /* memo
-ƒŠƒ\[ƒXƒ}ƒl[ƒWƒƒ[ì¬‚É‚ ‚½‚Á‚Ä‚Ìƒƒ‚
-‰æ‘œA‰¹ºAƒtƒHƒ“ƒg‚È‚Ç‚ÌƒŠƒ\[ƒX‚ğˆêŒ³ŠÇ—‚·‚éƒNƒ‰ƒX
-‰æ‘œŠÇ—ƒNƒ‰ƒXA‰¹ºŠÇ—ƒNƒ‰ƒXAƒtƒHƒ“ƒgŠÇ—ƒNƒ‰ƒX‚È‚Ç‚ğ‚Ü‚Æ‚ß‚é
+ãƒªã‚½ãƒ¼ã‚¹ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ä½œæˆã«ã‚ãŸã£ã¦ã®ãƒ¡ãƒ¢
+ç”»åƒã€éŸ³å£°ã€ãƒ•ã‚©ãƒ³ãƒˆãªã©ã®ãƒªã‚½ãƒ¼ã‚¹ã‚’ä¸€å…ƒç®¡ç†ã™ã‚‹ã‚¯ãƒ©ã‚¹
+ç”»åƒç®¡ç†ã‚¯ãƒ©ã‚¹ã€éŸ³å£°ç®¡ç†ã‚¯ãƒ©ã‚¹ã€ãƒ•ã‚©ãƒ³ãƒˆç®¡ç†ã‚¯ãƒ©ã‚¹ãªã©ã‚’ã¾ã¨ã‚ã‚‹
 
 TODO:
-‚±‚±‚ÌƒŠƒ\[ƒXƒ}ƒl[ƒWƒƒ[¡ƒ}ƒ‹ƒ`ƒXƒŒƒbƒh‚¶‚á‚È‚¢‚©‚çƒ}ƒ‹ƒ`ƒXƒŒƒbƒh‚É•ÏX‚³‚¹‚½‚¢
-‚½‚¾‚·‚é‚È‚çƒRƒ‹[ƒ`ƒ“‚Æ‚©g‚Á‚Ä”ñ“¯Šú‚Åƒ[ƒh‚³‚¹‚½‚¢
-¡Œã‚Ì‰Û‘è
+ã“ã“ã®ãƒªã‚½ãƒ¼ã‚¹ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ä»Šãƒãƒ«ãƒã‚¹ãƒ¬ãƒƒãƒ‰ã˜ã‚ƒãªã„ã‹ã‚‰ãƒãƒ«ãƒã‚¹ãƒ¬ãƒƒãƒ‰ã«å¤‰æ›´ã•ã›ãŸã„
+ãŸã ã™ã‚‹ãªã‚‰ã‚³ãƒ«ãƒ¼ãƒãƒ³ã¨ã‹ä½¿ã£ã¦éåŒæœŸã§ãƒ­ãƒ¼ãƒ‰ã•ã›ãŸã„
+ä»Šå¾Œã®èª²é¡Œ
 */

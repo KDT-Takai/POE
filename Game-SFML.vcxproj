@@ -32,7 +32,9 @@
     <ClCompile Include="External\ImGui\Source\imgui_draw.cpp" />
     <ClCompile Include="External\ImGui\Source\imgui_tables.cpp" />
     <ClCompile Include="External\ImGui\Source\imgui_widgets.cpp" />
-    <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp" />
+    <ClCompile Include="Programs\Game\GameScene\GameScene\GameScene.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="Programs\Game\TitleScene\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Programs\Game\ResultScene\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Programs\System\Campaign\CampaignManager.cpp">

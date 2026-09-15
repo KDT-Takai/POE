@@ -1,20 +1,20 @@
-#pragma once
+ï»¿#pragma once
 #include <ECS.h>
 
-// “ü—Í’ŠÛ
+// å…¥åŠ›æŠ½è±¡
 enum class InputAction {
-	Move,   // ˆÚ“®
-    Roll,   // ƒ[ƒŠƒ“ƒO
-    Jump,   // ƒWƒƒƒ“ƒv
-    Attack, // ƒAƒ^ƒbƒN
-    Dash,   // ƒ_ƒbƒVƒ…
-    Skill1, // ƒXƒLƒ‹‚P
-    Skill2, // ƒXƒLƒ‹‚Q
-    Skill3, // ƒXƒLƒ‹‚R
-    Skill4, // ƒXƒLƒ‹‚S
-    Skill5, // ƒXƒLƒ‹‚T
+	Move,   // ç§»å‹•
+    Roll,   // ãƒ­ãƒ¼ãƒªãƒ³ã‚°
+    Jump,   // ã‚¸ãƒ£ãƒ³ãƒ—
+    Attack, // ã‚¢ã‚¿ãƒƒã‚¯
+    Dash,   // ãƒ€ãƒƒã‚·ãƒ¥
+    Skill1, // ã‚¹ã‚­ãƒ«ï¼‘
+    Skill2, // ã‚¹ã‚­ãƒ«ï¼’
+    Skill3, // ã‚¹ã‚­ãƒ«ï¼“
+    Skill4, // ã‚¹ã‚­ãƒ«ï¼”
+    Skill5, // ã‚¹ã‚­ãƒ«ï¼•
 };
-// ƒQ[ƒ€ƒCƒxƒ“ƒg
+// ã‚²ãƒ¼ãƒ ã‚¤ãƒ™ãƒ³ãƒˆ
 enum class Trigger {
     OnInput,        // InputAction
     OnRoll,
@@ -27,10 +27,10 @@ enum class Trigger {
     OnKill,
     OnDamageTaken,
 
-    OnLowHP,        // ğŒŒn
+    OnLowHP,        // æ¡ä»¶ç³»
     OnCritical,
 
-    OnUpdate        // íŠÄ‹
+    OnUpdate        // å¸¸æ™‚ç›£è¦–
 };
 
 struct TriggerContext {

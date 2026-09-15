@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <spdlog/spdlog.h>
@@ -7,14 +7,14 @@
 #include <memory>
 #include <type_traits>
 
-// ƒŠƒ\[ƒXŠÇ——p‚ÌƒNƒ‰ƒX
+// ãƒªã‚½ãƒ¼ã‚¹ç®¡ç†ç”¨ã®ã‚¯ãƒ©ã‚¹
 template <typename T>
-// ƒŠ[ƒ\[ƒXƒLƒƒƒbƒVƒ…ƒNƒ‰ƒX
+// ãƒªãƒ¼ã‚½ãƒ¼ã‚¹ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚¯ãƒ©ã‚¹
 class ResourceCache {
 private:
     std::unordered_map<std::string, std::shared_ptr<T>> resources;
 public:
-    // æ“Ç‚İ‚İ—pƒƒ\ƒbƒh
+    // å…ˆèª­ã¿è¾¼ã¿ç”¨ãƒ¡ã‚½ãƒƒãƒ‰
     bool load(const std::string& filename) {
         if (resources.find(filename) != resources.end())
         {
@@ -38,7 +38,7 @@ public:
         spdlog::info("ResourceCache: Pre-loaded '{}'", filename);
         return true;
     }
-    // ƒŠƒ\[ƒX‚ğæ“¾
+    // ãƒªã‚½ãƒ¼ã‚¹ã‚’å–å¾—
     std::shared_ptr<T> get(const std::string& filename) {
         if (!load(filename))
         {
@@ -47,7 +47,7 @@ public:
         return resources[filename];
     }
 
-    // “Á’èƒŠƒ\[ƒX‰ğ•ú
+    // ç‰¹å®šãƒªã‚½ãƒ¼ã‚¹è§£æ”¾
     void unload(const std::string& filename) {
         auto it = resources.find(filename);
         if (it != resources.end())
@@ -57,7 +57,7 @@ public:
         }
     }
 
-    // ‘S‰ğ•ú
+    // å…¨è§£æ”¾
     void unloadAll() {
         resources.clear();
         spdlog::info("ResourceCache: All resources cleared.");

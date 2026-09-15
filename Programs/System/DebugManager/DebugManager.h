@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include "../Input/InputManager.h"
 #include "../Performance/MemoryMonitor.h"
@@ -15,26 +15,26 @@ public:
     bool IsDebugMode() const { return debugMode; }
     void Render(const sf::Texture* renderTexture);
 private:
-    // ƒQ[ƒ€‰æ–Ê‚Ì•\¦
+    // ã‚²ãƒ¼ãƒ ç”»é¢ã®è¡¨ç¤º
 	void RenderGameScreen(const sf::Texture* renderTexture);
-	// ƒV[ƒ“ŠÇ—‰æ–Ê‚Ì•\¦
+	// ã‚·ãƒ¼ãƒ³ç®¡ç†ç”»é¢ã®è¡¨ç¤º
 	void RenderSceneManagement();
-	// ƒƒO‰æ–Ê‚Ì•\¦
+	// ãƒ­ã‚°ç”»é¢ã®è¡¨ç¤º
 	void RenderLogWindow();
-	// ƒJƒƒ‰ƒRƒ“ƒgƒ[ƒ‹‰æ–Ê‚Ì•\¦
+	// ã‚«ãƒ¡ãƒ©ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«ç”»é¢ã®è¡¨ç¤º
 	void RenderCameraControl();
-	// ƒIƒuƒWƒFƒNƒgİ’è‰æ–Ê‚Ì•\¦
+	// ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆè¨­å®šç”»é¢ã®è¡¨ç¤º
 	void RenderObjectSettings();
-	// TimeƒNƒ‰ƒXŠÖŒW‚ÌƒƒO•\¦
+	// Timeã‚¯ãƒ©ã‚¹é–¢ä¿‚ã®ãƒ­ã‚°è¡¨ç¤º
 	void RenderPerformance();
-	// ‚»‚Ì‘¼ƒfƒoƒbƒOî•ñ‰æ–Ê‚Ì•\¦
+	// ãã®ä»–ãƒ‡ãƒãƒƒã‚°æƒ…å ±ç”»é¢ã®è¡¨ç¤º
 	void RenderOtherDebugInfo();
-	// Œ¾Œêİ’è
+	// è¨€èªè¨­å®š
 	void RenderLanguageSettings();
 
-    // ƒfƒoƒbƒNƒ‚[ƒh false:not debug mode true : debug mode
+    // ãƒ‡ãƒãƒƒã‚¯ãƒ¢ãƒ¼ãƒ‰ false:not debug mode true : debug mode
     bool debugMode = false;
 
-	// ƒƒ‚ƒŠ[‚Ìg—p—¦‚Ì•`‰æ
+	// ãƒ¡ãƒ¢ãƒªãƒ¼ã®ä½¿ç”¨ç‡ã®æç”»
 	MemoryMonitor memory;
 };

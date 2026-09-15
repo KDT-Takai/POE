@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "../../Registry/Registry.h"
 #include "Game/GameScene/Character/Enemy/EnemyFactory.h"
 #include "../../ECS/Components/Control/PlayerInput/PlayerInput.h"
@@ -7,12 +7,12 @@
 
 class EnemySpawnSystem {
 public:
-    // İ’è
+    // è¨­å®š
     float spawnTimer = 0.0f;
-    float spawnInterval = 2.0f; // 2•b‚²‚Æ‚É—N‚­
-    int maxEnemies = 20;        // Å‘å20‘Ì‚Ü‚Å
-    float spawnRadiusMin = 300.0f; // ƒvƒŒƒCƒ„[‚©‚ç300pxˆÈã—£‚·
-    float spawnRadiusMax = 600.0f; // 600pxˆÈ“à
+    float spawnInterval = 2.0f; // 2ç§’ã”ã¨ã«æ¹§ã
+    int maxEnemies = 20;        // æœ€å¤§20ä½“ã¾ã§
+    float spawnRadiusMin = 300.0f; // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‹ã‚‰300pxä»¥ä¸Šé›¢ã™
+    float spawnRadiusMax = 600.0f; // 600pxä»¥å†…
 
     void Update(Registry& registry, float dt, sf::Vector2f playerPos) {
         int enemyCount = 0;
@@ -23,10 +23,10 @@ public:
             }
         }
 
-        // Å‘å”‚È‚ç—N‚©‚È‚¢
+        // æœ€å¤§æ•°ãªã‚‰æ¹§ã‹ãªã„
         if (enemyCount >= maxEnemies) return;
 
-        // ƒ^ƒCƒ}[XV
+        // ã‚¿ã‚¤ãƒãƒ¼æ›´æ–°
         spawnTimer -= dt;
         if (spawnTimer <= 0.0f) {
             spawnTimer = spawnInterval;
@@ -36,7 +36,7 @@ public:
 
 private:
     void SpawnOneEnemy(Registry& registry, sf::Vector2f centerPos) {
-        // ƒ‰ƒ“ƒ_ƒ€‚ÈˆÊ’u‚ğŒvZ
+        // ãƒ©ãƒ³ãƒ€ãƒ ãªä½ç½®ã‚’è¨ˆç®—
         float angle = GetRandom(0.0f, 6.28318f);
         float dist = GetRandom(spawnRadiusMin, spawnRadiusMax);
 

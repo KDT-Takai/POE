@@ -1,9 +1,9 @@
-#include "ResourceManager.h"
-#include <spdlog/spdlog.h> // ƒƒOo—Í—p
+ï»¿#include "ResourceManager.h"
+#include <spdlog/spdlog.h> // ãƒ­ã‚°å‡ºåŠ›ç”¨
 
 template <typename T>
 void ResourceManager::loadResourcesFromDirectory( ResourceCache<T>& cache, const std::string& folderPath, const std::vector<std::string>& extensions) {
-    // ƒtƒHƒ‹ƒ_‚ª‘¶İ‚·‚é‚©Šm”F
+    // ãƒ•ã‚©ãƒ«ãƒ€ãŒå­˜åœ¨ã™ã‚‹ã‹ç¢ºèª
     if (!std::filesystem::exists(folderPath)) {
         spdlog::warn("ResourceManager: Directory not found: {}", folderPath);
         return;
@@ -11,22 +11,22 @@ void ResourceManager::loadResourcesFromDirectory( ResourceCache<T>& cache, const
 
     spdlog::info("ResourceManager: Scanning directory '{}'...", folderPath);
 
-    // Ä‹A“IƒCƒeƒŒ[ƒ^‚ÅƒTƒuƒtƒHƒ‹ƒ_‚àŠÜ‚ß‚Ä‘–¸
+    // å†å¸°çš„ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã§ã‚µãƒ–ãƒ•ã‚©ãƒ«ãƒ€ã‚‚å«ã‚ã¦èµ°æŸ»
     for (const auto& entry : std::filesystem::recursive_directory_iterator(folderPath)) {
         if (entry.is_regular_file()) {
-            // ƒtƒ@ƒCƒ‹ƒpƒX‚ÆŠg’£q‚ğæ“¾
+            // ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã¨æ‹¡å¼µå­ã‚’å–å¾—
 //            std::string filePath = entry.path().string();
             std::string filePath = entry.path().generic_string();
             std::string ext = entry.path().extension().string();
 
-            // Šg’£q‚ğ¬•¶š‚É•ÏŠ·‚µ‚Ä”äŠr‚µ‚â‚·‚­‚·‚é (.PNG -> .png)
+            // æ‹¡å¼µå­ã‚’å°æ–‡å­—ã«å¤‰æ›ã—ã¦æ¯”è¼ƒã—ã‚„ã™ãã™ã‚‹ (.PNG -> .png)
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-            // w’è‚³‚ê‚½Šg’£qƒŠƒXƒg‚ÉŠÜ‚Ü‚ê‚Ä‚¢‚é‚©ƒ`ƒFƒbƒN
+            // æŒ‡å®šã•ã‚ŒãŸæ‹¡å¼µå­ãƒªã‚¹ãƒˆã«å«ã¾ã‚Œã¦ã„ã‚‹ã‹ãƒã‚§ãƒƒã‚¯
             for (const auto& targetExt : extensions) {
                 if (ext == targetExt) {
-                    // ResourceCache‚Ìload‚ğŒÄ‚Ño‚·
-                    // Windows‚ÌƒpƒX‹æØ‚è•¶š(\)‚ğ(/)‚É“ˆê‚µ‚½‚¢ê‡‚Í‚±‚±‚Å’uŠ·ˆ—‚ğ“ü‚ê‚Ä‚à—Ç‚¢
+                    // ResourceCacheã®loadã‚’å‘¼ã³å‡ºã™
+                    // Windowsã®ãƒ‘ã‚¹åŒºåˆ‡ã‚Šæ–‡å­—(\)ã‚’(/)ã«çµ±ä¸€ã—ãŸã„å ´åˆã¯ã“ã“ã§ç½®æ›å‡¦ç†ã‚’å…¥ã‚Œã¦ã‚‚è‰¯ã„
                     cache.load(filePath);
                     break;
                 }
@@ -35,58 +35,58 @@ void ResourceManager::loadResourcesFromDirectory( ResourceCache<T>& cache, const
     }
 }
 
-// ƒeƒNƒXƒ`ƒƒˆêŠ‡“Ç‚İ‚İ‚ÌÀ‘•
+// ãƒ†ã‚¯ã‚¹ãƒãƒ£ä¸€æ‹¬èª­ã¿è¾¼ã¿ã®å®Ÿè£…
 void ResourceManager::loadAllTextures(const std::string& folderPath) {
-    // “Ç‚İ‚İ‘ÎÛ‚ÌŠg’£qƒŠƒXƒg
+    // èª­ã¿è¾¼ã¿å¯¾è±¡ã®æ‹¡å¼µå­ãƒªã‚¹ãƒˆ
     std::vector<std::string> extensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga" };
     loadResourcesFromDirectory(textures, folderPath, extensions);
 }
 
-// ƒtƒHƒ“ƒgˆêŠ‡“Ç‚İ‚İ‚ÌÀ‘•
+// ãƒ•ã‚©ãƒ³ãƒˆä¸€æ‹¬èª­ã¿è¾¼ã¿ã®å®Ÿè£…
 void ResourceManager::loadAllFonts(const std::string& folderPath) {
     std::vector<std::string> extensions = { ".ttf", ".otf" };
     loadResourcesFromDirectory(fonts, folderPath, extensions);
 }
 
-// Œø‰Ê‰¹ˆêŠ‡“Ç‚İ‚İ‚ÌÀ‘•
+// åŠ¹æœéŸ³ä¸€æ‹¬èª­ã¿è¾¼ã¿ã®å®Ÿè£…
 void ResourceManager::loadAllSounds(const std::string& folderPath) {
-    std::vector<std::string> extensions = { ".wav", ".ogg", ".mp3" }; // sf::SoundBuffer‚Ímp3‚à“Ç‚ß‚éê‡‚ª‚ ‚é‚ªwav/ogg„§
+    std::vector<std::string> extensions = { ".wav", ".ogg", ".mp3" }; // sf::SoundBufferã¯mp3ã‚‚èª­ã‚ã‚‹å ´åˆãŒã‚ã‚‹ãŒwav/oggæ¨å¥¨
     loadResourcesFromDirectory(soundBuffers, folderPath, extensions);
 }
 
-// --- ƒVƒF[ƒ_[‚Ìæ“¾ ---
+// --- ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®å–å¾— ---
 std::shared_ptr<sf::Shader> ResourceManager::getShader(const std::string& filename, sf::Shader::Type type) {
-    // ƒLƒƒƒbƒVƒ…Šm”F
+    // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ç¢ºèª
     auto it = shaders.find(filename);
     if (it != shaders.end())
     {
         return it->second;
     }
 
-    // V‹Kƒ[ƒh
+    // æ–°è¦ãƒ­ãƒ¼ãƒ‰
     auto shader = std::make_shared<sf::Shader>();
-    // ƒVƒF[ƒ_[‚Íˆø”(type)‚ª•K—v‚È‚Ì‚Å loadFromFile ‚ğ’¼ÚŒÄ‚Ô
+    // ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã¯å¼•æ•°(type)ãŒå¿…è¦ãªã®ã§ loadFromFile ã‚’ç›´æ¥å‘¼ã¶
     if (!shader->loadFromFile(filename, type))
     {
         spdlog::error("ResourceManager: Failed to load shader: {}", filename);
         return nullptr;
     }
 
-    // “o˜^
+    // ç™»éŒ²
     shaders[filename] = shader;
     spdlog::info("ResourceManager: Loaded shader: {}", filename);
     return shader;
 }
 
-// BGMÄ¶
+// BGMå†ç”Ÿ
 void ResourceManager::playMusic(const std::string& filename) {
-    // ‚·‚Å‚ÉÄ¶’†‚Ì‚à‚Ì‚ª‚ ‚ê‚Î~‚ß‚é
+    // ã™ã§ã«å†ç”Ÿä¸­ã®ã‚‚ã®ãŒã‚ã‚Œã°æ­¢ã‚ã‚‹
     if (music)
     {
         music->stop();
     }
 
-    // V‚µ‚¢MusicƒCƒ“ƒXƒ^ƒ“ƒX‚ğì¬
+    // æ–°ã—ã„Musicã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’ä½œæˆ
     music = std::make_unique<sf::Music>();
 
     if (music->openFromFile(filename))
@@ -101,7 +101,7 @@ void ResourceManager::playMusic(const std::string& filename) {
     }
 }
 
-// BGM’â~
+// BGMåœæ­¢
 void ResourceManager::stopMusic() {
     if (music)
     {
@@ -110,7 +110,7 @@ void ResourceManager::stopMusic() {
     }
 }
 
-// BGMˆê’â~
+// BGMä¸€æ™‚åœæ­¢
 void ResourceManager::pauseMusic() {
     if (music && music->getStatus() == sf::SoundSource::Status::Playing)
     {
@@ -119,7 +119,7 @@ void ResourceManager::pauseMusic() {
     }
 }
 
-// BGMÄŠJ
+// BGMå†é–‹
 void ResourceManager::resumeMusic() {
     if (music && music->getStatus() == sf::SoundSource::Status::Paused)
     {
@@ -129,8 +129,8 @@ void ResourceManager::resumeMusic() {
 }
 
 /* memo
-¡Œã C++17‚Ìfilesystem‚ğ“±“ü‚µ©“®“Ç‚İ‚İ‰»‚³‚¹‚é
-©“®‰»‚³‚¹‚é‚È‚ç•K{
+ä»Šå¾Œ C++17ã®filesystemã‚’å°å…¥ã—è‡ªå‹•èª­ã¿è¾¼ã¿åŒ–ã•ã›ã‚‹
+è‡ªå‹•åŒ–ã•ã›ã‚‹ãªã‚‰å¿…é ˆ
 https://qiita.com/ueken0307/items/4d866bb78e9f4fe6232d
 https://cpprefjp.github.io/reference/filesystem.html
 */

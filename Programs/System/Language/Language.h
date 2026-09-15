@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
 
-// ‚Ç‚±‚©‚ç‚Å‚àQÆ‚Å‚«‚éuŒ¾Œêİ’èv
+// ã©ã“ã‹ã‚‰ã§ã‚‚å‚ç…§ã§ãã‚‹ã€Œè¨€èªè¨­å®šã€
 class Language {
 public:
     enum class Type { English, Japanese };
@@ -10,25 +10,25 @@ private:
         static inline Type s_Current = Type::English;
 
 public:
-    // İ’è•ÏX
+    // è¨­å®šå¤‰æ›´
     static void Set(Type type) { s_Current = type; }
     static Type Get() { return s_Current; }
 
-    // –|–óæ“¾ŠÖ” (SFML‚Ì sf::Text ‚È‚Ç‚Åg‚¤)
-    // ƒ‰ƒCƒuƒ‰ƒŠˆË‘¶‚ª‚È‚¢‚Ì‚ÅA•¨—‰‰ZƒNƒ‰ƒX‚â“GƒNƒ‰ƒX‚Ì’†‚Å‚àˆÀS‚µ‚Äg‚¦‚é
+    // ç¿»è¨³å–å¾—é–¢æ•° (SFMLã® sf::Text ãªã©ã§ä½¿ã†)
+    // ãƒ©ã‚¤ãƒ–ãƒ©ãƒªä¾å­˜ãŒãªã„ã®ã§ã€ç‰©ç†æ¼”ç®—ã‚¯ãƒ©ã‚¹ã‚„æ•µã‚¯ãƒ©ã‚¹ã®ä¸­ã§ã‚‚å®‰å¿ƒã—ã¦ä½¿ãˆã‚‹
     static const char* Str(const char* en, const char* jp) {
         return (s_Current == Type::English) ? en : jp;
     }
 };
 
 /*
-Language Œ¾Œêó‘ÔEØ‘Ö‚Ì’PˆêÓ”C
-    LanguageManageriSingleton or Servicej
+Language è¨€èªçŠ¶æ…‹ãƒ»åˆ‡æ›¿ã®å˜ä¸€è²¬ä»»
+    LanguageManagerï¼ˆSingleton or Serviceï¼‰
 
-Localization –|–óƒf[ƒ^ŠÇ—iŠg’£—pj
-    TextID ¨ ŠeŒ¾Œê•¶š—ñ
+Localization ç¿»è¨³ãƒ‡ãƒ¼ã‚¿ç®¡ç†ï¼ˆæ‹¡å¼µç”¨ï¼‰
+    TextID â†’ å„è¨€èªæ–‡å­—åˆ—
 
-DebugGui ImGui ƒ‰ƒbƒp
+DebugGui ImGui ãƒ©ãƒƒãƒ‘
     Text(TextID)
     Text(const char* en, const char* jp)
 */

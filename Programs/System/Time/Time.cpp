@@ -1,26 +1,26 @@
-#include "Time.h"
+ï»¿#include "Time.h"
 #include <imgui.h>
 Time::Time() : timeScale(1.0), targetFPS(60), frameCount(0), currentFps(0.0), accumulator(0.0) {}
 
 void Time::Update() {
-    // Œo‰ßŠÔ‚ğæ“¾
+    // çµŒéæ™‚é–“ã‚’å–å¾—
     deltaTime = clock.restart();
 
-    // ˆÙí‚È’·ŠÔƒtƒŒ[ƒ€‚ÌƒLƒƒƒbƒv (0.1•b)
+    // ç•°å¸¸ãªé•·æ™‚é–“ãƒ•ãƒ¬ãƒ¼ãƒ ã®ã‚­ãƒ£ãƒƒãƒ— (0.1ç§’)
     if (deltaTime.asSeconds() > 0.1f) {
         deltaTime = sf::seconds(0.1f);
     }
 
-    // ‘ŠÔ‚Ì‰ÁZ
+    // ç·æ™‚é–“ã®åŠ ç®—
     double dtSec = deltaTime.asMicroseconds() / 1000000.0;
 
-    // ‚±‚±‚ÅƒGƒ‰[‚ªo‚Ä‚¢‚½‰ÓŠ‚ğC³
+    // ã“ã“ã§ã‚¨ãƒ©ãƒ¼ãŒå‡ºã¦ã„ãŸç®‡æ‰€ã‚’ä¿®æ­£
     totalTime += sf::microseconds(static_cast<std::int64_t>(dtSec * timeScale * 1000000.0));
 
-    // ƒAƒLƒ…ƒ€ƒŒ[ƒ^‚Ö‚Ì‰ÁZ (double¸“x)
+    // ã‚¢ã‚­ãƒ¥ãƒ ãƒ¬ãƒ¼ã‚¿ã¸ã®åŠ ç®— (doubleç²¾åº¦)
     accumulator += dtSec * timeScale;
 
-    // FPSŒv‘ª
+    // FPSè¨ˆæ¸¬
     fpsTimer += deltaTime;
     frameCount++;
     if (fpsTimer.asSeconds() >= 1.0f) {
@@ -92,15 +92,15 @@ void Time::RenderImGui()
 
     ImGui::PlotLines("FPS Graph", fpsHistory, IM_ARRAYSIZE(fpsHistory));
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));  // —Î
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));  // ç·‘
     // FPS
     ImGui::Text("FPS: %.1f", GetFPS());
     ImGui::PopStyleColor();
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 1.0f, 1.0f));  // ”–‚¢Â
-    // –Ú•WFPS
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 1.0f, 1.0f));  // è–„ã„é’
+    // ç›®æ¨™FPS
     ImGui::Text("Target: %.1f", GetTargetFPS());
     ImGui::PopStyleColor();
-    // ƒQ[ƒ€“à‚ÌƒXƒs[ƒh”{—¦
+    // ã‚²ãƒ¼ãƒ å†…ã®ã‚¹ãƒ”ãƒ¼ãƒ‰å€ç‡
     ImGui::Text("Time Scale: %.1f", GetTimeScale());
     ImGui::Separator();
 }

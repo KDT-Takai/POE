@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 
-// ‚±‚¢‚Â‚ğƒCƒ“ƒNƒ‹[ƒh‚·‚é‚¾‚¯‚Å‚¢‚¢‚æ‚¤‚É‚·‚é
+// ã“ã„ã¤ã‚’ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰ã™ã‚‹ã ã‘ã§ã„ã„ã‚ˆã†ã«ã™ã‚‹
 #include "Core/Entity.h"
 #include "Core/ComponentPool.h"
 #include "Components/Components.h"

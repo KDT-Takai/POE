@@ -1,9 +1,9 @@
-#include "Registry.h"
-#include "../EntityObject/EntityObject.h" // ‚±‚±‚ÅEntityObject‚Ì’è‹`‚ğæ‚è‚Ş
+ï»¿#include "Registry.h"
+#include "../EntityObject/EntityObject.h" // ã“ã“ã§EntityObjectã®å®šç¾©ã‚’å–ã‚Šè¾¼ã‚€
 
-// RegistryƒNƒ‰ƒX‚Ìƒƒ“ƒoŠÖ”‚ÌÀ‘•
+// Registryã‚¯ãƒ©ã‚¹ã®ãƒ¡ãƒ³ãƒé–¢æ•°ã®å®Ÿè£…
 EntityObject Registry::CreateEntityObject() {
     Entity id = CreateEntityID();
-    // ‚±‚±‚Å‚ÍEntityObject‚ÌƒRƒ“ƒXƒgƒ‰ƒNƒ^‚ªŒ©‚¦‚Ä‚¢‚é‚Ì‚ÅƒGƒ‰[‚É‚È‚ç‚È‚¢
+    // ã“ã“ã§ã¯EntityObjectã®ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ãŒè¦‹ãˆã¦ã„ã‚‹ã®ã§ã‚¨ãƒ©ãƒ¼ã«ãªã‚‰ãªã„
     return EntityObject(id, this);
 }

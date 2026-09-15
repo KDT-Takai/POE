@@ -1,4 +1,4 @@
-#pragma once
+Ôªø#pragma once
 #include "../../Registry/Registry.h"
 #include "../../Components/Physics/Transform/Transform.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
@@ -39,11 +39,11 @@ public:
             float barX = centerX - (barWidth / 2.0f);
             float barY = trans.position.y + col.offsetY - yOffset;
 
-            // îwåi
+            // ËÉåÊôØ
             backgroundRect.setPosition({ barX, barY });
             target.draw(backgroundRect);
 
-            // ê‘ÉoÅ[
+            // Ëµ§„Éê„Éº
             hpRect.setSize({ barWidth * ratio, barHeight });
             hpRect.setPosition({ barX, barY });
             target.draw(hpRect);

@@ -1,21 +1,21 @@
-#include "PadInput.h"
+ï»¿#include "PadInput.h"
 #include <cmath>
 #include <imgui.h>
 #include "../../DebugGui/DebugGui.h"
 
 PadInput::PadInput()
 {
-    // ‰Šú‰»
+    // åˆæœŸåŒ–
     m_currentReading = {};
     m_previousReading = {};
 
-    // ƒCƒxƒ“ƒgƒŠƒXƒi[‚Ì“o˜^
-    // ƒRƒ“ƒgƒ[ƒ‰[‚ªÚ‘±
+    // ã‚¤ãƒ™ãƒ³ãƒˆãƒªã‚¹ãƒŠãƒ¼ã®ç™»éŒ²
+    // ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼ãŒæ¥ç¶š
     m_addedToken = winrt::Windows::Gaming::Input::Gamepad::GamepadAdded({ this, &PadInput::OnGamepadAdded });
-    // ƒRƒ“ƒgƒ[ƒ‰[‚ªØ’f
+    // ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼ãŒåˆ‡æ–­
     m_removedToken = winrt::Windows::Gaming::Input::Gamepad::GamepadRemoved({ this, &PadInput::OnGamepadRemoved });
 
-    // Šù‚ÉÚ‘±‚³‚ê‚Ä‚¢‚éƒpƒbƒh‚ª‚ ‚ê‚Îæ“¾
+    // æ—¢ã«æ¥ç¶šã•ã‚Œã¦ã„ã‚‹ãƒ‘ãƒƒãƒ‰ãŒã‚ã‚Œã°å–å¾—
     if (winrt::Windows::Gaming::Input::Gamepad::Gamepads().Size() > 0)
     {
         m_gamepad = winrt::Windows::Gaming::Input::Gamepad::Gamepads().GetAt(0);
@@ -24,7 +24,7 @@ PadInput::PadInput()
 
 PadInput::~PadInput()
 {
-    // ƒCƒxƒ“ƒgƒŠƒXƒi[‚Ì‰ğœ
+    // ã‚¤ãƒ™ãƒ³ãƒˆãƒªã‚¹ãƒŠãƒ¼ã®è§£é™¤
     winrt::Windows::Gaming::Input::Gamepad::GamepadAdded(m_addedToken);
     winrt::Windows::Gaming::Input::Gamepad::GamepadRemoved(m_removedToken);
 }
@@ -35,14 +35,14 @@ void PadInput::Update()
 
     if (m_gamepad)
     {
-        // ‘O‰ñ‚Ìó‘Ô‚ğ•Û‘¶
+        // å‰å›ã®çŠ¶æ…‹ã‚’ä¿å­˜
         m_previousReading = m_currentReading;
-        // Œ»İ‚Ìó‘Ô‚ğæ“¾
+        // ç¾åœ¨ã®çŠ¶æ…‹ã‚’å–å¾—
         m_currentReading = m_gamepad.GetCurrentReading();
     }
     else
     {
-        // ƒpƒbƒh‚ª‚È‚¢ê‡‚Í“ü—Í‚ğƒNƒŠƒA
+        // ãƒ‘ãƒƒãƒ‰ãŒãªã„å ´åˆã¯å…¥åŠ›ã‚’ã‚¯ãƒªã‚¢
         m_currentReading = {};
         m_previousReading = {};
     }
@@ -54,12 +54,12 @@ bool PadInput::IsConnected() const
     return m_gamepad != nullptr;
 }
 
-// ƒ{ƒ^ƒ“”»’èƒƒWƒbƒN
-// ƒrƒbƒg‰‰Z‚ğg‚Á‚Ä”»’è
+// ãƒœã‚¿ãƒ³åˆ¤å®šãƒ­ã‚¸ãƒƒã‚¯
+// ãƒ“ãƒƒãƒˆæ¼”ç®—ã‚’ä½¿ã£ã¦åˆ¤å®š
 
 bool PadInput::IsPress(winrt::Windows::Gaming::Input::GamepadButtons button) const
 {
-    // Œ»İ‚ÌƒtƒŒ[ƒ€‚Åƒrƒbƒg‚ª—§‚Á‚Ä‚¢‚é‚©
+    // ç¾åœ¨ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã§ãƒ“ãƒƒãƒˆãŒç«‹ã£ã¦ã„ã‚‹ã‹
     return (m_currentReading.Buttons & button) == button;
 }
 
@@ -75,7 +75,7 @@ bool PadInput::IsRelease(winrt::Windows::Gaming::Input::GamepadButtons button) c
         ((m_previousReading.Buttons & button) == button);
 }
 
-// ƒgƒŠƒK[‚ÆƒXƒeƒBƒbƒN
+// ãƒˆãƒªã‚¬ãƒ¼ã¨ã‚¹ãƒ†ã‚£ãƒƒã‚¯
 float PadInput::GetLeftTrigger() const
 {
     return static_cast<float>(m_currentReading.LeftTrigger);
@@ -106,10 +106,10 @@ float PadInput::GetRightStickY() const
     return ApplyDeadzone(static_cast<float>(m_currentReading.RightThumbstickY), DEADZONE_THRESHOLD);
 }
 
-// ƒ†[ƒeƒBƒŠƒeƒB
+// ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£
 float PadInput::ApplyDeadzone(float value, float deadzone) const
 {
-    // ’l‚ªƒfƒbƒhƒ][ƒ““à‚È‚ç0‚ğ•Ô‚·
+    // å€¤ãŒãƒ‡ãƒƒãƒ‰ã‚¾ãƒ¼ãƒ³å†…ãªã‚‰0ã‚’è¿”ã™
     if (std::abs(value) < deadzone)
     {
         return 0.0f;
@@ -123,19 +123,19 @@ void PadInput::SetVibration(float leftMotor, float rightMotor)
     if (m_gamepad)
     {
         winrt::Windows::Gaming::Input::GamepadVibration vibration;
-        vibration.LeftMotor = leftMotor;   // ’áü”g
-        vibration.RightMotor = rightMotor; // ‚ü”g
+        vibration.LeftMotor = leftMotor;   // ä½å‘¨æ³¢
+        vibration.RightMotor = rightMotor; // é«˜å‘¨æ³¢
         m_gamepad.Vibration(vibration);
     }
 }
 
 void PadInput::RenderImGui()
 {
-    DebugGui::Begin("Pad Input", "ƒpƒbƒh“ü—Í ");
-//    DebugGui::Begin("Pad Input", "ƒpƒbƒh“ü");
-//    DebugGui::Begin("ƒL[“ü—Í###PadInput", "Pad Input###PadInput");
+    DebugGui::Begin("Pad Input", "ãƒ‘ãƒƒãƒ‰å…¥åŠ› ");
+//    DebugGui::Begin("Pad Input", "ãƒ‘ãƒƒãƒ‰å…¥");
+//    DebugGui::Begin("ã‚­ãƒ¼å…¥åŠ›###PadInput", "Pad Input###PadInput");
 
-    // Ú‘±ó‘Ô
+    // æ¥ç¶šçŠ¶æ…‹
     if (IsConnected())
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: CONNECTED");
@@ -146,63 +146,63 @@ void PadInput::RenderImGui()
         return;
     }
     ImGui::Separator();
-    // ƒAƒiƒƒOƒXƒeƒBƒbƒN‚ÆƒgƒŠƒK[
+    // ã‚¢ãƒŠãƒ­ã‚°ã‚¹ãƒ†ã‚£ãƒƒã‚¯ã¨ãƒˆãƒªã‚¬ãƒ¼
     if (ImGui::CollapsingHeader("Analog Inputs", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // •`‰æ—pƒŠƒXƒgæ“¾
+        // æç”»ç”¨ãƒªã‚¹ãƒˆå–å¾—
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-        const float stickRadius = 40.0f; // ‰~‚Ì”¼Œa
-        const float dotRadius = 2.0f;    // ƒhƒbƒg
+        const float stickRadius = 40.0f; // å††ã®åŠå¾„
+        const float dotRadius = 2.0f;    // ãƒ‰ãƒƒãƒˆ
 
-        // Fİ’è
+        // è‰²è¨­å®š
         const ImU32 circleBgColor = ImGui::GetColorU32(ImGuiCol_FrameBg);
         const ImU32 outlineColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
         const ImU32 crossColor = ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.5f);
         const ImU32 dotColor = ImGui::GetColorU32(ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
-        // ƒXƒeƒBƒbƒN•`‰æ—p
+        // ã‚¹ãƒ†ã‚£ãƒƒã‚¯æç”»ç”¨
         auto DrawStickViz = [&](const char* label, float x_in, float y_in) {
             ImGui::BeginGroup();
 
-            // ƒ‰ƒxƒ‹‚ğ’†‰›Šñ‚¹‚Á‚Û‚­•\¦
+            // ãƒ©ãƒ™ãƒ«ã‚’ä¸­å¤®å¯„ã›ã£ã½ãè¡¨ç¤º
             float groupWidth = stickRadius * 2.0f;
             float textWidth = ImGui::CalcTextSize(label).x;
             if (groupWidth > textWidth) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (groupWidth - textWidth) * 0.5f);
             ImGui::Text("%s", label);
 
-            // •`‰æŠJnˆÊ’ui¶ãj‚ğæ“¾
+            // æç”»é–‹å§‹ä½ç½®ï¼ˆå·¦ä¸Šï¼‰ã‚’å–å¾—
             ImVec2 topLeft = ImGui::GetCursorScreenPos();
-            // ‰~‚Ì’†SÀ•W‚ğŒvZ
+            // å††ã®ä¸­å¿ƒåº§æ¨™ã‚’è¨ˆç®—
             ImVec2 center = ImVec2(topLeft.x + stickRadius, topLeft.y + stickRadius);
-            // ImGui‚ÉŒ©‚¦‚È‚¢—Ìˆæ‚ğŠm•Û‚³‚¹‚é
+            // ImGuiã«è¦‹ãˆãªã„é ˜åŸŸã‚’ç¢ºä¿ã•ã›ã‚‹
             ImGui::Dummy(ImVec2(groupWidth, stickRadius * 2));
-            // ”wŒi‚Ì‰~‚Æ˜gü
+            // èƒŒæ™¯ã®å††ã¨æ ç·š
             draw_list->AddCircleFilled(center, stickRadius, circleBgColor);
             draw_list->AddCircle(center, stickRadius, outlineColor);
-            // \šƒL[
+            // åå­—ã‚­ãƒ¼
             draw_list->AddLine(ImVec2(center.x - stickRadius, center.y), ImVec2(center.x + stickRadius, center.y), crossColor);
             draw_list->AddLine(ImVec2(center.x, center.y - stickRadius), ImVec2(center.x, center.y + stickRadius), crossColor);
-            // ƒXƒeƒBƒbƒNˆÊ’u‚Ìƒhƒbƒg
+            // ã‚¹ãƒ†ã‚£ãƒƒã‚¯ä½ç½®ã®ãƒ‰ãƒƒãƒˆ
             ImVec2 dotPos = ImVec2(center.x + (x_in * stickRadius), center.y + (-y_in * stickRadius));
             draw_list->AddCircleFilled(dotPos, dotRadius, dotColor);
-            // ”’l•\¦‚ÌƒYƒŒ–h~ "%+.2f" ‚Åí‚É•„†(+/-)‚ğ•\¦‚µA•¶š”‚ğŒÅ’è‰»
+            // æ•°å€¤è¡¨ç¤ºã®ã‚ºãƒ¬é˜²æ­¢ "%+.2f" ã§å¸¸ã«ç¬¦å·(+/-)ã‚’è¡¨ç¤ºã—ã€æ–‡å­—æ•°ã‚’å›ºå®šåŒ–
             char coordsBuffer[32];
             sprintf_s(coordsBuffer, "X:%+.2f Y:%+.2f", x_in, y_in);
-            // ”’l‚ğ’†‰›Šñ‚¹
+            // æ•°å€¤ã‚’ä¸­å¤®å¯„ã›
             float coordsWidth = ImGui::CalcTextSize(coordsBuffer).x;
             if (groupWidth > coordsWidth) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (groupWidth - coordsWidth) * 0.5f);
             ImGui::TextDisabled("%s", coordsBuffer);
             ImGui::EndGroup();
             };
-        // •`‰æˆ—
+        // æç”»å‡¦ç†
         DrawStickViz("Left Stick", GetLeftStickX(), GetLeftStickY());
         ImGui::SameLine(0, 40);
         DrawStickViz("Right Stick", GetRightStickX(), GetRightStickY());
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        // ƒgƒŠƒK[
+        // ãƒˆãƒªã‚¬ãƒ¼
         ImGui::Text("Triggers");
         float lt = GetLeftTrigger();
         float rt = GetRightTrigger();
@@ -212,33 +212,33 @@ void PadInput::RenderImGui()
         ImGui::ProgressBar(rt, ImVec2(-1, 15), "");
     }
 
-    // ƒ{ƒ^ƒ“
+    // ãƒœã‚¿ãƒ³
     if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 p = ImGui::GetCursorScreenPos(); // •`‰æ‚ÌŠî€“_ (¶ã)
-        // İ’è
+        ImVec2 p = ImGui::GetCursorScreenPos(); // æç”»ã®åŸºæº–ç‚¹ (å·¦ä¸Š)
+        // è¨­å®š
         float startX = p.x + 20.0f;
         float startY = p.y;
-        // F’è‹`
-        ImU32 colNone = ImGui::GetColorU32(ImGuiCol_FrameBg);       // –¢“ü—Í‚ÌF
-        ImU32 colActive = ImGui::GetColorU32(ImVec4(0, 1, 0, 1));   // “ü—Í (—Î)
-        ImU32 colText = ImGui::GetColorU32(ImGuiCol_Text);          // •¶šF
-        ImU32 colBorder = ImGui::GetColorU32(ImGuiCol_Border);      // ˜gü
-        // ‰~Œ`ƒ{ƒ^ƒ“•`‰æ
+        // è‰²å®šç¾©
+        ImU32 colNone = ImGui::GetColorU32(ImGuiCol_FrameBg);       // æœªå…¥åŠ›æ™‚ã®è‰²
+        ImU32 colActive = ImGui::GetColorU32(ImVec4(0, 1, 0, 1));   // å…¥åŠ›æ™‚ (ç·‘)
+        ImU32 colText = ImGui::GetColorU32(ImGuiCol_Text);          // æ–‡å­—è‰²
+        ImU32 colBorder = ImGui::GetColorU32(ImGuiCol_Border);      // æ ç·š
+        // å††å½¢ãƒœã‚¿ãƒ³æç”»
         auto DrawCircleBtn = [&](float x, float y, const char* label, winrt::Windows::Gaming::Input::GamepadButtons btn) {
             bool on = IsPress(btn);
             ImVec2 center(startX + x, startY + y);
             float radius = 12.0f;
-            // ”wŒi
+            // èƒŒæ™¯
             draw_list->AddCircleFilled(center, radius, on ? colActive : colNone);
             draw_list->AddCircle(center, radius, colBorder);
-            // •¶š (’†‰›‘µ‚¦)
+            // æ–‡å­— (ä¸­å¤®æƒãˆ)
             ImVec2 txtSz = ImGui::CalcTextSize(label);
             draw_list->AddText(ImVec2(center.x - txtSz.x * 0.5f, center.y - txtSz.y * 0.5f), colText, label);
             };
 
-        // ’·•ûŒ`ƒ{ƒ^ƒ“•`‰æ (L/Rƒoƒ“ƒp[, Menu—p) 
+        // é•·æ–¹å½¢ãƒœã‚¿ãƒ³æç”» (L/Rãƒãƒ³ãƒ‘ãƒ¼, Menuç”¨) 
         auto DrawRectBtn = [&](float x, float y, float w, float h, const char* label, winrt::Windows::Gaming::Input::GamepadButtons btn) {
             bool on = IsPress(btn);
             ImVec2 tl(startX + x, startY + y);
@@ -249,20 +249,20 @@ void PadInput::RenderImGui()
             draw_list->AddText(ImVec2(tl.x + (w - txtSz.x) * 0.5f, tl.y + (h - txtSz.y) * 0.5f), colText, label);
             };
 
-        // \šƒL[•`‰æ
+        // åå­—ã‚­ãƒ¼æç”»
         auto DrawDPad = [&](float x, float y) {
-            float sz = 20.0f;   // ƒuƒƒbƒN1ŒÂ‚ÌƒTƒCƒY
+            float sz = 20.0f;   // ãƒ–ãƒ­ãƒƒã‚¯1å€‹ã®ã‚µã‚¤ã‚º
             float padX = startX + x;
             float padY = startY + y;
 
-            // Še•ûŒü‚Ì‹éŒ`’è‹` (’†S‚©‚ç‚ÌƒIƒtƒZƒbƒg)
+            // å„æ–¹å‘ã®çŸ©å½¢å®šç¾© (ä¸­å¿ƒã‹ã‚‰ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ)
             struct Dir { float ox, oy; winrt::Windows::Gaming::Input::GamepadButtons btn; };
             Dir dirs[] = {
-                { 0, -1, winrt::Windows::Gaming::Input::GamepadButtons::DPadUp },   // ã
-                { 0,  1, winrt::Windows::Gaming::Input::GamepadButtons::DPadDown }, // ‰º
-                {-1,  0, winrt::Windows::Gaming::Input::GamepadButtons::DPadLeft }, // ¶
-                { 1,  0, winrt::Windows::Gaming::Input::GamepadButtons::DPadRight },// ‰E
-                { 0,  0, winrt::Windows::Gaming::Input::GamepadButtons::None }      // ’†S(ü‚è)
+                { 0, -1, winrt::Windows::Gaming::Input::GamepadButtons::DPadUp },   // ä¸Š
+                { 0,  1, winrt::Windows::Gaming::Input::GamepadButtons::DPadDown }, // ä¸‹
+                {-1,  0, winrt::Windows::Gaming::Input::GamepadButtons::DPadLeft }, // å·¦
+                { 1,  0, winrt::Windows::Gaming::Input::GamepadButtons::DPadRight },// å³
+                { 0,  0, winrt::Windows::Gaming::Input::GamepadButtons::None }      // ä¸­å¿ƒ(é£¾ã‚Š)
             };
 
             for (auto& d : dirs)
@@ -277,36 +277,36 @@ void PadInput::RenderImGui()
             }
             };
 
-        // ÀÛ‚Ì•`‰æ”z’u
+        // å®Ÿéš›ã®æç”»é…ç½®
 
-        // ã•” (LB / RB)
+        // ä¸Šéƒ¨ (LB / RB)
         DrawRectBtn(0, 0, 60, 20, "LB", winrt::Windows::Gaming::Input::GamepadButtons::LeftShoulder);
         DrawRectBtn(140, 0, 60, 20, "RB", winrt::Windows::Gaming::Input::GamepadButtons::RightShoulder);
 
-        // ’†‰› (View / Menu)
+        // ä¸­å¤® (View / Menu)
         DrawRectBtn(65, 10, 30, 15, "V", winrt::Windows::Gaming::Input::GamepadButtons::View);
         DrawRectBtn(105, 10, 30, 15, "M", winrt::Windows::Gaming::Input::GamepadButtons::Menu);
 
-        // ¶‘¤ (\šƒL[) - À•W(30, 60)‚ğ’†S
+        // å·¦å´ (åå­—ã‚­ãƒ¼) - åº§æ¨™(30, 60)ã‚’ä¸­å¿ƒ
         DrawDPad(30, 60);
 
-        // ‰E‘¤ (ABXY) - À•W(170, 60)‚ğ’†S
-        // XBox”z’u: Y(ã), A(‰º), X(¶), B(‰E)
+        // å³å´ (ABXY) - åº§æ¨™(170, 60)ã‚’ä¸­å¿ƒ
+        // XBoxé…ç½®: Y(ä¸Š), A(ä¸‹), X(å·¦), B(å³)
         DrawCircleBtn(170, 40, "Y", winrt::Windows::Gaming::Input::GamepadButtons::Y);
         DrawCircleBtn(170, 80, "A", winrt::Windows::Gaming::Input::GamepadButtons::A);
         DrawCircleBtn(150, 60, "X", winrt::Windows::Gaming::Input::GamepadButtons::X);
         DrawCircleBtn(190, 60, "B", winrt::Windows::Gaming::Input::GamepadButtons::B);
 
-        // ƒXƒeƒBƒbƒN‰Ÿ‚µ‚İ (LSB / RSB)
-        // \šƒL[‚ÆABXY‚Ì‰º‚ ‚½‚è‚É”z’u
+        // ã‚¹ãƒ†ã‚£ãƒƒã‚¯æŠ¼ã—è¾¼ã¿ (LSB / RSB)
+        // åå­—ã‚­ãƒ¼ã¨ABXYã®ä¸‹ã‚ãŸã‚Šã«é…ç½®
         DrawRectBtn(10, 95, 40, 15, "LSB", winrt::Windows::Gaming::Input::GamepadButtons::LeftThumbstick);
         DrawRectBtn(150, 95, 40, 15, "RSB", winrt::Windows::Gaming::Input::GamepadButtons::RightThumbstick);
 
-        // •`‰æƒGƒŠƒA‚ÌŠm•Û (‚±‚ê‚ª‚È‚¢‚ÆŸ‚Ì—v‘f‚ªd‚È‚é)
+        // æç”»ã‚¨ãƒªã‚¢ã®ç¢ºä¿ (ã“ã‚ŒãŒãªã„ã¨æ¬¡ã®è¦ç´ ãŒé‡ãªã‚‹)
         ImGui::Dummy(ImVec2(200, 120));
     }
 
-    // U“®ƒeƒXƒg
+    // æŒ¯å‹•ãƒ†ã‚¹ãƒˆ
     if (ImGui::CollapsingHeader("Vibration Test"))
     {
         static float motors[2] = { 0.0f, 0.0f }; // 0:Left(Low), 1:Right(High)
@@ -325,11 +325,11 @@ void PadInput::RenderImGui()
     DebugGui::End();
 }
 
-// ƒCƒxƒ“ƒgƒnƒ“ƒhƒ‰
+// ã‚¤ãƒ™ãƒ³ãƒˆãƒãƒ³ãƒ‰ãƒ©
 void PadInput::OnGamepadAdded(winrt::Windows::Foundation::IInspectable const&, winrt::Windows::Gaming::Input::Gamepad const& gamepad)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    // ‚Ü‚¾ƒpƒbƒh‚ğ‚Á‚Ä‚¢‚È‚¯‚ê‚ÎA‚±‚ê‚ğƒƒCƒ“‚É‚·‚é
+    // ã¾ã ãƒ‘ãƒƒãƒ‰ã‚’æŒã£ã¦ã„ãªã‘ã‚Œã°ã€ã“ã‚Œã‚’ãƒ¡ã‚¤ãƒ³ã«ã™ã‚‹
     if (!m_gamepad)
     {
         m_gamepad = gamepad;
@@ -339,11 +339,11 @@ void PadInput::OnGamepadAdded(winrt::Windows::Foundation::IInspectable const&, w
 void PadInput::OnGamepadRemoved(winrt::Windows::Foundation::IInspectable const&, winrt::Windows::Gaming::Input::Gamepad const& gamepad)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    // ƒƒCƒ“ƒpƒbƒh‚ª”²‚©‚ê‚½ê‡
+    // ãƒ¡ã‚¤ãƒ³ãƒ‘ãƒƒãƒ‰ãŒæŠœã‹ã‚ŒãŸå ´åˆ
     if (m_gamepad == gamepad)
     {
         m_gamepad = nullptr;
-        // ‘¼‚ÉÚ‘±‚³‚ê‚Ä‚¢‚éƒpƒbƒh‚ª‚ ‚ê‚ÎŠ„‚è“–‚Ä‚éiƒtƒFƒCƒ‹ƒI[ƒo[j
+        // ä»–ã«æ¥ç¶šã•ã‚Œã¦ã„ã‚‹ãƒ‘ãƒƒãƒ‰ãŒã‚ã‚Œã°å‰²ã‚Šå½“ã¦ã‚‹ï¼ˆãƒ•ã‚§ã‚¤ãƒ«ã‚ªãƒ¼ãƒãƒ¼ï¼‰
         if (winrt::Windows::Gaming::Input::Gamepad::Gamepads().Size() > 0)
         {
             m_gamepad = winrt::Windows::Gaming::Input::Gamepad::Gamepads().GetAt(0);

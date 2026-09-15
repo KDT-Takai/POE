@@ -1,29 +1,29 @@
-#pragma once
+ï»¿#pragma once
 #include "../../Registry/Registry.h"
 #include "../../Components/Physics/Projectile/Projectile.h"
 
 class ProjectileSystem {
 public:
     void Update(Registry& registry, float dt) {
-        // ProjectileComponent‚ğ‚Â‚·‚×‚Ä‚ÌƒGƒ“ƒeƒBƒeƒB‚ğæ“¾
+        // ProjectileComponentã‚’æŒã¤ã™ã¹ã¦ã®ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ã‚’å–å¾—
         auto view = registry.View<ProjectileComponent>();
 
-        // íœ—\’è‚ÌƒGƒ“ƒeƒBƒeƒBƒŠƒXƒg
+        // å‰Šé™¤äºˆå®šã®ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ãƒªã‚¹ãƒˆ
         std::vector<unsigned int> entitiesToDestroy;
 
         for (auto entity : view) {
             auto& proj = registry.GetComponent<ProjectileComponent>(entity);
 
-            // õ–½‚ğŒ¸‚ç‚·
+            // å¯¿å‘½ã‚’æ¸›ã‚‰ã™
             proj.duration -= dt;
 
-            // õ–½‚ªs‚«‚½‚çíœƒŠƒXƒg‚Ö
+            // å¯¿å‘½ãŒå°½ããŸã‚‰å‰Šé™¤ãƒªã‚¹ãƒˆã¸
             if (proj.duration <= 0.0f) {
                 entitiesToDestroy.push_back(entity);
             }
         }
 
-        // ÀÛ‚ÉíœÀs
+        // å®Ÿéš›ã«å‰Šé™¤å®Ÿè¡Œ
         for (auto entity : entitiesToDestroy) {
             registry.DestroyEntity(entity);
         }

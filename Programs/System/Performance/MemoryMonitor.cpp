@@ -1,4 +1,4 @@
-#include "MemoryMonitor.h"
+ï»¿#include "MemoryMonitor.h"
 
 void MemoryMonitor::Update()
 {
@@ -7,9 +7,9 @@ void MemoryMonitor::Update()
         (PROCESS_MEMORY_COUNTERS*)&pmc,
         sizeof(pmc)))
     {
-        usedMemory = pmc.WorkingSetSize;         // •¨—ƒƒ‚ƒŠ
-        peakMemory = pmc.PeakWorkingSetSize;     // Å‘å•¨—ƒƒ‚ƒŠ
-        privateMemory = pmc.PrivateUsage;        // ƒvƒƒZƒXê—pƒƒ‚ƒŠ
+        usedMemory = pmc.WorkingSetSize;         // ç‰©ç†ãƒ¡ãƒ¢ãƒª
+        peakMemory = pmc.PeakWorkingSetSize;     // æœ€å¤§ç‰©ç†ãƒ¡ãƒ¢ãƒª
+        privateMemory = pmc.PrivateUsage;        // ãƒ—ãƒ­ã‚»ã‚¹å°‚ç”¨ãƒ¡ãƒ¢ãƒª
     }
 }
 
@@ -21,7 +21,7 @@ void MemoryMonitor::RenderImGui()
     ImGui::Text("Peak Memory     : %.2f MB", peakMemory / (1024.0f * 1024.0f));
     ImGui::Text("Private Memory  : %.2f MB", privateMemory / (1024.0f * 1024.0f));
 
-    // Œ©‚½–Ú‚ğ­‚µ—Ç‚­‚·‚é Bar •\¦
+    // è¦‹ãŸç›®ã‚’å°‘ã—è‰¯ãã™ã‚‹ Bar è¡¨ç¤º
     float usedMB = usedMemory / (1024.0f * 1024.0f);
     ImGui::Separator();
     ImGui::Text("Used Memory Bar");

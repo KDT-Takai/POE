@@ -1,4 +1,4 @@
-// --------------------------------
+ï»¿// --------------------------------
 // Application.h
 // --------------------------------
 #pragma once
@@ -22,23 +22,23 @@ public:
 	// Main application loop
 	void run();
 private:
-	// Main SFML window ƒEƒBƒ“ƒhƒE
+	// Main SFML window ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦
 	std::unique_ptr<sf::RenderWindow> window;
-	// Clock to track time between frames ƒtƒŒ[ƒ€ŠÔ‚ÌŠÔ‚ğ’ÇÕ‚·‚éƒNƒƒbƒN
+	// Clock to track time between frames ãƒ•ãƒ¬ãƒ¼ãƒ é–“ã®æ™‚é–“ã‚’è¿½è·¡ã™ã‚‹ã‚¯ãƒ­ãƒƒã‚¯
 	sf::Clock deltaClock;
-	// Render texture for off-screen rendering ƒIƒtƒXƒNƒŠ[ƒ“ƒŒƒ“ƒ_ƒŠƒ“ƒO—p‚ÌƒŒƒ“ƒ_[ƒeƒNƒXƒ`ƒƒ
+	// Render texture for off-screen rendering ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ç”¨ã®ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ†ã‚¯ã‚¹ãƒãƒ£
 	std::unique_ptr<sf::RenderTexture> renderTexture;
-	// Sprite to display the render texture ƒŒƒ“ƒ_[ƒeƒNƒXƒ`ƒƒ‚ğ•\¦‚·‚éƒXƒvƒ‰ƒCƒg
+	// Sprite to display the render texture ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’è¡¨ç¤ºã™ã‚‹ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆ
 	std::unique_ptr<sf::Sprite> renderSprite;
-	// Debug manager for handling debug features ƒfƒoƒbƒO‹@”\‚ğŠÇ—‚·‚éƒfƒoƒbƒOƒ}ƒl[ƒWƒƒ[
-	// ƒVƒ“ƒOƒ‹ƒgƒ“‚É•ÏX‚µ‚½‚½‚ß•s—v
+	// Debug manager for handling debug features ãƒ‡ãƒãƒƒã‚°æ©Ÿèƒ½ã‚’ç®¡ç†ã™ã‚‹ãƒ‡ãƒãƒƒã‚°ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼
+	// ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ã«å¤‰æ›´ã—ãŸãŸã‚ä¸è¦
 //	std::unique_ptr<DebugManager> debugManager;
 	
-	// Initialize the application ƒCƒxƒ“ƒg‚Ìˆ—
+	// Initialize the application ã‚¤ãƒ™ãƒ³ãƒˆã®å‡¦ç†
 	void ProcessEvents();
-	// Update the application state ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÌXVó‘Ô
+	// Update the application state ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®æ›´æ–°çŠ¶æ…‹
 	void Update(sf::Time deltaTime);
-	// Render the current frame ƒŒƒ“ƒ_ƒŠƒ“ƒOŒ»İ‚ÌƒtƒŒ[ƒ€
+	// Render the current frame ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ç¾åœ¨ã®ãƒ•ãƒ¬ãƒ¼ãƒ 
 	void Render();
 
 	// Scene management

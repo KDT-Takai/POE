@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "../../Registry/Registry.h"
 #include "../../Components/Physics/Transform/Transform.h"
 #include "../../Components/Physics/Velocity/Velocity.h"
@@ -10,15 +10,15 @@
 class PhysicsSystem {
 public:
     void Update(Registry& registry, float dt) {
-        // ƒ}ƒbƒv‚Ìæ“¾
+        // ãƒãƒƒãƒ—ã®å–å¾—
         const MapComponent* map = nullptr;
         auto mapEntities = registry.View<MapComponent>();
         if (!mapEntities.empty()) {
             map = &registry.GetComponent<MapComponent>(mapEntities[0]);
         }
 
-        // d—Í‚ğ‘¬“x‚É“K—p
-        // GravityComponent ‚ğ‚ÂƒGƒ“ƒeƒBƒeƒB‚É‘Î‚µ‚Ä
+        // é‡åŠ›ã‚’é€Ÿåº¦ã«é©ç”¨
+        // GravityComponent ã‚’æŒã¤ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ã«å¯¾ã—ã¦
         //auto gravityView = registry.View<GravityComponent>();
         //for (auto entity : gravityView) {
         //    if (registry.HasComponent<VelocityComponent>(entity)) {
@@ -29,8 +29,8 @@ public:
         //    }
         //}
 
-        // ‘¬“x‚ğÀ•W‚É“K—p
-        // Velocity ‚Æ Transform ‚ğ‚ÂƒGƒ“ƒeƒBƒeƒB‚·‚×‚Ä‚É‘Î‚µ‚Ä
+        // é€Ÿåº¦ã‚’åº§æ¨™ã«é©ç”¨
+        // Velocity ã¨ Transform ã‚’æŒã¤ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ã™ã¹ã¦ã«å¯¾ã—ã¦
         auto velocityView = registry.View<VelocityComponent>();
         for (auto entity : velocityView) {
             if (registry.HasComponent<TransformComponent>(entity)) {
@@ -45,19 +45,19 @@ public:
 
                 auto& col = registry.GetComponent<BoxColliderComponent>(entity);
 
-                // “ŠË•¨ƒ`ƒFƒbƒN
+                // æŠ•å°„ç‰©ãƒã‚§ãƒƒã‚¯
                 ProjectileComponent* proj = nullptr;
                 if (registry.HasComponent<ProjectileComponent>(entity)) {
                     proj = &registry.GetComponent<ProjectileComponent>(entity);
                 }
 
-                // X²
+                // Xè»¸
                 trans.position.x += vel.velocity.x * dt;
                 col.hitWall = false;
-                // Õ“Ë‚ª‚ ‚Á‚½‚çˆÊ’u•â³A‘¬“xƒŠƒZƒbƒg
+                // è¡çªãŒã‚ã£ãŸã‚‰ä½ç½®è£œæ­£ã€é€Ÿåº¦ãƒªã‚»ãƒƒãƒˆ
                 if (ResolveMapCollision(trans, col, vel, *map, true)) {
                     if (proj) {
-                        if (proj->isBouncy) vel.velocity.x *= -1; // ”½Ë
+                        if (proj->isBouncy) vel.velocity.x *= -1; // åå°„
                         else { registry.DestroyEntity(entity); continue; }
                     }
                     else {
@@ -65,35 +65,35 @@ public:
                     }
                 }
 
-                // Y²‚Ìˆ—
+                // Yè»¸ã®å‡¦ç†
                 trans.position.y += vel.velocity.y * dt;
                 col.isGrounded = false;
-                // Õ“Ë‚ª‚ ‚Á‚½‚çˆÊ’u•â³A‘¬“xƒŠƒZƒbƒg
+                // è¡çªãŒã‚ã£ãŸã‚‰ä½ç½®è£œæ­£ã€é€Ÿåº¦ãƒªã‚»ãƒƒãƒˆ
                 if (ResolveMapCollision(trans, col, vel, *map, false)) {
                     if (proj) {
-                        if (proj->isBouncy) vel.velocity.y *= -1; // ”½Ë
+                        if (proj->isBouncy) vel.velocity.y *= -1; // åå°„
                         else { registry.DestroyEntity(entity); continue; }
                     }
                     else {
                         vel.velocity.y = 0.0f;
                     }
                 }
-                // Y=500‚Ìƒ‰ƒCƒ“‚ğ’n–Ê
+                // Y=500ã®ãƒ©ã‚¤ãƒ³ã‚’åœ°é¢
                 //float groundY = 500.0f;
                 //if (trans.position.y >= groundY) {
-                //    // ˆÊ’u•â³
+                //    // ä½ç½®è£œæ­£
                 //    trans.position.y = groundY;
-                //    // Ú’n‚µ‚½‚ç—‰º‘¬“x‚ğ0
+                //    // æ¥åœ°ã—ãŸã‚‰è½ä¸‹é€Ÿåº¦ã‚’0
                 //    if (vel.velocity.y > 0) vel.velocity.y = 0;
-                //    // Ú’nƒtƒ‰ƒO‚ğON
+                //    // æ¥åœ°ãƒ•ãƒ©ã‚°ã‚’ON
                 //    if (registry.HasComponent<BoxColliderComponent>(entity)) {
                 //        registry.GetComponent<BoxColliderComponent>(entity).isGrounded = true;
                 //    }
                 //}
                 //else {
-                //    // ‹ó’†‚É‚¢‚é
+                //    // ç©ºä¸­ã«ã„ã‚‹
                 //    if (registry.HasComponent<BoxColliderComponent>(entity)) {
-                //        if (vel.velocity.y > 0) // —‰º’†
+                //        if (vel.velocity.y > 0) // è½ä¸‹ä¸­
                 //            registry.GetComponent<BoxColliderComponent>(entity).isGrounded = false;
                 //    }
                 //}
@@ -104,17 +104,17 @@ private:
     bool ResolveMapCollision(TransformComponent& trans, BoxColliderComponent& col, VelocityComponent& vel, const MapComponent& map, bool isXAxis) {
         bool hasCollision = false;
 
-        // ƒXƒLƒ“•i”»’è‚Ì—V‚Ñj
+        // ã‚¹ã‚­ãƒ³å¹…ï¼ˆåˆ¤å®šã®éŠã³ï¼‰
         const float skin = 2.0f;
 
-        // ƒvƒŒƒCƒ„[‚Ì‹éŒ`
+        // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®çŸ©å½¢
         float minX = trans.position.x + col.offsetX;
         float maxX = minX + col.width;
         float minY = trans.position.y + col.offsetY;
         float maxY = minY + col.height;
 
-        // ”»’è—p‚Ì‹éŒ`‚ğk‚ß‚éiƒXƒLƒ““K—pj
-        // XˆÚ“®’†‚ÍY‚ğ­‚µk‚ßAYˆÚ“®’†‚ÍX‚ğ­‚µk‚ß‚é
+        // åˆ¤å®šç”¨ã®çŸ©å½¢ã‚’ç¸®ã‚ã‚‹ï¼ˆã‚¹ã‚­ãƒ³é©ç”¨ï¼‰
+        // Xç§»å‹•ä¸­ã¯Yã‚’å°‘ã—ç¸®ã‚ã€Yç§»å‹•ä¸­ã¯Xã‚’å°‘ã—ç¸®ã‚ã‚‹
         if (isXAxis) {
             minY += skin;
             maxY -= skin;
@@ -127,13 +127,13 @@ private:
         sf::Vector2i minTile = map.WorldToTile(minX, minY);
         sf::Vector2i maxTile = map.WorldToTile(maxX, maxY);
 
-        // ”ÍˆÍ“àƒXƒLƒƒƒ“
+        // ç¯„å›²å†…ã‚¹ã‚­ãƒ£ãƒ³
         for (int y = minTile.y; y <= maxTile.y; ++y) {
             for (int x = minTile.x; x <= maxTile.x; ++x) {
                 TileType tile = map.GetTile(x, y);
                 if (tile == TileType::Dirt || tile == TileType::Wood || tile == TileType::Grass) continue;
 
-                // ƒ^ƒCƒ‹‚Ì‹éŒ`
+                // ã‚¿ã‚¤ãƒ«ã®çŸ©å½¢
                 float tileLeft = x * map.tileSize;
                 float tileRight = tileLeft + map.tileSize;
                 float tileTop = y * map.tileSize;
@@ -145,19 +145,19 @@ private:
                 float tileCenterY = tileTop + (map.tileSize / 2.0f);
 
                 if (isXAxis) {
-                    float dx1 = maxX - tileLeft; // ‰E‚Ö‚Ì‚ß‚è‚İ
-                    float dx2 = tileRight - minX; // ¶‚Ö‚Ì‚ß‚è‚İ
+                    float dx1 = maxX - tileLeft; // å³ã¸ã®ã‚ã‚Šè¾¼ã¿
+                    float dx2 = tileRight - minX; // å·¦ã¸ã®ã‚ã‚Šè¾¼ã¿
 
-                    // ƒvƒŒƒCƒ„[‚ªƒ^ƒCƒ‹‚Ì¶‘¤‚É‚¢‚é‚È‚çu¶‚Ö‰Ÿ‚µo‚·v
+                    // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ãŒã‚¿ã‚¤ãƒ«ã®å·¦å´ã«ã„ã‚‹ãªã‚‰ã€Œå·¦ã¸æŠ¼ã—å‡ºã™ã€
                     if (playerCenterX < tileCenterX) {
-                        // ‘Ã“–‚È‚ß‚è‚İ—Ê‚©ƒ`ƒFƒbƒN
+                        // å¦¥å½“ãªã‚ã‚Šè¾¼ã¿é‡ã‹ãƒã‚§ãƒƒã‚¯
                         if (dx1 > 0 && dx1 < map.tileSize) {
                             trans.position.x -= dx1;
                             col.hitWall = true;
                             hasCollision = true;
                         }
                     }
-                    // ƒvƒŒƒCƒ„[‚ªƒ^ƒCƒ‹‚Ì‰E‘¤‚É‚¢‚é‚È‚çu‰E‚Ö‰Ÿ‚µo‚·v
+                    // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ãŒã‚¿ã‚¤ãƒ«ã®å³å´ã«ã„ã‚‹ãªã‚‰ã€Œå³ã¸æŠ¼ã—å‡ºã™ã€
                     else {
                         if (dx2 > 0 && dx2 < map.tileSize) {
                             trans.position.x += dx2;
@@ -165,11 +165,11 @@ private:
                             hasCollision = true;
                         }
                     }
-                    if (hasCollision) return true; // X²‚Í1‚Â‚Å‚à“–‚½‚ê‚ÎI—¹
+                    if (hasCollision) return true; // Xè»¸ã¯1ã¤ã§ã‚‚å½“ãŸã‚Œã°çµ‚äº†
                 }
                 else {
-                    float dy1 = maxY - tileTop;    // ‰º‚Ö‚Ì‚ß‚è‚İ
-                    float dy2 = tileBottom - minY; // ã‚Ö‚Ì‚ß‚è‚İ
+                    float dy1 = maxY - tileTop;    // ä¸‹ã¸ã®ã‚ã‚Šè¾¼ã¿
+                    float dy2 = tileBottom - minY; // ä¸Šã¸ã®ã‚ã‚Šè¾¼ã¿
 
                     if (playerCenterY < tileCenterY) {
                         if (dy1 > 0 && dy1 < map.tileSize) {
@@ -181,7 +181,7 @@ private:
                     else {
                         if (dy2 > 0 && dy2 < map.tileSize) {
                             trans.position.y += dy2;
-                            col.hitWall = true; // “Vˆäƒqƒbƒg
+                            col.hitWall = true; // å¤©äº•ãƒ’ãƒƒãƒˆ
                             hasCollision = true;
                         }
                     }

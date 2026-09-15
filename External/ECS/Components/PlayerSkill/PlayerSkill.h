@@ -1,12 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include "../Stats/SkillData/Skill.h"
 #include <array>
 
 struct PlayerSkill {
-    // ‘•”õ’†‚ÌƒXƒLƒ‹ƒŠƒXƒg
+    // è£…å‚™ä¸­ã®ã‚¹ã‚­ãƒ«ãƒªã‚¹ãƒˆ
     std::array<SkillData, 5> skills;
 
-    // Œ»İ‰r¥’†‚©‚Ç‚¤‚©
+    // ç¾åœ¨è© å”±ä¸­ã‹ã©ã†ã‹
     int castingSkillIndex = -1;
     float castTimer = 0.0f;
 

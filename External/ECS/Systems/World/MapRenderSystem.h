@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include <cmath>
 #include "../../Registry/Registry.h"
@@ -7,19 +7,19 @@
 class MapRenderSystem {
 public:
     void Render(Registry& registry, sf::RenderTarget& target) {
-        // MapComponent‚ğ‚ÂƒGƒ“ƒeƒBƒeƒB‚ğ’T‚·i’Êí‚Í1‚Â‚¾‚¯j
+        // MapComponentã‚’æŒã¤ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ã‚’æ¢ã™ï¼ˆé€šå¸¸ã¯1ã¤ã ã‘ï¼‰
         auto view = registry.View<MapComponent>();
         if (view.empty()) return;
 
-        // Å‰‚Ì1‚Â‚ğæ“¾iWorldEntityj
+        // æœ€åˆã®1ã¤ã‚’å–å¾—ï¼ˆWorldEntityï¼‰
         const auto& map = registry.GetComponent<MapComponent>(view[0]);
 
-        // Œ»İ‚ÌƒJƒƒ‰‚Ì•\¦”ÍˆÍ‚ğæ“¾
+        // ç¾åœ¨ã®ã‚«ãƒ¡ãƒ©ã®è¡¨ç¤ºç¯„å›²ã‚’å–å¾—
         sf::View currentView = target.getView();
         sf::Vector2f center = currentView.getCenter();
         sf::Vector2f size = currentView.getSize();
 
-        // ‰æ–Ê‚Ì¶ã‚Æ‰E‰º‚Ìƒ[ƒ‹ƒhÀ•W‚ğŒvZ
+        // ç”»é¢ã®å·¦ä¸Šã¨å³ä¸‹ã®ãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™ã‚’è¨ˆç®—
         float viewLeft = center.x - size.x / 2.0f;
         float viewTop = center.y - size.y / 2.0f;
         float viewRight = center.x + size.x / 2.0f;
@@ -36,28 +36,28 @@ public:
             for (int x = startX; x < endX; ++x) {
                 TileType type = map.GetTile(x, y);
 
-                // ‹ó‹C
+                // ç©ºæ°—
 //                if (type == TileType::Air) continue;
 
-                // À•Wİ’è
+                // åº§æ¨™è¨­å®š
                 rect.setPosition(sf::Vector2{ x * map.tileSize, y * map.tileSize });
 
-                // Fİ’èiƒeƒNƒXƒ`ƒƒ‚ª‚È‚¢ŠÔ‚Ì‰¼‚ÌF•ª‚¯j
+                // è‰²è¨­å®šï¼ˆãƒ†ã‚¯ã‚¹ãƒãƒ£ãŒãªã„é–“ã®ä»®ã®è‰²åˆ†ã‘ï¼‰
                 switch (type) {
                 case TileType::Dirt:
-                    rect.setFillColor(sf::Color(70, 70, 70)); // °F”Z‚¢ƒOƒŒ[iƒ_ƒ“ƒWƒ‡ƒ“‚Á‚Û‚­j
+                    rect.setFillColor(sf::Color(70, 70, 70)); // åºŠï¼šæ¿ƒã„ã‚°ãƒ¬ãƒ¼ï¼ˆãƒ€ãƒ³ã‚¸ãƒ§ãƒ³ã£ã½ãï¼‰
                     break;
                 case TileType::Stone:
-                    rect.setFillColor(sf::Color(20, 20, 20)); // •ÇF‚Ù‚Ú•
+                    rect.setFillColor(sf::Color(20, 20, 20)); // å£ï¼šã»ã¼é»’
                     break;
                 case TileType::Wood:
-                    rect.setFillColor(sf::Color::Green);      // ƒXƒ^[ƒg’n“_F—Î
+                    rect.setFillColor(sf::Color::Green);      // ã‚¹ã‚¿ãƒ¼ãƒˆåœ°ç‚¹ï¼šç·‘
                     break;
                 case TileType::Grass:
-                    rect.setFillColor(sf::Color::Red);        // ƒS[ƒ‹’n“_FÔ
+                    rect.setFillColor(sf::Color::Red);        // ã‚´ãƒ¼ãƒ«åœ°ç‚¹ï¼šèµ¤
                     break;
                 case TileType::Bedrock:
-                    rect.setFillColor(sf::Color::Black);      // ŠO˜g
+                    rect.setFillColor(sf::Color::Black);      // å¤–æ 
                     break;
                 default:
                     rect.setFillColor(sf::Color::Magenta);

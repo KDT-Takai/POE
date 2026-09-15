@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 #include <cstdint>
 
-// ƒGƒ“ƒeƒBƒeƒB
+// ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£
 using Entity = std::uint32_t;
 const Entity MAX_ENTITIES = 100000;

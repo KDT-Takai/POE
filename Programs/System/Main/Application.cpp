@@ -1,4 +1,4 @@
-#include "Application.h"
+ï»¿#include "Application.h"
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
@@ -13,31 +13,31 @@
 #include "../Resource/ResourceManager/ResourceManager.h"
 
 Application::Application() {
-	// Create the main window ƒEƒBƒ“ƒhƒE‚Ìì¬
+	// Create the main window ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ä½œæˆ
 	window = std::make_unique<sf::RenderWindow>(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), WINDOW_TITLE);
-	// Create the render texture ƒŒƒ“ƒ_[ƒeƒNƒXƒ`ƒƒ‚Ìì¬
+	// Create the render texture ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ä½œæˆ
 	renderTexture = std::make_unique<sf::RenderTexture>();
-	// Create the debug manager ƒfƒoƒbƒOƒ}ƒl[ƒWƒƒ[‚Ìì¬
+	// Create the debug manager ãƒ‡ãƒãƒƒã‚°ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®ä½œæˆ
 //	debugManager = std::make_unique<DebugManager>();
 
-	// Window settings ƒEƒBƒ“ƒhƒE‚Ìİ’è
+	// Window settings ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®è¨­å®š
 	window->setFramerateLimit(FRAMERATE_LIMIT);
-	// ImGui initialization ImGui‚Ì‰Šú‰»
+	// ImGui initialization ImGuiã®åˆæœŸåŒ–
 	ImGui::SFML::Init(*window);
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 //	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	ImGui::StyleColorsClassic();
-	// RenderTexture settings ƒŒƒ“ƒ_[ƒeƒNƒXƒ`ƒƒ‚Ìİ’è
+	// RenderTexture settings ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®è¨­å®š
 	renderTexture->resize(sf::Vector2u{WINDOW_WIDTH, WINDOW_HEIGHT});
 
-	// ƒeƒNƒXƒ`ƒƒ‚ğƒZƒbƒgiƒ|ƒCƒ“ƒ^/QÆ‚ğ•Û‚·‚é‚¾‚¯‚È‚Ì‚ÅŒy—Êj
+	// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’ã‚»ãƒƒãƒˆï¼ˆãƒã‚¤ãƒ³ã‚¿/å‚ç…§ã‚’ä¿æŒã™ã‚‹ã ã‘ãªã®ã§è»½é‡ï¼‰
 	renderSprite = std::make_unique<sf::Sprite>((renderTexture->getTexture()));
 
 	Time::Instance().SetTargetFPS(60);
 	window->setFramerateLimit(60);
 
-	// ƒŠƒ\[ƒX©“®“Ç‚İ‚İ
-	// ƒtƒHƒ“ƒg‚Í©“®“Ç‚İ‚İ‚·‚é•K—v‚Í‚È‚¢‚Ì‚Å¡Œã©“®“Ç‚İ‚İ‚Å‚Í‚È‚­è“®“Ç‚İ‚İ‚É•ÏX‚·‚é‰Â”\«‚ ‚è
+	// ãƒªã‚½ãƒ¼ã‚¹è‡ªå‹•èª­ã¿è¾¼ã¿
+	// ãƒ•ã‚©ãƒ³ãƒˆã¯è‡ªå‹•èª­ã¿è¾¼ã¿ã™ã‚‹å¿…è¦ã¯ãªã„ã®ã§ä»Šå¾Œè‡ªå‹•èª­ã¿è¾¼ã¿ã§ã¯ãªãæ‰‹å‹•èª­ã¿è¾¼ã¿ã«å¤‰æ›´ã™ã‚‹å¯èƒ½æ€§ã‚ã‚Š
 	ResourceManager::Instance().loadAllTextures("Assets/Textures");
 	ResourceManager::Instance().loadAllFonts("Assets/Fonts");
 	ResourceManager::Instance().loadAllSounds("Assets/Sounds");
@@ -76,7 +76,7 @@ void Application::run() {
 void Application::ProcessEvents() {
 	while (auto event = window->pollEvent()) {
 		ImGui::SFML::ProcessEvent(*window, *event);
-		// Close window: exit ƒEƒBƒ“ƒhƒE‚ğ•Â‚¶‚éFI—¹
+		// Close window: exit ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚’é–‰ã˜ã‚‹ï¼šçµ‚äº†
 		if (event->is<sf::Event::Closed>()) {
 			window->close();
 		}
@@ -84,13 +84,13 @@ void Application::ProcessEvents() {
 }
 
 void Application::Update(sf::Time deltaTime) {
-	// Sprite‚ÉƒeƒNƒXƒ`ƒƒ‚ğXV
+	// Spriteã«ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’æ›´æ–°
 	renderSprite->setTexture(renderTexture->getTexture(), true);
 #ifdef _DEBUG
 	DebugManager::Instance().Update(*window);
 #endif
 	SceneManager::Instance().Update();
-// ƒQ[ƒ€‚ğ’â~‚³‚¹‚éê‡
+// ã‚²ãƒ¼ãƒ ã‚’åœæ­¢ã•ã›ã‚‹å ´åˆ
 //	if (!debugMode_flag)
 //		screenManager->Update(dt.asSeconds());
 }
@@ -105,7 +105,7 @@ void Application::Render() {
 //	circle2.setFillColor(sf::Color::Green);
 //	circle2.setPosition({200,200});
 	
-	// renderTexture->getTexture()‚Ìê‡‚±‚ê‚Í‰æ‘œ‚Æ‚µ‚Ä•`‰æ‚µ‚Ä‚é
+	// renderTexture->getTexture()ã®å ´åˆã“ã‚Œã¯ç”»åƒã¨ã—ã¦æç”»ã—ã¦ã‚‹
 //	static sf::Sprite sprite(renderTexture->getTexture());
 //	sprite.setScale({0.5f, 0.5f});
 

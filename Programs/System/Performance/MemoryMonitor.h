@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <imgui.h>
 #include <windows.h>
 #include <psapi.h>
@@ -23,7 +23,7 @@ public:
 private:
     size_t usedMemory = 0;
     size_t peakMemory = 0;
-    size_t privateMemory = 0;   // © PrivateUsage ³íæ“¾
-    // ƒvƒƒOƒŒƒXƒo[‚ÌÅ‘å•\¦i2GBj
+    size_t privateMemory = 0;   // â† PrivateUsage æ­£å¸¸å–å¾—
+    // ãƒ—ãƒ­ã‚°ãƒ¬ã‚¹ãƒãƒ¼ã®æœ€å¤§è¡¨ç¤ºï¼ˆ2GBï¼‰
     float maxDisplayMB = 2048.0f;
 };

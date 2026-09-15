@@ -1,14 +1,14 @@
-#pragma once
+ï»¿#pragma once
 
 struct BoxColliderComponent {
     float width = 32.0f;
     float height = 64.0f;
 
-    // ’†S‚©‚ç‚ÌƒIƒtƒZƒbƒgi•K—v‚Èê‡j
+    // ä¸­å¿ƒã‹ã‚‰ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆï¼ˆå¿…è¦ãªå ´åˆï¼‰
     float offsetX = 0.0f;
     float offsetY = 0.0f;
 
-    // ó‘Ôƒtƒ‰ƒO
-    bool isGrounded = false; // ’n–Ê‚É‘«‚ª‚Â‚¢‚Ä‚¢‚é‚©
-    bool hitWall = false;    // •Ç‚É‚Ô‚Â‚©‚Á‚Ä‚¢‚é‚©
+    // çŠ¶æ…‹ãƒ•ãƒ©ã‚°
+    bool isGrounded = false; // åœ°é¢ã«è¶³ãŒã¤ã„ã¦ã„ã‚‹ã‹
+    bool hitWall = false;    // å£ã«ã¶ã¤ã‹ã£ã¦ã„ã‚‹ã‹
 };

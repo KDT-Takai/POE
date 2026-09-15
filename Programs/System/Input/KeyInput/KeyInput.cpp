@@ -1,4 +1,4 @@
-#include "KeyInput.h"
+ï»¿#include "KeyInput.h"
 #include <imgui.h>
 #include <string>
 #include "../../DebugGui/DebugGui.h"
@@ -11,24 +11,24 @@ KeyInput::KeyInput()
 
 void KeyInput::Update()
 {
-	// ‘O‰ñ‚Ìó‘Ô‚ğ•Û‘¶
+	// å‰å›ã®çŠ¶æ…‹ã‚’ä¿å­˜
 	beforKeyInput = nowKeyInput;
-	// ƒL[“ü—ÍXV
+	// ã‚­ãƒ¼å…¥åŠ›æ›´æ–°
 	for (int i = 0; i < KEY_MAX; i++)
 		nowKeyInput[i] = sf::Keyboard::isKeyPressed(static_cast<sf::Keyboard::Key>(i));
 }
 
-// ‰Ÿ‚µ‚½uŠÔ
+// æŠ¼ã—ãŸç¬é–“
 bool KeyInput::IsGetKey(sf::Keyboard::Key key) const
 {
 	return nowKeyInput[static_cast<int>(key)] && !beforKeyInput[static_cast<int>(key)];
 }
-// ‰Ÿ‚³‚ê‚Ä‚¢‚éŠÔ
+// æŠ¼ã•ã‚Œã¦ã„ã‚‹é–“
 bool KeyInput::GetKey(sf::Keyboard::Key key) const
 {
 	return nowKeyInput[static_cast<int>(key)];
 }
-// ’·‰Ÿ‚µ
+// é•·æŠ¼ã—
 bool KeyInput::GetKeyRepeat(sf::Keyboard::Key key) const
 {
 	return nowKeyInput[static_cast<int>(key)] && beforKeyInput[static_cast<int>(key)];
@@ -36,17 +36,17 @@ bool KeyInput::GetKeyRepeat(sf::Keyboard::Key key) const
 
 void KeyInput::RenderImGui()
 {
-    DebugGui::Begin("Key Input", "ƒL[“ü—Í");
+    DebugGui::Begin("Key Input", "ã‚­ãƒ¼å…¥åŠ›");
 
-    // İ’è
-    const float KEY_SIZE = 30.0f; // Šî–{‚ÌƒL[ƒTƒCƒY
-    const float SPACING = 4.0f;   // ƒL[“¯m‚ÌŠÔŠu
+    // è¨­å®š
+    const float KEY_SIZE = 30.0f; // åŸºæœ¬ã®ã‚­ãƒ¼ã‚µã‚¤ã‚º
+    const float SPACING = 4.0f;   // ã‚­ãƒ¼åŒå£«ã®é–“éš”
 
-    // ƒXƒ^ƒCƒ‹’²®iƒL[“¯m‚ğ­‚µ‹l‚ß‚é‚ÆƒL[ƒ{[ƒh‚Á‚Û‚­‚È‚éj
+    // ã‚¹ã‚¿ã‚¤ãƒ«èª¿æ•´ï¼ˆã‚­ãƒ¼åŒå£«ã‚’å°‘ã—è©°ã‚ã‚‹ã¨ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ã£ã½ããªã‚‹ï¼‰
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(SPACING, SPACING));
 
-    // ƒwƒ‹ƒp[ŠÖ”: ƒL[•`‰æ
-    // label: •\¦•¶š, key: SFMLƒL[, widthMult: ‰¡•‚Ì”{—¦
+    // ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: ã‚­ãƒ¼æç”»
+    // label: è¡¨ç¤ºæ–‡å­—, key: SFMLã‚­ãƒ¼, widthMult: æ¨ªå¹…ã®å€ç‡
     auto DrawKey = [&](const char* label, sf::Keyboard::Key key, float widthMult = 1.0f) {
 
         bool on = false;
@@ -54,34 +54,34 @@ void KeyInput::RenderImGui()
             on = GetKey(key);
         }
 
-        // Fİ’è
+        // è‰²è¨­å®š
         if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
         else    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
 
-        // ƒTƒCƒYŒvZ
+        // ã‚µã‚¤ã‚ºè¨ˆç®—
         float w = (KEY_SIZE * widthMult) + (SPACING * (widthMult - 1.0f));
 
-        // ƒ{ƒ^ƒ“•`‰æ
+        // ãƒœã‚¿ãƒ³æç”»
         if (ImGui::Button(label, ImVec2(w, KEY_SIZE)))
         {
-            // ƒNƒŠƒbƒN‚Ìˆ—
+            // ã‚¯ãƒªãƒƒã‚¯æ™‚ã®å‡¦ç†
         }
 
         ImGui::PopStyleColor();
         ImGui::SameLine();
     };
 
-    // ‰üs—pƒwƒ‹ƒp[
+    // æ”¹è¡Œç”¨ãƒ˜ãƒ«ãƒ‘ãƒ¼
     auto NewRow = [&]() {
         ImGui::NewLine();
     };
 
-    // --- 1. ƒƒCƒ“ƒL[ƒ{[ƒhƒGƒŠƒA ---
+    // --- 1. ãƒ¡ã‚¤ãƒ³ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ã‚¨ãƒªã‚¢ ---
     ImGui::BeginGroup();
     {
         // Row 0: Esc & F-Keys
         DrawKey("ESC", sf::Keyboard::Key::Escape);
-        ImGui::SameLine(0, 20); // ­‚µŠÔŠu
+        ImGui::SameLine(0, 20); // å°‘ã—é–“éš”
         DrawKey("F1", sf::Keyboard::Key::F1);
         DrawKey("F2", sf::Keyboard::Key::F2);
         DrawKey("F3", sf::Keyboard::Key::F3);
@@ -100,8 +100,8 @@ void KeyInput::RenderImGui()
         NewRow();
 
         // Row 1: Numbers
-        // ¦SFML‚ÌNum0-9‚ÍƒgƒbƒvƒL[ANumpad0-9‚Íƒeƒ“ƒL[
-        DrawKey(" ~ ", sf::Keyboard::Key::Grave); // Tilde‚ª‚È‚¢ŒÃ‚¢SFML‚Ìê‡‚ÍÈ—ª‰Â
+        // â€»SFMLã®Num0-9ã¯ãƒˆãƒƒãƒ—ã‚­ãƒ¼ã€Numpad0-9ã¯ãƒ†ãƒ³ã‚­ãƒ¼
+        DrawKey(" ~ ", sf::Keyboard::Key::Grave); // TildeãŒãªã„å¤ã„SFMLã®å ´åˆã¯çœç•¥å¯
         DrawKey(" 1 ", sf::Keyboard::Key::Num1);
         DrawKey(" 2 ", sf::Keyboard::Key::Num2);
         DrawKey(" 3 ", sf::Keyboard::Key::Num3);
@@ -114,7 +114,7 @@ void KeyInput::RenderImGui()
         DrawKey(" 0 ", sf::Keyboard::Key::Num0);
         DrawKey(" - ", sf::Keyboard::Key::Hyphen);
         DrawKey(" = ", sf::Keyboard::Key::Equal);
-        DrawKey("Back", sf::Keyboard::Key::Backspace, 2.0f); // •2”{
+        DrawKey("Back", sf::Keyboard::Key::Backspace, 2.0f); // å¹…2å€
 
         NewRow();
 
@@ -137,7 +137,7 @@ void KeyInput::RenderImGui()
         NewRow();
 
         // Row 3: Mid Alpha (Caps, A-L, Enter)
-        DrawKey("Caps", sf::Keyboard::Key::Unknown, 1.7f); // SFML‚ÉCaps‚ª‚È‚¢ê‡‚ª‘½‚¢‚Ì‚Åƒ_ƒ~[
+        DrawKey("Caps", sf::Keyboard::Key::Unknown, 1.7f); // SFMLã«CapsãŒãªã„å ´åˆãŒå¤šã„ã®ã§ãƒ€ãƒŸãƒ¼
         DrawKey(" A ", sf::Keyboard::Key::A);
         DrawKey(" S ", sf::Keyboard::Key::S);
         DrawKey(" D ", sf::Keyboard::Key::D);
@@ -173,7 +173,7 @@ void KeyInput::RenderImGui()
         DrawKey("Ctrl", sf::Keyboard::Key::LControl, 1.5f);
         DrawKey("Win ", sf::Keyboard::Key::LSystem, 1.3f);
         DrawKey("Alt ", sf::Keyboard::Key::LAlt, 1.3f);
-        DrawKey("Space", sf::Keyboard::Key::Space, 6.2f); // ƒXƒy[ƒXƒL[
+        DrawKey("Space", sf::Keyboard::Key::Space, 6.2f); // ã‚¹ãƒšãƒ¼ã‚¹ã‚­ãƒ¼
         DrawKey("Alt ", sf::Keyboard::Key::RAlt, 1.3f);
         DrawKey("Win ", sf::Keyboard::Key::RSystem, 1.3f);
         DrawKey("Menu", sf::Keyboard::Key::Menu, 1.3f);
@@ -181,8 +181,8 @@ void KeyInput::RenderImGui()
     }
     ImGui::EndGroup();
 
-    // --- 2. ƒiƒrƒQ[ƒVƒ‡ƒ“ƒL[ (–îˆó‚È‚Ç) ---
-    ImGui::SameLine(0, 15); // ƒƒCƒ“‚Æ‚ÌŒ„ŠÔ
+    // --- 2. ãƒŠãƒ“ã‚²ãƒ¼ã‚·ãƒ§ãƒ³ã‚­ãƒ¼ (çŸ¢å°ãªã©) ---
+    ImGui::SameLine(0, 15); // ãƒ¡ã‚¤ãƒ³ã¨ã®éš™é–“
     ImGui::BeginGroup();
     {
         // Ins / Home / PgUp
@@ -195,10 +195,10 @@ void KeyInput::RenderImGui()
         DrawKey("End", sf::Keyboard::Key::End);
         DrawKey("PgD", sf::Keyboard::Key::PageDown);
 
-        NewRow(); NewRow(); // ‹ó”’
+        NewRow(); NewRow(); // ç©ºç™½
 
         // Arrows
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + KEY_SIZE + SPACING); // ’†‰›‘µ‚¦’²®
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + KEY_SIZE + SPACING); // ä¸­å¤®æƒãˆèª¿æ•´
         DrawKey(" ^ ", sf::Keyboard::Key::Up);
         NewRow();
         DrawKey(" < ", sf::Keyboard::Key::Left);
@@ -207,7 +207,7 @@ void KeyInput::RenderImGui()
     }
     ImGui::EndGroup();
 
-    // --- 3. ƒeƒ“ƒL[ ---
+    // --- 3. ãƒ†ãƒ³ã‚­ãƒ¼ ---
     ImGui::SameLine(0, 15);
     ImGui::BeginGroup();
     {
@@ -221,19 +221,19 @@ void KeyInput::RenderImGui()
         DrawKey(" 7 ", sf::Keyboard::Key::Numpad7);
         DrawKey(" 8 ", sf::Keyboard::Key::Numpad8);
         DrawKey(" 9 ", sf::Keyboard::Key::Numpad9);
-        // +ƒL[ (c’·‚É‚µ‚½‚¢‚ªImGui::Button‚Å‚Í“ï‚µ‚¢‚Ì‚Å’Êí”z’u)
+        // +ã‚­ãƒ¼ (ç¸¦é•·ã«ã—ãŸã„ãŒImGui::Buttonã§ã¯é›£ã—ã„ã®ã§é€šå¸¸é…ç½®)
         DrawKey(" + ", sf::Keyboard::Key::Add);
         NewRow();
         // 4 5 6
         DrawKey(" 4 ", sf::Keyboard::Key::Numpad4);
         DrawKey(" 5 ", sf::Keyboard::Key::Numpad5);
         DrawKey(" 6 ", sf::Keyboard::Key::Numpad6);
-        NewRow(); // +‚Ìc’·•ª‚ğ‹ó‚¯‚é‘ã‚í‚è‚É‰üs
+        NewRow(); // +ã®ç¸¦é•·åˆ†ã‚’ç©ºã‘ã‚‹ä»£ã‚ã‚Šã«æ”¹è¡Œ
         // 1 2 3 Enter
         DrawKey(" 1 ", sf::Keyboard::Key::Numpad1);
         DrawKey(" 2 ", sf::Keyboard::Key::Numpad2);
         DrawKey(" 3 ", sf::Keyboard::Key::Numpad3);
-        DrawKey("Ent", sf::Keyboard::Key::Unknown); // NumpadEnter‚ª‚È‚¢ê‡‚ª‚ ‚é
+        DrawKey("Ent", sf::Keyboard::Key::Unknown); // NumpadEnterãŒãªã„å ´åˆãŒã‚ã‚‹
         NewRow();
         // 0 .
         DrawKey(" 0 ", sf::Keyboard::Key::Numpad0, 2.0f);
@@ -241,14 +241,14 @@ void KeyInput::RenderImGui()
     }
     ImGui::EndGroup();
 
-    ImGui::PopStyleVar(); // ItemSpacing‰ğœ
+    ImGui::PopStyleVar(); // ItemSpacingè§£é™¤
 
     ImGui::Separator();
 
-    // --- 4. ƒŠƒXƒg•\¦ (Šù‘¶‚ÌƒƒWƒbƒN) ---
-    if (DebugGui::TreeNode("Active Keys List", "ƒAƒNƒeƒBƒuƒL[ƒŠƒXƒg"))
+    // --- 4. ãƒªã‚¹ãƒˆè¡¨ç¤º (æ—¢å­˜ã®ãƒ­ã‚¸ãƒƒã‚¯) ---
+    if (DebugGui::TreeNode("Active Keys List", "ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã‚­ãƒ¼ãƒªã‚¹ãƒˆ"))
     {
-        // ƒwƒ‹ƒp[i‘O‚ÌƒR[ƒh‚Æ“¯‚¶‚à‚Ì‚ğg—pj
+        // ãƒ˜ãƒ«ãƒ‘ãƒ¼ï¼ˆå‰ã®ã‚³ãƒ¼ãƒ‰ã¨åŒã˜ã‚‚ã®ã‚’ä½¿ç”¨ï¼‰
         auto KeyToString = [](int k) -> std::string {
             int keyA = static_cast<int>(sf::Keyboard::Key::A);
             int keyZ = static_cast<int>(sf::Keyboard::Key::Z);
@@ -258,7 +258,7 @@ void KeyInput::RenderImGui()
             if (k >= keyA && k <= keyZ) return std::string(1, 'A' + (k - keyA));
             if (k >= keyNum0 && k <= keyNum9) return "Num" + std::to_string(k - keyNum0);
 
-            // ... (‚»‚Ì‘¼‚Ì“ÁêƒL[•ÏŠ·‚Í•K—v‚É‰‚¶‚Ä‹Lq) ...
+            // ... (ãã®ä»–ã®ç‰¹æ®Šã‚­ãƒ¼å¤‰æ›ã¯å¿…è¦ã«å¿œã˜ã¦è¨˜è¿°) ...
 
             return std::to_string(k);
             };

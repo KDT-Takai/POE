@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include <array>
 
-// ƒXƒLƒ‹ƒXƒƒbƒg‚Ì”
+// ã‚¹ã‚­ãƒ«ã‚¹ãƒ­ãƒƒãƒˆã®æ•°
 constexpr int MAX_SKILL_SLOTS = 5;
 
 struct PlayerInputComponent {

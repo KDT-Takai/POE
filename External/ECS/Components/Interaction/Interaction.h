@@ -1,22 +1,22 @@
-#pragma once
+ï»¿#pragma once
 
-// ƒCƒ“ƒ^ƒ‰ƒNƒg
+// ã‚¤ãƒ³ã‚¿ãƒ©ã‚¯ãƒˆ
 enum class InteractType {
-    SpiritMonument, // ¸—ì”è
-    Chest,          // •ó” 
-    Lever,          // ƒŒƒo[
-    Portal          // ƒ[ƒvƒ][ƒ“
+    SpiritMonument, // ç²¾éœŠç¢‘
+    Chest,          // å®ç®±
+    Lever,          // ãƒ¬ãƒãƒ¼
+    Portal          // ãƒ¯ãƒ¼ãƒ—ã‚¾ãƒ¼ãƒ³
 };
 
 struct InteractableComponent {
     InteractType type = InteractType::SpiritMonument;
 
-    // ˆê“x‚«‚è‚©
+    // ä¸€åº¦ãã‚Šã‹
     bool once = true;
 
     bool autoTrigger = true;
 
-    // g—pÏ‚İ‚©
+    // ä½¿ç”¨æ¸ˆã¿ã‹
     bool used = false;
 
     int targetID = -1;

@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 
-// À•WE‰ñ“]EƒXƒP[ƒ‹
+// åº§æ¨™ãƒ»å›è»¢ãƒ»ã‚¹ã‚±ãƒ¼ãƒ«
 struct TransformComponent {
     sf::Vector2f position = { 0.f, 0.f };
     sf::Vector2f scale = { 1.f, 1.f };

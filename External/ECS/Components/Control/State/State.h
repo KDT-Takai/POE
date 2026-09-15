@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 
-// ƒAƒjƒ[ƒVƒ‡ƒ“‚âs“®§Œä‚Ì‚½‚ß‚Ìó‘Ô
+// ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚„è¡Œå‹•åˆ¶å¾¡ã®ãŸã‚ã®çŠ¶æ…‹
 enum class ActorState {
     Idle,
     Run,
@@ -14,6 +14,6 @@ enum class ActorState {
 
 struct StateComponent {
     ActorState currentState = ActorState::Idle;
-    float stateTimer = 0.0f; // ‚»‚Ìó‘Ô‚É‚È‚Á‚Ä‚©‚ç‚ÌŒo‰ßŠÔ
+    float stateTimer = 0.0f; // ãã®çŠ¶æ…‹ã«ãªã£ã¦ã‹ã‚‰ã®çµŒéæ™‚é–“
     bool isFacingRight = true;
 };

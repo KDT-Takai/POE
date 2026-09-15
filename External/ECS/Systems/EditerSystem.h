@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include "../ECS.h"
 #include "../Components/Components.h"
-#include "../Components/Physics/Transform/Transform.h" // À•W
+#include "../Components/Physics/Transform/Transform.h" // åº§æ¨™
 #include "imgui.h"
 #include <System/DebugGui/DebugGui.h>
 
@@ -16,11 +16,11 @@ public:
     }
 
     void RenderImGui(Registry& registry) {
-        DebugGui::Begin("Object Editor", "ƒIƒuƒWƒFƒNƒgƒGƒfƒBƒ^[");
+        DebugGui::Begin("Object Editor", "ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚¨ãƒ‡ã‚£ã‚¿ãƒ¼");
         ImGui::Separator();
 
-        // ƒqƒGƒ‰ƒ‹ƒL[
-        DebugGui::Text("Hierarchy", "ƒqƒGƒ‰ƒ‹ƒL[");
+        // ãƒ’ã‚¨ãƒ©ãƒ«ã‚­ãƒ¼
+        DebugGui::Text("Hierarchy", "ãƒ’ã‚¨ãƒ©ãƒ«ã‚­ãƒ¼");
 
         std::vector<Entity> toDestroy;
         for (auto entity : registry.GetEntities()) {
@@ -49,35 +49,35 @@ public:
         for (auto e : toDestroy) registry.DestroyEntity(e);
         DebugGui::End();
 
-        // ƒCƒ“ƒXƒyƒNƒ^[
-        DebugGui::Begin("Inspector", "ƒCƒ“ƒXƒyƒNƒ^[");
+        // ã‚¤ãƒ³ã‚¹ãƒšã‚¯ã‚¿ãƒ¼
+        DebugGui::Begin("Inspector", "ã‚¤ãƒ³ã‚¹ãƒšã‚¯ã‚¿ãƒ¼");
         if (m_selectedEntity != -1) {
             DrawComponents(registry, m_selectedEntity);
         }
         else {
-            DebugGui::Text("No entity selected.", "ƒGƒ“ƒeƒBƒeƒB‚ª‘I‘ğ‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+            DebugGui::Text("No entity selected.", "ã‚¨ãƒ³ãƒ†ã‚£ãƒ†ã‚£ãŒé¸æŠã•ã‚Œã¦ã„ã¾ã›ã‚“");
         }
         DebugGui::End();
     }
 
 private:
     void DrawComponents(Registry& registry, Entity entity) {
-        // ƒ^ƒO
+        // ã‚¿ã‚°
         if (registry.HasComponent<TagComponent>(entity))
         {
             auto& tag = registry.GetComponent<TagComponent>(entity);
             char buffer[256];
             strncpy_s(buffer, tag.name.c_str(), sizeof(buffer));
-            if (DebugGui::InputText("Name", "–¼‘O", buffer, sizeof(buffer))) {
+            if (DebugGui::InputText("Name", "åå‰", buffer, sizeof(buffer))) {
                 tag.name = buffer;
             }
         }
-        // íœƒ{ƒ^ƒ“
+        // å‰Šé™¤ãƒœã‚¿ãƒ³
         if (registry.HasComponent<TagComponent>(entity))
         {
             auto& tag = registry.GetComponent<TagComponent>(entity);
-            DebugGui::Text("Tag: %s", "ƒ^ƒO: %s", tag.name.c_str());
-            if (DebugGui::Button("Delete", "íœ"))
+            DebugGui::Text("Tag: %s", "ã‚¿ã‚°: %s", tag.name.c_str());
+            if (DebugGui::Button("Delete", "å‰Šé™¤"))
             {
                 registry.RemoveComponent<TagComponent>(entity);
                 registry.DestroyEntity(entity);
@@ -87,36 +87,36 @@ private:
         // Transform
         if (registry.HasComponent<TransformComponent>(entity))
         {
-            if (DebugGui::CollapsingHeader("Transform", "ƒgƒ‰ƒ“ƒXƒtƒH[ƒ€", ImGuiTreeNodeFlags_DefaultOpen))
+            if (DebugGui::CollapsingHeader("Transform", "ãƒˆãƒ©ãƒ³ã‚¹ãƒ•ã‚©ãƒ¼ãƒ ", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& t = registry.GetComponent<TransformComponent>(entity);
-                DebugGui::DragFloat2("Position", "À•W", &t.position.x);
-                DebugGui::DragFloat("Rotation", "Šp“x", &t.rotation);
-                DebugGui::DragFloat2("Scale", "ƒXƒP[ƒ‹", &t.scale.x, 0.01f);
+                DebugGui::DragFloat2("Position", "åº§æ¨™", &t.position.x);
+                DebugGui::DragFloat("Rotation", "è§’åº¦", &t.rotation);
+                DebugGui::DragFloat2("Scale", "ã‚¹ã‚±ãƒ¼ãƒ«", &t.scale.x, 0.01f);
             }
         }
-        // Circle (‰~‚Ìİ’è)
+        // Circle (å††ã®è¨­å®š)
         if (registry.HasComponent<CircleComponent>(entity))
         {
-            if (DebugGui::CollapsingHeader("Circle Shape", "‰~Œ`", ImGuiTreeNodeFlags_DefaultOpen))
+            if (DebugGui::CollapsingHeader("Circle Shape", "å††å½¢", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& c = registry.GetComponent<CircleComponent>(entity);
-                DebugGui::DragFloat("Radius", "”¼Œa", &c.radius);
+                DebugGui::DragFloat("Radius", "åŠå¾„", &c.radius);
 
                 float color[4] = { c.color.r / 255.f, c.color.g / 255.f, c.color.b / 255.f, c.color.a / 255.f };
-                if (DebugGui::ColorEdit4("Color", "ƒJƒ‰[", color))
+                if (DebugGui::ColorEdit4("Color", "ã‚«ãƒ©ãƒ¼", color))
                 {
                     c.color = sf::Color(color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255);
                 }
-                DebugGui::Checkbox("Visible", "•\¦", &c.isVisible);
+                DebugGui::Checkbox("Visible", "è¡¨ç¤º", &c.isVisible);
             }
         }
-        // Sprite (ƒXƒvƒ‰ƒCƒg‚Ìİ’è)
+        // Sprite (ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆã®è¨­å®š)
         if (registry.HasComponent<SpriteComponent>(entity))
         {
             if (ImGui::CollapsingHeader("Sprite", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                // Šù‘¶‚ÌSprite•ÒWƒR[ƒh
+                // æ—¢å­˜ã®Spriteç·¨é›†ã‚³ãƒ¼ãƒ‰
             }
         }
     }

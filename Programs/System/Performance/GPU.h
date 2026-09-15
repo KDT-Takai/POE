@@ -1,4 +1,4 @@
-//#pragma once
+ï»¿//#pragma once
 //#include <dxgi1_4.h>
 //#pragma comment(lib, "dxgi.lib")
 //
@@ -21,5 +21,5 @@
 //    factory->Release();
 //
 //    if (budget == 0) return 0.f;
-//    return (used / budget) * 100.f; // Žg—p—¦ %
+//    return (used / budget) * 100.f; // ä½¿ç”¨çŽ‡ %
 //}

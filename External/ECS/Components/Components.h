@@ -1,41 +1,41 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include <string>
 
-//// À•WE‰ñ“]EƒXƒP[ƒ‹
+//// åº§æ¨™ãƒ»å›è»¢ãƒ»ã‚¹ã‚±ãƒ¼ãƒ«
 //struct TransformComponent {
 //    sf::Vector2f position = { 0.f, 0.f };
 //    sf::Vector2f scale = { 1.f, 1.f };
 //    float rotation = 0.f;
 //};
 
-// •`‰æî•ñ
+// æç”»æƒ…å ±
 struct SpriteComponent {
-    std::string textureName = ""; // ƒŠƒ\[ƒXƒ}ƒl[ƒWƒƒ[‚ÌƒL[
+    std::string textureName = ""; // ãƒªã‚½ãƒ¼ã‚¹ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®ã‚­ãƒ¼
     sf::Color color = sf::Color::White;
     sf::IntRect textureRect{ {0, 0}, {0, 0} };
-    int layer = 0; // •`‰æƒŒƒCƒ„[ (”’l‚ª‘å‚«‚¢‚Ù‚Çè‘O)
+    int layer = 0; // æç”»ãƒ¬ã‚¤ãƒ¤ãƒ¼ (æ•°å€¤ãŒå¤§ãã„ã»ã©æ‰‹å‰)
     bool isVisible = true;
 };
 
-// –¼‘O
+// åå‰
 struct TagComponent {
     std::string name = "Entity";
 };
 
-// ‰~
+// å††
 struct CircleComponent {
     float radius = 20.0f;
     sf::Color color = sf::Color::Green;
     bool isVisible = true;
 };
 
-// ƒvƒŒƒCƒ„[§Œä—p
+// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼åˆ¶å¾¡ç”¨
 struct PlayerComponent {
-    // Šî–{ƒXƒe[ƒ^ƒX
-    float moveSpeed = 200.0f;     // ’Êí‚Ì•às‘¬“x
+    // åŸºæœ¬ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
+    float moveSpeed = 200.0f;     // é€šå¸¸æ™‚ã®æ­©è¡Œé€Ÿåº¦
 
-    // ƒ[ƒŠƒ“ƒO
+    // ãƒ­ãƒ¼ãƒªãƒ³ã‚°
     bool isRolling = false;
     sf::Vector2f rollDirection;
 

@@ -1,4 +1,4 @@
-#include "MouseInput.h"
+ï»¿#include "MouseInput.h"
 #include <imgui.h>
 #include "../../DebugGui/DebugGui.h"
 
@@ -10,26 +10,26 @@ MouseInput::MouseInput() {
 }
 
 void MouseInput::Update(const sf::RenderWindow& window) {
-	// ‘O‰ñ‚Ìó‘Ô‚ğ•Û‘¶
+	// å‰å›ã®çŠ¶æ…‹ã‚’ä¿å­˜
 	beforMouseInput = nowMouseInput;
-	// ƒ}ƒEƒX“ü—ÍXV
+	// ãƒã‚¦ã‚¹å…¥åŠ›æ›´æ–°
 	for (int i = 0; i < MOUSE_BUTTON_MAX; i++)
 		nowMouseInput[i] = sf::Mouse::isButtonPressed(static_cast<sf::Mouse::Button>(i));
-	// ƒ}ƒEƒXÀ•WXV
+	// ãƒã‚¦ã‚¹åº§æ¨™æ›´æ–°
 	sf::Vector2i pos = sf::Mouse::getPosition(window);
 	mouseX = pos.x;
 	mouseY = pos.y;
 }
 
-// ‰Ÿ‚µ‚½uŠÔ
+// æŠ¼ã—ãŸç¬é–“
 bool MouseInput::IsGetMouse(sf::Mouse::Button button) const {
 	return nowMouseInput[static_cast<int>(button)] && !beforMouseInput[static_cast<int>(button)];
 }
-// ‰Ÿ‚³‚ê‚Ä‚¢‚éŠÔ
+// æŠ¼ã•ã‚Œã¦ã„ã‚‹é–“
 bool MouseInput::GetMouse(sf::Mouse::Button button) const {
 	return nowMouseInput[static_cast<int>(button)];
 }
-// ’·‰Ÿ‚µ
+// é•·æŠ¼ã—
 bool MouseInput::GetMouseRepeat(sf::Mouse::Button button) const {
 	return nowMouseInput[static_cast<int>(button)] && beforMouseInput[static_cast<int>(button)];
 }
@@ -43,33 +43,33 @@ sf::Vector2f MouseInput::GetMousePointF() {
 
 void MouseInput::RenderImGui()
 {
-    DebugGui::Begin("Mouse Input", "ƒ}ƒEƒX“ü—Í");
+    DebugGui::Begin("Mouse Input", "ãƒã‚¦ã‚¹å…¥åŠ›");
 
-    // À•W•\¦
-    DebugGui::Text("Screen Position", "Œ»İ’n");
+    // åº§æ¨™è¡¨ç¤º
+    DebugGui::Text("Screen Position", "ç¾åœ¨åœ°");
     ImGui::TextColored(ImVec4(0, 1, 1, 1), "X: %d  Y: %d", mouseX, mouseY);
 
     ImGui::Separator();
     ImGui::Spacing();
 
-    // ƒ}ƒEƒX‚ÌƒrƒWƒ…ƒAƒ‹•`‰æ
+    // ãƒã‚¦ã‚¹ã®ãƒ“ã‚¸ãƒ¥ã‚¢ãƒ«æç”»
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    ImVec2 p = ImGui::GetCursorScreenPos(); // Šî€“_
+    ImVec2 p = ImGui::GetCursorScreenPos(); // åŸºæº–ç‚¹
     float startX = p.x + 20;
     float startY = p.y;
-    // İ’è
-    float w = 60.0f;     // ƒ}ƒEƒX•
-    float h = 90.0f;     // ƒ}ƒEƒX‚‚³
-    float btnH = 35.0f;  // ƒ{ƒ^ƒ“•”•ª‚‚³
-    float gap = 2.0f;    // ƒ{ƒ^ƒ“Œ„ŠÔ
+    // è¨­å®š
+    float w = 60.0f;     // ãƒã‚¦ã‚¹å¹…
+    float h = 90.0f;     // ãƒã‚¦ã‚¹é«˜ã•
+    float btnH = 35.0f;  // ãƒœã‚¿ãƒ³éƒ¨åˆ†é«˜ã•
+    float gap = 2.0f;    // ãƒœã‚¿ãƒ³éš™é–“
 
-    // F
+    // è‰²
     ImU32 colBody = ImGui::GetColorU32(ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
     ImU32 colActive = ImGui::GetColorU32(ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
     ImU32 colOff = ImGui::GetColorU32(ImGuiCol_FrameBg);
     ImU32 colBorder = ImGui::GetColorU32(ImGuiCol_Border);
 
-    // ¶ƒNƒŠƒbƒN
+    // å·¦ã‚¯ãƒªãƒƒã‚¯
     {
         bool on = GetMouse(sf::Mouse::Button::Left);
         ImVec2 tl(startX, startY);
@@ -80,7 +80,7 @@ void MouseInput::RenderImGui()
         draw->AddText(ImVec2(tl.x + 5, tl.y + 10), ImGui::GetColorU32(ImGuiCol_Text), "L");
     }
 
-    // ‰EƒNƒŠƒbƒN
+    // å³ã‚¯ãƒªãƒƒã‚¯
     {
         bool on = GetMouse(sf::Mouse::Button::Right);
         ImVec2 tl(startX + w / 2 + gap, startY);
@@ -91,7 +91,7 @@ void MouseInput::RenderImGui()
         draw->AddText(ImVec2(tl.x + 5, tl.y + 10), ImGui::GetColorU32(ImGuiCol_Text), "R");
     }
 
-    // ƒzƒC[ƒ‹
+    // ãƒ›ã‚¤ãƒ¼ãƒ«
     {
         bool on = GetMouse(sf::Mouse::Button::Middle);
         float mw = 10.0f;
@@ -104,18 +104,18 @@ void MouseInput::RenderImGui()
         draw->AddRect(tl, br, colBorder, 3.0f);
     }
 
-    // ƒ{ƒfƒB
+    // ãƒœãƒ‡ã‚£
     {
         ImVec2 tl(startX, startY + btnH + gap);
         ImVec2 br(startX + w, startY + h);
-        // •`‰æ‘O‚ÉƒNƒŠƒbƒsƒ“ƒO”ÍˆÍ‚ğİ’èiˆÀ‘Sj
+        // æç”»å‰ã«ã‚¯ãƒªãƒƒãƒ”ãƒ³ã‚°ç¯„å›²ã‚’è¨­å®šï¼ˆå®‰å…¨ï¼‰
         draw->PushClipRect(tl, br, true);
-        draw->AddRectFilled(tl, br, colBody, 10.0f); // ‘SŠpŠÛ‚É‚µ‚Ä‚©‚çc
-        draw->PopClipRect(); // ‚»‚Ì‰º‚¾‚¯Œ©‚é‚æ‚¤‚É‚È‚é
-        // ˜güiƒNƒŠƒbƒv‚È‚µj
+        draw->AddRectFilled(tl, br, colBody, 10.0f); // å…¨è§’ä¸¸ã«ã—ã¦ã‹ã‚‰â€¦
+        draw->PopClipRect(); // ãã®ä¸‹ã ã‘è¦‹ã‚‹ã‚ˆã†ã«ãªã‚‹
+        // æ ç·šï¼ˆã‚¯ãƒªãƒƒãƒ—ãªã—ï¼‰
         draw->AddRect(tl, br, colBorder, 10.0f);
     }
-    // ƒXƒy[ƒXŠm•Û
+    // ã‚¹ãƒšãƒ¼ã‚¹ç¢ºä¿
     ImGui::Dummy(ImVec2(w + 40, h + 20));
     DebugGui::End();
 }

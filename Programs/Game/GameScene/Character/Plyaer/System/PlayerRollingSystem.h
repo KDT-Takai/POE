@@ -1,11 +1,11 @@
-#pragma once
+ï»¿#pragma once
 #include <ECS.h>
 #include <System/Input/InputManager.h>
 #include <SFML/Graphics.hpp>
 #include <cmath>
 
 /// <summary>
-/// ƒ[ƒŠƒ“ƒO ‰ñ”ğ—p
+/// ãƒ­ãƒ¼ãƒªãƒ³ã‚° å›é¿ç”¨
 /// </summary>
 class PlayerRollingSystem {
 

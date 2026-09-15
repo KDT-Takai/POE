@@ -1,11 +1,11 @@
-#pragma once
+ï»¿#pragma once
 #include "../Language//Language.h"
 #include <imgui.h>
 #include <cstdio>
 #include <cstdarg>
 #include <string>
 #include <vector>
-// •¶šƒR[ƒh—p‚â‚Å
+// æ–‡å­—ã‚³ãƒ¼ãƒ‰ç”¨ã‚„ã§
 #include <Windows.h>
 
 //#define TEST 2
@@ -14,26 +14,26 @@ class DebugGui {
 private:
     // CP_ACP
     static constexpr UINT CP_SJIS = 932;
-    // Shift-JIS‚ğUTF-8‚É•ÏŠ·‚·‚éŠÖ”
+    // Shift-JISã‚’UTF-8ã«å¤‰æ›ã™ã‚‹é–¢æ•°
     static std::string SjisToUtf8(const std::string& sjis) {
         if (sjis.empty()) return "";
-        // Shift-JIS‚©‚çUTF-16
+        // Shift-JISã‹ã‚‰UTF-16
         int size_needed = MultiByteToWideChar(CP_SJIS, 0, sjis.data(), static_cast<int>(sjis.size()), NULL, 0);
-        if (size_needed <= 0) return sjis; // ¸”s‚µ‚½‚ç‚»‚Ì‚Ü‚Ü•Ô‚·
+        if (size_needed <= 0) return sjis; // å¤±æ•—ã—ãŸã‚‰ãã®ã¾ã¾è¿”ã™
         std::wstring wstr(size_needed, 0);
         MultiByteToWideChar(CP_SJIS, 0, sjis.data(), static_cast<int>(sjis.size()), &wstr[0], size_needed);
 
-        // UTF-16‚©‚çUTF-8
+        // UTF-16ã‹ã‚‰UTF-8
         size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
         std::string utf8(size_needed, 0);
         WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), &utf8[0], size_needed, NULL, NULL);
-        // ––”ö‚Ìíœ
+        // æœ«å°¾ã®å‰Šé™¤
         if (!utf8.empty() && utf8.back() == '\0') {
             utf8.pop_back();
         }
         return utf8;
     }
-    // UTF-8‚ğSJIS‚É•ÏŠ·
+    // UTF-8ã‚’SJISã«å¤‰æ›
     static std::string Utf8ToSjis(const std::string& utf8) {
         if (utf8.empty()) return "";
         int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), NULL, 0);
@@ -47,8 +47,8 @@ private:
         if (!sjis.empty() && sjis.back() == '\0') sjis.pop_back();
         return sjis;
     }
-    // “ú–{Œêİ’è‚È‚ç "“ú–{Œê•\¦###EnglishID" ‚ğ•Ô‚·
-    // ‰pŒêİ’è‚È‚ç "EnglishID" ‚ğ•Ô‚·
+    // æ—¥æœ¬èªè¨­å®šãªã‚‰ "æ—¥æœ¬èªè¡¨ç¤º###EnglishID" ã‚’è¿”ã™
+    // è‹±èªè¨­å®šãªã‚‰ "EnglishID" ã‚’è¿”ã™
     //static std::string GetLabelStr(const char* en, const char* jp) {
     //    if (Language::Get() == Language::Type::Japanese) {
     //        return SjisToUtf8(jp) + "###" + en;
@@ -57,95 +57,95 @@ private:
     //}
     static std::string GetLabelStr(const char* en, const char* jp) {
         if (Language::Get() == Language::Type::Japanese) {
-            // “ú–{Œê•\¦###EnglishID
+            // æ—¥æœ¬èªè¡¨ç¤º###EnglishID
             return SjisToUtf8(jp) + "###" + en;
         }
-        // ‰pŒê•\¦###EnglishID (Œ©‚½–Ú‚Í "English" ‚¾‚ª ID‚Í "English" ‚Æ–¾¦‚³‚ê‚é)
-        // ¦’Êí‚Í en ‚¾‚¯‚Å‚à“¯‚¶ID‚É‚È‚è‚Ü‚·‚ªA”O‚É‚Í”O‚ğ“ü‚ê‚é‚È‚ç‚±‚¤‘‚­
+        // è‹±èªè¡¨ç¤º###EnglishID (è¦‹ãŸç›®ã¯ "English" ã ãŒ IDã¯ "English" ã¨æ˜ç¤ºã•ã‚Œã‚‹)
+        // â€»é€šå¸¸ã¯ en ã ã‘ã§ã‚‚åŒã˜IDã«ãªã‚Šã¾ã™ãŒã€å¿µã«ã¯å¿µã‚’å…¥ã‚Œã‚‹ãªã‚‰ã“ã†æ›¸ã
         return std::string(en) + "###" + en;
     }
 public:
-    // ƒeƒLƒXƒg
+    // ãƒ†ã‚­ã‚¹ãƒˆ
     static void Text(const char* en, const char* jp, ...) {
-        // Œ¾Œê‘I‘ğ
+        // è¨€èªé¸æŠ
         bool isJp = (Language::Get() == Language::Type::Japanese);
         const char* fmt = isJp ? jp : en;
-        // ƒtƒH[ƒ}ƒbƒgˆ— (printf)
+        // ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆå‡¦ç† (printf)
         va_list args;
         va_start(args, jp);
         char buffer[1024];
         vsnprintf(buffer, sizeof(buffer), fmt, args);
 
         va_end(args);
-        // •¶šƒR[ƒh•ÏŠ· (“ú–{Œê‚Ì‚Æ‚«‚¾‚¯•ÏŠ·‚·‚é)
+        // æ–‡å­—ã‚³ãƒ¼ãƒ‰å¤‰æ› (æ—¥æœ¬èªã®ã¨ãã ã‘å¤‰æ›ã™ã‚‹)
         if (isJp) {
-            // ƒoƒbƒtƒ@‚Ì’†g(S-JIS)‚ğUTF-8‚É•ÏŠ·‚µ‚Ä•\¦
+            // ãƒãƒƒãƒ•ã‚¡ã®ä¸­èº«(S-JIS)ã‚’UTF-8ã«å¤‰æ›ã—ã¦è¡¨ç¤º
             //std::string utf8Str = SjisToUtf8(buffer);
             //ImGui::TextUnformatted(utf8Str.c_str());
             ImGui::TextUnformatted(SjisToUtf8(buffer).c_str());
         }
         else {
-            // ‰pŒê‚È‚ç‚»‚Ì‚Ü‚Ü•\¦ (ASCII‚ÍUTF-8ŒİŠ·‚È‚Ì‚Å•ÏŠ·•s—v)
+            // è‹±èªãªã‚‰ãã®ã¾ã¾è¡¨ç¤º (ASCIIã¯UTF-8äº’æ›ãªã®ã§å¤‰æ›ä¸è¦)
             ImGui::TextUnformatted(buffer);
         }
     }
 
 
-#if TEST == 1 // ‚í‚¯‚ª‚í‚©‚ç‚¢
-    // ƒEƒBƒ“ƒhƒE (ƒ^ƒCƒgƒ‹‚à•ÏŠ·‚ª•K—v)
+#if TEST == 1 // ã‚ã‘ãŒã‚ã‹ã‚‰ã„
+    // ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ (ã‚¿ã‚¤ãƒˆãƒ«ã‚‚å¤‰æ›ãŒå¿…è¦)
     static bool Begin(const char* id, const char* jp_label, bool* p_open = nullptr, ImGuiWindowFlags flags = 0)
     {
-        // •\¦–¼ + ### + ID
+        // è¡¨ç¤ºå + ### + ID
         return ImGui::Begin(GetLabelStr(id, jp_label).c_str(), p_open, flags);
     }
-#elif TEST == 2 // ƒL[ˆê‚Â‚¾‚¯‚Ì‚â‚Â
-    // ƒEƒBƒ“ƒhƒE (ƒ^ƒCƒgƒ‹‚à•ÏŠ·‚ª•K—v)
+#elif TEST == 2 // ã‚­ãƒ¼ä¸€ã¤ã ã‘ã®ã‚„ã¤
+    // ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ (ã‚¿ã‚¤ãƒˆãƒ«ã‚‚å¤‰æ›ãŒå¿…è¦)
     static bool Begin(const char* en, const char* jp, bool* p_open = nullptr, ImGuiWindowFlags flags = 0) {
-        // “ú–{Œê•\¦‚Ìê‡:
-        // •\¦—pƒeƒLƒXƒg(jp) + "###" + ¯•Ê—pID(en)
-        // ‚±‚ê‚É‚æ‚èAŒ¾Œê‚ğ•Ï‚¦‚Ä‚àƒEƒBƒ“ƒhƒE‚ÌˆÊ’u‚âƒTƒCƒY(iniƒtƒ@ƒCƒ‹İ’è)‚ª‹¤—L‚³‚ê‚Ü‚·B
-        // ‰pŒê‚Ìê‡:
-        // ‚»‚Ì‚Ü‚Ü“n‚· (en‚Ì’†‚É "Name###ID" ‚ª“ü‚Á‚Ä‚¢‚Ä‚àImGui‚ªˆ—‚µ‚Ä‚­‚ê‚é)
+        // æ—¥æœ¬èªè¡¨ç¤ºã®å ´åˆ:
+        // è¡¨ç¤ºç”¨ãƒ†ã‚­ã‚¹ãƒˆ(jp) + "###" + è­˜åˆ¥ç”¨ID(en)
+        // ã“ã‚Œã«ã‚ˆã‚Šã€è¨€èªã‚’å¤‰ãˆã¦ã‚‚ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ä½ç½®ã‚„ã‚µã‚¤ã‚º(iniãƒ•ã‚¡ã‚¤ãƒ«è¨­å®š)ãŒå…±æœ‰ã•ã‚Œã¾ã™ã€‚
+        // è‹±èªã®å ´åˆ:
+        // ãã®ã¾ã¾æ¸¡ã™ (enã®ä¸­ã« "Name###ID" ãŒå…¥ã£ã¦ã„ã¦ã‚‚ImGuiãŒå‡¦ç†ã—ã¦ãã‚Œã‚‹)
         return ImGui::Begin(GetLabelStr(en, jp).c_str(), p_open, flags);
     }
-#else // ‚à‚Æ‚à‚Æ‚Ì‚â‚Â
-    // ƒEƒBƒ“ƒhƒE (ƒ^ƒCƒgƒ‹‚à•ÏŠ·‚ª•K—v)
+#else // ã‚‚ã¨ã‚‚ã¨ã®ã‚„ã¤
+    // ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ (ã‚¿ã‚¤ãƒˆãƒ«ã‚‚å¤‰æ›ãŒå¿…è¦)
     static bool Begin(const char* en, const char* jp, bool* p_open = nullptr, ImGuiWindowFlags flags = 0) {
         // return ImGui::Begin(SjisToUtf8(title).c_str(), p_open, flags);
         return ImGui::Begin(GetLabelStr(en, jp).c_str(), p_open, flags);
     }
 #endif // Test
 
-    // I—¹
+    // çµ‚äº†
     static void End() {
         ImGui::End();
     }
-    // ƒ{ƒ^ƒ“
+    // ãƒœã‚¿ãƒ³
     static bool RadioButton(const char* label, bool active) {
         return ImGui::RadioButton(SjisToUtf8(label).c_str(), active);
     }
-    // ƒ{ƒ^ƒ“
+    // ãƒœã‚¿ãƒ³
     static bool Button(const char* en, const char* jp, const ImVec2& size = ImVec2(0, 0)) {
-        // •\¦‚Í“ú–{ŒêA“à•”ID‚Í‰pŒê ("“GoŒ»###Spawn Enemy")
-        // ‚±‚ê‚É‚æ‚èŒ¾Œê‚ğØ‚è‘Ö‚¦‚Ä‚àƒ{ƒ^ƒ“‚ÌID‚ª•Ï‚í‚ç‚¸A“®ì‚ªˆÀ’è‚µ‚Ü‚·
+        // è¡¨ç¤ºã¯æ—¥æœ¬èªã€å†…éƒ¨IDã¯è‹±èª ("æ•µå‡ºç¾###Spawn Enemy")
+        // ã“ã‚Œã«ã‚ˆã‚Šè¨€èªã‚’åˆ‡ã‚Šæ›¿ãˆã¦ã‚‚ãƒœã‚¿ãƒ³ã®IDãŒå¤‰ã‚ã‚‰ãšã€å‹•ä½œãŒå®‰å®šã—ã¾ã™
         return ImGui::Button(GetLabelStr(en, jp).c_str(), size);
     }
     static bool RadioButton(const char* en, const char* jp, bool active) {
         return ImGui::RadioButton(GetLabelStr(en, jp).c_str(), active);
     }
-    // ƒ‰ƒWƒIƒ{ƒ^ƒ“
+    // ãƒ©ã‚¸ã‚ªãƒœã‚¿ãƒ³
     static bool RadioButton(const char* en, const char* jp, int* v, int v_button) {
         return ImGui::RadioButton(GetLabelStr(en, jp).c_str(), v, v_button);
     }
-    // ƒ`ƒFƒbƒNƒ{ƒbƒNƒX
+    // ãƒã‚§ãƒƒã‚¯ãƒœãƒƒã‚¯ã‚¹
     static bool Checkbox(const char* en, const char* jp, bool* v) {
         return ImGui::Checkbox(GetLabelStr(en, jp).c_str(), v);
     }
-    // ƒXƒ‰ƒCƒ_[ (Float)
+    // ã‚¹ãƒ©ã‚¤ãƒ€ãƒ¼ (Float)
     static bool SliderFloat(const char* en, const char* jp, float* v, float v_min, float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
         return ImGui::SliderFloat(GetLabelStr(en, jp).c_str(), v, v_min, v_max, format, flags);
     }
-    // ƒZƒpƒŒ[ƒ^[•t‚«ƒeƒLƒXƒg
+    // ã‚»ãƒ‘ãƒ¬ãƒ¼ã‚¿ãƒ¼ä»˜ããƒ†ã‚­ã‚¹ãƒˆ
     static void SeparatorText(const char* en, const char* jp) {
         bool isJp = (Language::Get() == Language::Type::Japanese);
 
@@ -156,30 +156,30 @@ public:
             ImGui::SeparatorText(en);
         }
     }
-    // ƒcƒŠ[ƒm[ƒh
+    // ãƒ„ãƒªãƒ¼ãƒãƒ¼ãƒ‰
     static bool TreeNode(const char* en, const char* jp) {
         return ImGui::TreeNode(GetLabelStr(en, jp).c_str());
     }
-    // ƒcƒŠ[ƒm[ƒhI—¹ (’†g‚Í ImGui::TreePop ‚Æ“¯‚¶‚Å‚·‚ªA–¼‘O‹óŠÔ‚ğ‘µ‚¦‚é‚½‚ß‚É—pˆÓ)
+    // ãƒ„ãƒªãƒ¼ãƒãƒ¼ãƒ‰çµ‚äº† (ä¸­èº«ã¯ ImGui::TreePop ã¨åŒã˜ã§ã™ãŒã€åå‰ç©ºé–“ã‚’æƒãˆã‚‹ãŸã‚ã«ç”¨æ„)
     static void TreePop() {
         ImGui::TreePop();
     }
-    // ƒeƒLƒXƒg“ü—Í
+    // ãƒ†ã‚­ã‚¹ãƒˆå…¥åŠ›
     static bool InputText(const char* en, const char* jp, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0) {
-        // ¦ˆÀ‘S«‹­‰»: ImGui‚ÍUTF-8ƒoƒbƒtƒ@‚ğ—v‹‚·‚é‚½‚ßASJIS‚Ìbuf‚ğ‚»‚Ì‚Ü‚Ü“n‚·‚Æ•¶š‰»‚¯‚µ‚Ü‚·B
-        // ‚±‚±‚Å•ÏŠ·—p‚Ìƒeƒ“ƒ|ƒ‰ƒŠƒoƒbƒtƒ@‚ğg‚¢‚Ü‚·B
+        // â€»å®‰å…¨æ€§å¼·åŒ–: ImGuiã¯UTF-8ãƒãƒƒãƒ•ã‚¡ã‚’è¦æ±‚ã™ã‚‹ãŸã‚ã€SJISã®bufã‚’ãã®ã¾ã¾æ¸¡ã™ã¨æ–‡å­—åŒ–ã‘ã—ã¾ã™ã€‚
+        // ã“ã“ã§å¤‰æ›ç”¨ã®ãƒ†ãƒ³ãƒãƒ©ãƒªãƒãƒƒãƒ•ã‚¡ã‚’ä½¿ã„ã¾ã™ã€‚
 
         // 1. SJIS(buf) -> UTF-8(temp)
         std::string utf8Val = SjisToUtf8(buf);
-        std::vector<char> utf8Buf(buf_size * 3 + 1, 0); // UTF-8‚ÍƒTƒCƒY‚ª‘‚¦‚é‚Ì‚Å—]—T‚ğ‚Â
+        std::vector<char> utf8Buf(buf_size * 3 + 1, 0); // UTF-8ã¯ã‚µã‚¤ã‚ºãŒå¢—ãˆã‚‹ã®ã§ä½™è£•ã‚’æŒã¤
         if (!utf8Val.empty()) {
             strncpy_s(utf8Buf.data(), utf8Buf.size(), utf8Val.c_str(), _TRUNCATE);
         }
 
-        // 2. ImGuiˆ— (ID‚Í‹¤’Ê‰»‚³‚ê‚½‚à‚Ì‚ğg—p)
+        // 2. ImGuiå‡¦ç† (IDã¯å…±é€šåŒ–ã•ã‚ŒãŸã‚‚ã®ã‚’ä½¿ç”¨)
         bool changed = ImGui::InputText(GetLabelStr(en, jp).c_str(), utf8Buf.data(), utf8Buf.size(), flags);
 
-        // 3. •ÏX‚ª‚ ‚Á‚½ê‡‚Ì‚İ UTF-8(temp) -> SJIS(buf) ‚É‘‚«–ß‚·
+        // 3. å¤‰æ›´ãŒã‚ã£ãŸå ´åˆã®ã¿ UTF-8(temp) -> SJIS(buf) ã«æ›¸ãæˆ»ã™
         if (changed) {
             std::string sjisVal = Utf8ToSjis(utf8Buf.data());
             strncpy_s(buf, buf_size, sjisVal.c_str(), _TRUNCATE);
@@ -187,19 +187,19 @@ public:
 
         return changed;
     }
-    // Ü‚è‚½‚½‚İƒwƒbƒ_[
+    // æŠ˜ã‚ŠãŸãŸã¿ãƒ˜ãƒƒãƒ€ãƒ¼
     static bool CollapsingHeader(const char* en, const char* jp, ImGuiTreeNodeFlags flags = 0) {
         return ImGui::CollapsingHeader(GetLabelStr(en, jp).c_str(), flags);
     }
-    // ƒhƒ‰ƒbƒO”’l“ü—Í
+    // ãƒ‰ãƒ©ãƒƒã‚°æ•°å€¤å…¥åŠ›
     static bool DragFloat(const char* en, const char* jp, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
         return ImGui::DragFloat(GetLabelStr(en, jp).c_str(), v, v_speed, v_min, v_max, format, flags);
     }
-    // ƒhƒ‰ƒbƒO”’l“ü—Í
+    // ãƒ‰ãƒ©ãƒƒã‚°æ•°å€¤å…¥åŠ›
     static bool DragFloat2(const char* en, const char* jp, float v[2], float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
         return ImGui::DragFloat2(GetLabelStr(en, jp).c_str(), v, v_speed, v_min, v_max, format, flags);
     }
-    // ƒJƒ‰[•ÒW
+    // ã‚«ãƒ©ãƒ¼ç·¨é›†
     static bool ColorEdit4(const char* en, const char* jp, float* col, ImGuiColorEditFlags flags = 0) {
         return ImGui::ColorEdit4(GetLabelStr(en, jp).c_str(), col, flags);
     }

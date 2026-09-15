@@ -1,3 +1,3 @@
-#pragma once
-// ƒvƒŒƒCƒ„[‚Ìƒ^ƒO
+ï»¿#pragma once
+// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ã‚¿ã‚°
 struct PlayerTag {};

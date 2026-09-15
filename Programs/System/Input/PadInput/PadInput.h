@@ -1,8 +1,8 @@
-#pragma once
+ï»¿#pragma once
 #include <winrt/Windows.Gaming.Input.h>
-#include <winrt/Windows.Foundation.h>       // Ú‘±EØ’fæ“¾‚Æ‚© ‚±‚Á‚¿‚Ì‚Ù‚¤‚ª„§‚ç‚µ‚¢
+#include <winrt/Windows.Foundation.h>       // æ¥ç¶šãƒ»åˆ‡æ–­å–å¾—ã¨ã‹ ã“ã£ã¡ã®ã»ã†ãŒæ¨å¥¨ã‚‰ã—ã„
 #include <winrt/Windows.Foundation.Collections.h>
-#include <winrt/Windows.Devices.Power.h>    // ƒfƒoƒCƒX‚Ì[“d•\¦‚µ‚½‚¢‚æ‚Ë
+#include <winrt/Windows.Devices.Power.h>    // ãƒ‡ãƒã‚¤ã‚¹ã®å……é›»è¡¨ç¤ºã—ãŸã„ã‚ˆã­
 #include <mutex>
 
 //using namespace winrt::Windows::Gaming::Input;
@@ -11,47 +11,47 @@ class PadInput {
 public:
     PadInput();
     ~PadInput();
-    // –ˆƒtƒŒ[ƒ€ŒÄ‚Ño‚·XVˆ—
+    // æ¯ãƒ•ãƒ¬ãƒ¼ãƒ å‘¼ã³å‡ºã™æ›´æ–°å‡¦ç†
     void Update();
-    // Ú‘±ó‘Ô‚ÌŠm”F
+    // æ¥ç¶šçŠ¶æ…‹ã®ç¢ºèª
     bool IsConnected() const;
-    // ƒ{ƒ^ƒ““ü—Í”»’è
-    // ¡‰Ÿ‚³‚ê‚Ä‚¢‚é‚© (Hold)
+    // ãƒœã‚¿ãƒ³å…¥åŠ›åˆ¤å®š
+    // ä»ŠæŠ¼ã•ã‚Œã¦ã„ã‚‹ã‹ (Hold)
     bool IsPress(winrt::Windows::Gaming::Input::GamepadButtons button) const;
-    // ¡‚±‚ÌuŠÔ‚É‰Ÿ‚³‚ê‚½‚© (Trigger / Down)
+    // ä»Šã“ã®ç¬é–“ã«æŠ¼ã•ã‚ŒãŸã‹ (Trigger / Down)
     bool IsTrigger(winrt::Windows::Gaming::Input::GamepadButtons button) const;
-    // ¡‚±‚ÌuŠÔ‚É—£‚³‚ê‚½‚© (Release / Up)
+    // ä»Šã“ã®ç¬é–“ã«é›¢ã•ã‚ŒãŸã‹ (Release / Up)
     bool IsRelease(winrt::Windows::Gaming::Input::GamepadButtons button) const;
-    // ƒAƒiƒƒO“ü—Í (0.0f ` 1.0f)
+    // ã‚¢ãƒŠãƒ­ã‚°å…¥åŠ› (0.0f ï½ 1.0f)
     float GetLeftTrigger() const;
     float GetRightTrigger() const;
-    // ƒXƒeƒBƒbƒN“ü—Í (-1.0f ` 1.0f)
-    // ƒfƒbƒhƒ][ƒ“ˆ—Ï‚İ
+    // ã‚¹ãƒ†ã‚£ãƒƒã‚¯å…¥åŠ› (-1.0f ï½ 1.0f)
+    // ãƒ‡ãƒƒãƒ‰ã‚¾ãƒ¼ãƒ³å‡¦ç†æ¸ˆã¿
     float GetLeftStickX() const;
     float GetLeftStickY() const;
     float GetRightStickX() const;
     float GetRightStickY() const;
-    // ƒoƒCƒuƒŒ[ƒVƒ‡ƒ“
+    // ãƒã‚¤ãƒ–ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³
     void SetVibration(float leftMotor, float rightMotor);
 
-    // Debug—p‚Ì•`‰æ ImGui
+    // Debugç”¨ã®æç”» ImGui
     void RenderImGui();
 private:
-    // ƒCƒxƒ“ƒgƒnƒ“ƒhƒ‰
+    // ã‚¤ãƒ™ãƒ³ãƒˆãƒãƒ³ãƒ‰ãƒ©
     void OnGamepadAdded(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::Gaming::Input::Gamepad const& gamepad);
     void OnGamepadRemoved(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::Gaming::Input::Gamepad const& gamepad);
-    // ƒfƒbƒhƒ][ƒ“ŒvZ—pƒwƒ‹ƒp[
+    // ãƒ‡ãƒƒãƒ‰ã‚¾ãƒ¼ãƒ³è¨ˆç®—ç”¨ãƒ˜ãƒ«ãƒ‘ãƒ¼
     float ApplyDeadzone(float value, float deadzone) const;
 private:
     winrt::Windows::Gaming::Input::Gamepad m_gamepad = nullptr;
-    // Œ»İ‚ÌƒtƒŒ[ƒ€‚Æ1‚Â‘O‚ÌƒtƒŒ[ƒ€‚Ìó‘Ô
+    // ç¾åœ¨ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã¨1ã¤å‰ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã®çŠ¶æ…‹
     winrt::Windows::Gaming::Input::GamepadReading m_currentReading;
     winrt::Windows::Gaming::Input::GamepadReading m_previousReading;
-    // ƒCƒxƒ“ƒg“o˜^‰ğœ—pƒg[ƒNƒ“
+    // ã‚¤ãƒ™ãƒ³ãƒˆç™»éŒ²è§£é™¤ç”¨ãƒˆãƒ¼ã‚¯ãƒ³
     winrt::event_token m_addedToken;
     winrt::event_token m_removedToken;
-    // ƒXƒŒƒbƒh‹£‡‚ğ–h‚®‚½‚ß‚ÌMutexiƒCƒxƒ“ƒg‚Í•ÊƒXƒŒƒbƒh‚Å—ˆ‚é‚½‚ßj
+    // ã‚¹ãƒ¬ãƒƒãƒ‰ç«¶åˆã‚’é˜²ããŸã‚ã®Mutexï¼ˆã‚¤ãƒ™ãƒ³ãƒˆã¯åˆ¥ã‚¹ãƒ¬ãƒƒãƒ‰ã§æ¥ã‚‹ãŸã‚ï¼‰
     mutable std::mutex m_mutex;
-    // ƒfƒbƒhƒ][ƒ“‚Ìè‡’l (’Êí 0.1 ` 0.2 ‚­‚ç‚¢‚ª“KØ)
+    // ãƒ‡ãƒƒãƒ‰ã‚¾ãƒ¼ãƒ³ã®é–¾å€¤ (é€šå¸¸ 0.1 ï½ 0.2 ãã‚‰ã„ãŒé©åˆ‡)
     const float DEADZONE_THRESHOLD = 0.2f;
 };

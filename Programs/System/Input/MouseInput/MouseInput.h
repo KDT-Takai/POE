@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <array>
 #include <SFML/Graphics.hpp>	// sf::Vector2i
 #include <SFML/Window/Mouse.hpp>
@@ -6,20 +6,20 @@
 class MouseInput {
 public:
 	MouseInput();
-	// ƒ}ƒEƒX‚Ìó‘Ô‚ğXV
+	// ãƒã‚¦ã‚¹ã®çŠ¶æ…‹ã‚’æ›´æ–°
 	void Update(const sf::RenderWindow& window);
-	// ƒ}ƒEƒX“ü—ÍŠÖŒW
-	bool IsGetMouse(sf::Mouse::Button button) const;		// ‰Ÿ‚µ‚½uŠÔ
-	bool GetMouse(sf::Mouse::Button button) const;			// ‰Ÿ‚³‚ê‚Ä‚¢‚éŠÔ
-	bool GetMouseRepeat(sf::Mouse::Button button) const;	// ’·‰Ÿ‚µ
-	sf::Vector2i GetMousePoint();							// ƒ}ƒEƒX‚ÌÀ•Wæ“¾
-	sf::Vector2f GetMousePointF();							// ƒ}ƒEƒX‚ÌÀ•Wæ“¾ifloat”Åj
-	// Dedub—p‚ÌƒƒOo—Í
+	// ãƒã‚¦ã‚¹å…¥åŠ›é–¢ä¿‚
+	bool IsGetMouse(sf::Mouse::Button button) const;		// æŠ¼ã—ãŸç¬é–“
+	bool GetMouse(sf::Mouse::Button button) const;			// æŠ¼ã•ã‚Œã¦ã„ã‚‹é–“
+	bool GetMouseRepeat(sf::Mouse::Button button) const;	// é•·æŠ¼ã—
+	sf::Vector2i GetMousePoint();							// ãƒã‚¦ã‚¹ã®åº§æ¨™å–å¾—
+	sf::Vector2f GetMousePointF();							// ãƒã‚¦ã‚¹ã®åº§æ¨™å–å¾—ï¼ˆfloatç‰ˆï¼‰
+	// Dedubç”¨ã®ãƒ­ã‚°å‡ºåŠ›
 	void RenderImGui();
 
 private:
-	static constexpr int MOUSE_BUTTON_MAX = sf::Mouse::ButtonCount;	// ƒ}ƒEƒXƒ{ƒ^ƒ“‚ÌÅ‘å”
-	std::array<bool, MOUSE_BUTTON_MAX> nowMouseInput;				// Œ»İ‚Ìƒ}ƒEƒX“ü—Íó‘Ô
-	std::array<bool, MOUSE_BUTTON_MAX> beforMouseInput;				// ‘O‰ñ‚Ìƒ}ƒEƒX“ü—Íó‘Ô
-	int mouseX, mouseY;												// ƒ}ƒEƒX‚ÌXÀ•WAYÀ•W
+	static constexpr int MOUSE_BUTTON_MAX = sf::Mouse::ButtonCount;	// ãƒã‚¦ã‚¹ãƒœã‚¿ãƒ³ã®æœ€å¤§æ•°
+	std::array<bool, MOUSE_BUTTON_MAX> nowMouseInput;				// ç¾åœ¨ã®ãƒã‚¦ã‚¹å…¥åŠ›çŠ¶æ…‹
+	std::array<bool, MOUSE_BUTTON_MAX> beforMouseInput;				// å‰å›ã®ãƒã‚¦ã‚¹å…¥åŠ›çŠ¶æ…‹
+	int mouseX, mouseY;												// ãƒã‚¦ã‚¹ã®Xåº§æ¨™ã€Yåº§æ¨™
 };

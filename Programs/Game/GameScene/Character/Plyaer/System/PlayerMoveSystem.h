@@ -1,15 +1,15 @@
-//#pragma once
+ï»¿//#pragma once
 //#include <ECS.h>
 //#include <System/Input/InputManager.h>
 //#include <SFML/Graphics.hpp>
 //#include <cmath>
 //
 ///// <summary>
-///// ƒvƒŒƒCƒ„[‚ÌŠî–{“I‚È“®‚«‚Ìˆ—
+///// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®åŸºæœ¬çš„ãªå‹•ãã®å‡¦ç†
 ///// </summary>
 //class PlayerMoveSystem {
 //private:
-//    // ƒvƒŒƒCƒ„[‚Ì‰Á‘¬“x
+//    // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®åŠ é€Ÿåº¦
 ////	const float acceleration = 500.f;
 //public:
 //    void Update(Registry& registry, float dt) {
@@ -31,7 +31,7 @@
 //                if (InputManager::Instance().GetKeyInput().GetKey(sf::Keyboard::Key::D)) {
 //                    movement.x += 1.f;
 //                }
-//                // ³‹K‰»‚µ‚Ä‘¬“x‚ğ“K—p‚·‚é‚Å
+//                // æ­£è¦åŒ–ã—ã¦é€Ÿåº¦ã‚’é©ç”¨ã™ã‚‹ã§
 //                if (movement.x != 0 || movement.y != 0) {
 //                    float length = std::sqrt(movement.x * movement.x + movement.y * movement.y);
 //                    movement /= length;

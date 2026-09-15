@@ -1,4 +1,4 @@
-#include <spdlog/spdlog.h>
+ï»¿#include <spdlog/spdlog.h>
 #include "SceneManager.h"
 #include "imgui.h"
 #include <Game/GameScene/GameScene/GameScene.h>
@@ -12,11 +12,11 @@ void SceneManager::RegisterScene(const std::string& name, SceneFactory factory)
 
 SceneManager::SceneManager()
 {
-    // ‘SƒV[ƒ“‚Ì“o˜^
+    // å…¨ã‚·ãƒ¼ãƒ³ã®ç™»éŒ²
     RegisterScene<TitleScene>();
     RegisterScene<GameScene>();
     RegisterScene<ResultScene>();
-    // ‰ŠúƒV[ƒ“‚Ìİ’è
+    // åˆæœŸã‚·ãƒ¼ãƒ³ã®è¨­å®š
     currentSceneName = TitleScene::GetName();
     Scene = registeredScenes.at(currentSceneName)();
 }
@@ -44,7 +44,7 @@ void SceneManager::Update()
 void SceneManager::Render(sf::RenderTarget& target)
 {
     if (Scene) {
-        // Œ»İ‚ÌƒV[ƒ“‚ÌRenderŠÖ”‚ğŒÄ‚Ño‚·
+        // ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³ã®Renderé–¢æ•°ã‚’å‘¼ã³å‡ºã™
         Scene->Render(target);
     }
 }

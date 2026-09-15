@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <iostream>
 #include <unordered_map>
 #include <functional>
@@ -18,11 +18,11 @@ protected:
     std::unique_ptr<SceneBase> next;
     bool changeFlag = false;
 
-    // Œ»İ‚ÌƒV[ƒ“–¼
+    // ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³å
     std::string currentSceneName;
-    // ƒV[ƒ“ƒtƒ@ƒNƒgƒŠ
+    // ã‚·ãƒ¼ãƒ³ãƒ•ã‚¡ã‚¯ãƒˆãƒª
     std::unordered_map<std::string, SceneFactory> registeredScenes;
-    // ƒV[ƒ““o˜^
+    // ã‚·ãƒ¼ãƒ³ç™»éŒ²
     void RegisterScene(const std::string& name, SceneFactory factory);
 
 public:
@@ -32,18 +32,18 @@ public:
 
     void ChangeScene(const std::string& SceneName);
 
-    // Œ»İ‚ÌƒV[ƒ“
+    // ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³
     const SceneBase* GetCurrentScene() const { return Scene.get(); }
 
-    // Œ»İ‚ÌƒV[ƒ“–¼‚ğæ“¾
+    // ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³åã‚’å–å¾—
     const std::string& GetCurrentSceneName() const { return currentSceneName; }
 
-    // “o˜^‚³‚ê‚Ä‚¢‚é‘SƒV[ƒ“æ“¾
+    // ç™»éŒ²ã•ã‚Œã¦ã„ã‚‹å…¨ã‚·ãƒ¼ãƒ³å–å¾—
     const std::unordered_map<std::string, SceneFactory>& GetRegisteredScenes() const {
         return registeredScenes;
     }
 
-    // ƒV[ƒ“‚ğ“o˜^‚·‚éŠO•”ƒCƒ“ƒ^[ƒtƒF[ƒX
+    // ã‚·ãƒ¼ãƒ³ã‚’ç™»éŒ²ã™ã‚‹å¤–éƒ¨ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹
     template <typename T>
     void RegisterScene() {
         RegisterScene(T::GetName(), []() { return std::make_unique<T>(); });

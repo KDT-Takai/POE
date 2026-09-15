@@ -1,13 +1,13 @@
-#pragma once
+ï»¿#pragma once
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/System.hpp>
 #include <array>
 #include "../Singleton/Singleton.h"
-#include "InputUtils/InputUtils.h" // “ü—Íƒ†[ƒeƒBƒŠƒeƒB
-#include "KeyInput/KeyInput.h"   // ƒL[ƒ{[ƒh
-#include "MouseInput/MouseInput.h" // ƒ}ƒEƒX
-#include "PadInput/PadInput.h"   // ƒQ[ƒ€ƒpƒbƒh
+#include "InputUtils/InputUtils.h" // å…¥åŠ›ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£
+#include "KeyInput/KeyInput.h"   // ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰
+#include "MouseInput/MouseInput.h" // ãƒã‚¦ã‚¹
+#include "PadInput/PadInput.h"   // ã‚²ãƒ¼ãƒ ãƒ‘ãƒƒãƒ‰
 
 class InputManager : public Singleton<InputManager> {
     friend class Singleton<InputManager>;

@@ -1,4 +1,4 @@
-#include "DebugManager.h"
+ï»¿#include "DebugManager.h"
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include "../Config/Config.h"
@@ -13,66 +13,66 @@ void DebugManager::Update(const sf::Window& window) {
     bool nowF1 = InputManager::Instance().GetKeyInput().GetKey(sf::Keyboard::Key::F1);
     //bool nowF1 = InputManager::Instance().padInput->IsPressedPad(0,0);
     if (nowF1 && !lastF1) debugMode = !debugMode;
-    // ’Êí‚Ì‚Í‰æ–ÊƒTƒCƒY‚ğŒ³‚É–ß‚·
+    // é€šå¸¸ã®æ™‚ã¯ç”»é¢ã‚µã‚¤ã‚ºã‚’å…ƒã«æˆ»ã™
     if (!debugMode)
     {
         CameraManager::Instance().SetZoomLevel(1);
     }
     lastF1 = nowF1;
 
-    // ƒƒ‚ƒŠg—p—¦‚ÌUpdate
+    // ãƒ¡ãƒ¢ãƒªä½¿ç”¨ç‡ã®Update
     memory.Update();
 }
 
 void DebugManager::Render(const sf::Texture* renderTexture) {
     ImGuiViewport* id = ImGui::GetMainViewport();
     ImGui::DockSpaceOverViewport(id->ID);
-	// ƒQ[ƒ€‰æ–Ê•\¦
+	// ã‚²ãƒ¼ãƒ ç”»é¢è¡¨ç¤º
     this->RenderGameScreen(renderTexture);
-	// ƒV[ƒ“ŠÇ—
+	// ã‚·ãƒ¼ãƒ³ç®¡ç†
 	this->RenderSceneManagement();
-	// ƒƒOo—ÍƒEƒBƒ“ƒhƒE
+	// ãƒ­ã‚°å‡ºåŠ›ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦
 	this->RenderLogWindow();
-	// ƒJƒƒ‰ƒRƒ“ƒgƒ[ƒ‹
+	// ã‚«ãƒ¡ãƒ©ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«
 	this->RenderCameraControl();
-    // TimeƒNƒ‰ƒXŠÖŒW‚ÌƒƒO•\¦
+    // Timeã‚¯ãƒ©ã‚¹é–¢ä¿‚ã®ãƒ­ã‚°è¡¨ç¤º
     this->RenderPerformance();
-    // ƒXƒNƒŠ[ƒ“ã‚ÌGui•\¦
+    // ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ä¸Šã®Guiè¡¨ç¤º
     SceneManager::Instance().RenderImGui(renderTexture);
-    // Œ¾Œêİ’è
+    // è¨€èªè¨­å®š
     this->RenderLanguageSettings();
     // Input
     InputManager::Instance().RenderImGui();
 }
 
 void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
-    // ƒQ[ƒ€‰æ–Ê•\¦
+    // ã‚²ãƒ¼ãƒ ç”»é¢è¡¨ç¤º
     if (renderTexture) {
-        DebugGui::Begin("Debug Controls", "ƒfƒoƒbƒNƒRƒ“ƒgƒ[ƒ‰[");
-        DebugGui::Text("Game scene Render", "ƒQ[ƒ€ƒXƒNƒŠ[ƒ“");
+        DebugGui::Begin("Debug Controls", "ãƒ‡ãƒãƒƒã‚¯ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼");
+        DebugGui::Text("Game scene Render", "ã‚²ãƒ¼ãƒ ã‚¹ã‚¯ãƒªãƒ¼ãƒ³");
 
-        // ”½“]ˆ—
-        // ˆê“I‚ÈƒXƒvƒ‰ƒCƒg—pˆÓ‚·‚é
+        // åè»¢å‡¦ç†
+        // ä¸€æ™‚çš„ãªã‚¹ãƒ—ãƒ©ã‚¤ãƒˆç”¨æ„ã™ã‚‹
         sf::Sprite tempSprite(*renderTexture);
-        // ƒTƒCƒYæ“¾
+        // ã‚µã‚¤ã‚ºå–å¾—
         sf::Vector2u texSize = renderTexture->getSize();
-        // ƒeƒNƒXƒ`ƒƒ‹éŒ`‚ğã‰º”½“]‚³‚¹‚ÄImGuiã‚ÅŒ³‚Ìó‘Ô‚ÉŒ©‚¹‚é
+        // ãƒ†ã‚¯ã‚¹ãƒãƒ£çŸ©å½¢ã‚’ä¸Šä¸‹åè»¢ã•ã›ã¦ImGuiä¸Šã§å…ƒã®çŠ¶æ…‹ã«è¦‹ã›ã‚‹
         tempSprite.setTextureRect(sf::IntRect(
-            // ¶ã‚ÌÀ•WBY ‚ÍƒeƒNƒXƒ`ƒƒ‚Ì‰º’[‚©‚çŠJn
+            // å·¦ä¸Šã®åº§æ¨™ã€‚Y ã¯ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ä¸‹ç«¯ã‹ã‚‰é–‹å§‹
             { 0, static_cast<int>(texSize.y) },
-            // y²‚¾‚¯”½“]‚·‚é
+            // yè»¸ã ã‘åè»¢ã™ã‚‹
             { static_cast<int>(texSize.x), -static_cast<int>(texSize.y) }
         ));
         ImGui::Image(tempSprite, sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f));
 
-        // ƒƒ‚
+        // ãƒ¡ãƒ¢
         // ImGui::Image(*renderTexture, sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f));
-        // ‚È‚º‚©ImGuiã‚Å‚Íy²‚ª”½“]‚µ‚Ä‚é
-        // ‰Â”\«‚Æ‚µ‚Ä
-        // ImGui::ImageŠÖ”‚ÌUVÀ•Ww’è‚ª‹t‚É‚È‚Á‚Ä‚¢‚é
-        // sf::Texture©‘Ì‚ªã‰º”½“]‚µ‚Ä‚¢‚é
-        // ã‚ÍApplication‚Åtexture‚ğSprite‚Å•`‰æ‚µ‚Ä‚àã‰º”½“]‚µ‚È‚¢‚Ì‚ÅA
-        // ImGui‘¤‚Ì–â‘è‚Ì‰Â”\«‚ª‚‚¢
+        // ãªãœã‹ImGuiä¸Šã§ã¯yè»¸ãŒåè»¢ã—ã¦ã‚‹
+        // å¯èƒ½æ€§ã¨ã—ã¦
+        // ImGui::Imageé–¢æ•°ã®UVåº§æ¨™æŒ‡å®šãŒé€†ã«ãªã£ã¦ã„ã‚‹
+        // sf::Textureè‡ªä½“ãŒä¸Šä¸‹åè»¢ã—ã¦ã„ã‚‹
+        // ä¸Šã¯Applicationã§textureã‚’Spriteã§æç”»ã—ã¦ã‚‚ä¸Šä¸‹åè»¢ã—ãªã„ã®ã§ã€
+        // ImGuiå´ã®å•é¡Œã®å¯èƒ½æ€§ãŒé«˜ã„
 
         //ImGui::Image(target,
         //sf::Vector2f(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f),
@@ -95,29 +95,29 @@ void DebugManager::RenderGameScreen(const sf::Texture* renderTexture) {
 }
 
 void DebugManager::RenderSceneManagement() {
-    // ƒV[ƒ“Ø‚è‘Ö‚¦ƒRƒ“ƒgƒ[ƒ‹
-    DebugGui::Begin("Scene Management", "ƒV[ƒ“ƒ}ƒlƒWƒƒ“ƒg");
+    // ã‚·ãƒ¼ãƒ³åˆ‡ã‚Šæ›¿ãˆã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«
+    DebugGui::Begin("Scene Management", "ã‚·ãƒ¼ãƒ³ãƒãƒã‚¸ãƒ¡ãƒ³ãƒˆ");
     ImGui::Separator();
 
     SceneManager& screenManager = SceneManager::Instance();
     const std::string& currentScreen = screenManager.GetCurrentSceneName();
     const auto& registeredScreens = screenManager.GetRegisteredScenes();
 
-    // ƒRƒ“ƒ{ƒ{ƒbƒNƒX‚É•\¦‚·‚éƒAƒCƒeƒ€ƒŠƒXƒg‚ğì¬
+    // ã‚³ãƒ³ãƒœãƒœãƒƒã‚¯ã‚¹ã«è¡¨ç¤ºã™ã‚‹ã‚¢ã‚¤ãƒ†ãƒ ãƒªã‚¹ãƒˆã‚’ä½œæˆ
     std::vector<std::string> screenNames;
     for (const auto& pair : registeredScreens) {
         screenNames.push_back(pair.first);
     }
 
-    // ImGui::Combo‚Å—˜—p‚·‚é‚½‚ß‚Éstd::vector<const char*>‚É•ÏŠ·
+    // ImGui::Comboã§åˆ©ç”¨ã™ã‚‹ãŸã‚ã«std::vector<const char*>ã«å¤‰æ›
     std::vector<const char*> screenNames_c_str;
     for (const auto& name : screenNames) {
         screenNames_c_str.push_back(name.c_str());
     }
 
-    static int currentItem = 0; // Œ»İ‘I‘ğ‚³‚ê‚Ä‚¢‚éƒCƒ“ƒfƒbƒNƒX
+    static int currentItem = 0; // ç¾åœ¨é¸æŠã•ã‚Œã¦ã„ã‚‹ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
 
-    // Œ»İ‚ÌƒV[ƒ“–¼‚ğŒ©‚Â‚¯AcurrentItem‚ğ‰Šú‰»
+    // ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³åã‚’è¦‹ã¤ã‘ã€currentItemã‚’åˆæœŸåŒ–
     if (screenNames.size() > 0) {
         auto it = std::find(screenNames.begin(), screenNames.end(), currentScreen);
         if (it != screenNames.end()) {
@@ -125,13 +125,13 @@ void DebugManager::RenderSceneManagement() {
         }
     }
 
-    DebugGui::Text("Current Scene: %s", "Œ»İ‚ÌƒV[ƒ“: %s", currentScreen.c_str());
+    DebugGui::Text("Current Scene: %s", "ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³: %s", currentScreen.c_str());
 
     if (ImGui::Combo("##ScreenSelector", &currentItem, screenNames_c_str.data(), screenNames_c_str.size())) {
-        // ‘I‘ğ‚ª•ÏX‚³‚ê‚½ê‡
+        // é¸æŠãŒå¤‰æ›´ã•ã‚ŒãŸå ´åˆ
         const char* selectedName = screenNames_c_str[currentItem];
 
-        // **ƒV[ƒ“Ø‚è‘Ö‚¦‚ÌÀs**
+        // **ã‚·ãƒ¼ãƒ³åˆ‡ã‚Šæ›¿ãˆã®å®Ÿè¡Œ**
         if (selectedName != currentScreen) {
             screenManager.ChangeScene(selectedName);
         }
@@ -141,70 +141,70 @@ void DebugManager::RenderSceneManagement() {
 }
 
 void DebugManager::RenderLogWindow() {
-    // ƒƒO‰æ–Ê (Placeholder)
-    DebugGui::Begin("Log Window", "ƒƒOƒEƒBƒ“ƒhƒE");
+    // ãƒ­ã‚°ç”»é¢ (Placeholder)
+    DebugGui::Begin("Log Window", "ãƒ­ã‚°ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦");
     ImGui::Separator();
-    // TODO:ƒƒOŒã‚Åì‚ë‚¤‚Ë
-    // ‚Ç‚ñ‚È‚Ó‚¤‚Éì‚ë‚¤‚©‚È
+    // TODO:ãƒ­ã‚°å¾Œã§ä½œã‚ã†ã­
+    // ã©ã‚“ãªãµã†ã«ä½œã‚ã†ã‹ãª
     DebugGui::End(); // Log Window
 }
 
 void DebugManager::RenderCameraControl() {
-    // ƒJƒƒ‰ƒY[ƒ€
-    DebugGui::Begin("CameraSetting", "ƒJƒƒ‰İ’è");
+    // ã‚«ãƒ¡ãƒ©ã‚ºãƒ¼ãƒ 
+    DebugGui::Begin("CameraSetting", "ã‚«ãƒ¡ãƒ©è¨­å®š");
     ImGui::Separator();
 
-    // ƒV[ƒ“‚ÉˆË‘¶‚µ‚È‚¢ƒJƒƒ‰ƒ}ƒl[ƒWƒƒ[‚ÌƒCƒ“ƒXƒ^ƒ“ƒX‚ğæ“¾
+    // ã‚·ãƒ¼ãƒ³ã«ä¾å­˜ã—ãªã„ã‚«ãƒ¡ãƒ©ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã®ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’å–å¾—
     CameraManager& cameraManager = CameraManager::Instance();
 
-    // Œ»İ‚ÌƒY[ƒ€ƒŒƒxƒ‹‚ğæ“¾‚µ‚Ä‰Šú’l‚Æ‚·‚é
-    // Œ»İ‚Ìó‘Ô‚ğ‚¸‚Á‚ÆˆÛH‚µ‚Æ‚«‚½‚¢‚©‚çstaticÁ‚·
+    // ç¾åœ¨ã®ã‚ºãƒ¼ãƒ ãƒ¬ãƒ™ãƒ«ã‚’å–å¾—ã—ã¦åˆæœŸå€¤ã¨ã™ã‚‹
+    // ç¾åœ¨ã®çŠ¶æ…‹ã‚’ãšã£ã¨ç¶­æŒï¼Ÿã—ã¨ããŸã„ã‹ã‚‰staticæ¶ˆã™
     float zoomLevel = cameraManager.GetZoomLevel();
     //static float zoomLevel = cameraManager.GetZoomLevel();
 
-    if (DebugGui::SliderFloat("Zoom Level", "ƒY[ƒ€”{—¦", &zoomLevel, 0.1f, 5.0f, " % .1f", ImGuiSliderFlags_AlwaysClamp)) {
-        // ƒXƒ‰ƒCƒ_[‚ª‘€ì‚³‚ê‚½‚ç CameraManager ‚ÉƒY[ƒ€ƒŒƒxƒ‹‚ğ“K—p
+    if (DebugGui::SliderFloat("Zoom Level", "ã‚ºãƒ¼ãƒ å€ç‡", &zoomLevel, 0.1f, 5.0f, " % .1f", ImGuiSliderFlags_AlwaysClamp)) {
+        // ã‚¹ãƒ©ã‚¤ãƒ€ãƒ¼ãŒæ“ä½œã•ã‚ŒãŸã‚‰ CameraManager ã«ã‚ºãƒ¼ãƒ ãƒ¬ãƒ™ãƒ«ã‚’é©ç”¨
         cameraManager.SetZoomLevel(zoomLevel);
     }
-    DebugGui::Text("Range: 0.1 (far) ~ 5.0 (near)", "•: 0.1 (‰“‚¢) ~ 5.0 (‹ß‚¢)");
+    DebugGui::Text("Range: 0.1 (far) ~ 5.0 (near)", "å¹…: 0.1 (é ã„) ~ 5.0 (è¿‘ã„)");
 
     DebugGui::End(); // Camera Setting
 }
 
 void DebugManager::RenderPerformance() {
-    // TODO: ‚ ‚Æ‚Å‚â‚é‹C‚ª‚Å‚½‚çãY—í‚É‚·‚é
-    DebugGui::Begin("Performance", "ƒvƒŒƒtƒ@ƒŒƒ“ƒX");
-    // FPS‚Ì•`‰æ
+    // TODO: ã‚ã¨ã§ã‚„ã‚‹æ°—ãŒã§ãŸã‚‰ç¶ºéº—ã«ã™ã‚‹
+    DebugGui::Begin("Performance", "ãƒ—ãƒ¬ãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹");
+    // FPSã®æç”»
     Time::Instance().RenderImGui();
     
-    DebugGui::SeparatorText("System", "ƒVƒXƒeƒ€");
-    {   // ImGui‚ÌChild‚ÅˆÍ‚í‚ê‚Ä‚¢‚é‚Ì‚Å‚í‚©‚è‚â‚·‚­ƒXƒR[ƒv‚ğ•t‚¯‚Ä‚¨‚­
+    DebugGui::SeparatorText("System", "ã‚·ã‚¹ãƒ†ãƒ ");
+    {   // ImGuiã®Childã§å›²ã‚ã‚Œã¦ã„ã‚‹ã®ã§ã‚ã‹ã‚Šã‚„ã™ãã‚¹ã‚³ãƒ¼ãƒ—ã‚’ä»˜ã‘ã¦ãŠã
         ImGui::BeginChild("PerfCard", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar);
-        // CPU •`‰æ
+        // CPU æç”»
         CpuUsage::Instance().RenderImGui();
-        // ƒƒ‚ƒŠ•`‰æ
+        // ãƒ¡ãƒ¢ãƒªæç”»
         memory.RenderImGui();
         ImGui::EndChild();
     }
     DebugGui::End();
 }
 
-// TODO: À‘• ¡‚Í•K—v‚È‚¢‚¯‚ÇŒãXg‚¤‚©‚à‚¾‚©‚ç‚¨‚¢‚Ä‚¨‚­
+// TODO: å®Ÿè£… ä»Šã¯å¿…è¦ãªã„ã‘ã©å¾Œã€…ä½¿ã†ã‹ã‚‚ã ã‹ã‚‰ãŠã„ã¦ãŠã
 void DebugManager::RenderOtherDebugInfo() {
 }
 
 void DebugManager::RenderLanguageSettings()
 {
-    DebugGui::Begin("Settings", "İ’è");
+    DebugGui::Begin("Settings", "è¨­å®š");
 
-    // Œ¾ŒêØ‚è‘Ö‚¦ƒ‰ƒWƒIƒ{ƒ^ƒ“
-    // Œ»İ‚Ìó‘Ô‚ğæ“¾‚µ‚Ä”»’è
+    // è¨€èªåˆ‡ã‚Šæ›¿ãˆãƒ©ã‚¸ã‚ªãƒœã‚¿ãƒ³
+    // ç¾åœ¨ã®çŠ¶æ…‹ã‚’å–å¾—ã—ã¦åˆ¤å®š
     if (DebugGui::RadioButton("English", Language::Get() == Language::Type::English)) {
         Language::Set(Language::Type::English);
     }
 
     ImGui::SameLine();
-    if (DebugGui::RadioButton("“ú–{Œê", Language::Get() == Language::Type::Japanese)) {
+    if (DebugGui::RadioButton("æ—¥æœ¬èª", Language::Get() == Language::Type::Japanese)) {
         Language::Set(Language::Type::Japanese);
     }
 

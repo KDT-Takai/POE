@@ -1,6 +1,6 @@
-#pragma once
+ï»¿#pragma once
 
-//	ƒVƒ“ƒOƒ‹ƒgƒ“Šî’êƒNƒ‰ƒX
+//	ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³åŸºåº•ã‚¯ãƒ©ã‚¹
 template <typename T>
 class Singleton {
 protected:
