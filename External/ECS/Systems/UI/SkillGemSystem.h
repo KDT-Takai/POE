@@ -76,11 +76,11 @@ public:
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
 
-        sf::Vector2u winSize = target.getSize();
-        float panelW = 640.0f;
-        float panelH = 480.0f;
-        float panelX = 40.0f;
-        float panelY = (winSize.y - panelH) / 2.0f;
+        float panelW = kPanelW;
+        float panelH = kPanelH;
+        float panelX = kPanelX;
+        float panelY = kPanelY;
+        float contentWidth = panelW - 32.0f;
 
         sf::RectangleShape bg({ panelW, panelH });
         bg.setPosition({ panelX, panelY });
@@ -91,8 +91,8 @@ public:
 
         auto& binds = KeyBindings::Instance();
         std::string closeKey = KeyToString(binds.Get(GameAction::ToggleSkillGems));
-        DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Skill Gems (" + closeKey + " to close) - Up/Down select slot, Left/Right change gem", 15, sf::Color(255, 220, 120));
+        DrawText(target, panelX + 12.0f, panelY + 8.0f,
+            Truncate("Skill Gems (" + closeKey + " to close) - Up/Down/Left/Right", contentWidth, 13), 13, sf::Color(255, 220, 120));
 
         const std::string kSlotKeys[kSkillSlotCount] = {
             KeyToString(binds.Get(GameAction::Skill1)),
@@ -101,16 +101,16 @@ public:
             KeyToString(binds.Get(GameAction::Skill4)),
             KeyToString(binds.Get(GameAction::Skill5)),
         };
-        float rowY = panelY + 55.0f;
-        float rowHeight = 30.0f;
+        float rowY = panelY + 28.0f;
+        float rowHeight = 20.0f;
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             float y = rowY + static_cast<float>(i) * rowHeight;
             bool selected = (i == m_selectedSlot);
 
             if (selected) {
-                sf::RectangleShape highlight({ panelW - 40.0f, rowHeight });
-                highlight.setPosition({ panelX + 20.0f, y });
+                sf::RectangleShape highlight({ panelW - 24.0f, rowHeight });
+                highlight.setPosition({ panelX + 12.0f, y });
                 highlight.setFillColor(sf::Color(60, 60, 90, 180));
                 target.draw(highlight);
             }
@@ -121,24 +121,24 @@ public:
                 line += "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp)";
             }
 
-            DrawText(target, panelX + 26.0f, y + 6.0f, line, 14,
+            DrawText(target, panelX + 16.0f, y + 3.0f, Truncate(line, contentWidth, 12), 12,
                 skill.isValid ? sf::Color(220, 220, 220) : sf::Color(120, 120, 120));
         }
 
         // Spirit slots, directly below the 5 skill slots.
-        float spiritRowY = rowY + kSkillSlotCount * rowHeight + 10.0f;
-        DrawText(target, panelX + 20.0f, spiritRowY - 4.0f,
+        float spiritRowY = rowY + kSkillSlotCount * rowHeight + 6.0f;
+        DrawText(target, panelX + 12.0f, spiritRowY - 2.0f,
             "Spirit: " + FormatFloat(stats.currentSpirit) + " / " + FormatFloat(stats.maxSpirit) + " reserved",
-            13, sf::Color(160, 220, 255));
+            12, sf::Color(160, 220, 255));
 
         for (int i = 0; i < kSpiritSlotCount; ++i) {
             int slotIndex = kSkillSlotCount + i;
-            float y = spiritRowY + 20.0f + static_cast<float>(i) * rowHeight;
+            float y = spiritRowY + 16.0f + static_cast<float>(i) * rowHeight;
             bool selected = (slotIndex == m_selectedSlot);
 
             if (selected) {
-                sf::RectangleShape highlight({ panelW - 40.0f, rowHeight });
-                highlight.setPosition({ panelX + 20.0f, y });
+                sf::RectangleShape highlight({ panelW - 24.0f, rowHeight });
+                highlight.setPosition({ panelX + 12.0f, y });
                 highlight.setFillColor(sf::Color(60, 90, 90, 180));
                 target.draw(highlight);
             }
@@ -150,12 +150,12 @@ public:
                 line += "  (" + FormatFloat(def->skill.spiritCost) + " spirit)";
             }
 
-            DrawText(target, panelX + 26.0f, y + 6.0f, line, 14,
+            DrawText(target, panelX + 16.0f, y + 3.0f, Truncate(line, contentWidth, 12), 12,
                 def ? sf::Color(180, 230, 230) : sf::Color(120, 120, 120));
         }
 
-        float listY = spiritRowY + 20.0f + kSpiritSlotCount * rowHeight + 20.0f;
-        DrawText(target, panelX + 20.0f, listY, "Known gems:", 13, sf::Color(200, 200, 200));
+        float listY = spiritRowY + 16.0f + kSpiritSlotCount * rowHeight + 14.0f;
+        DrawText(target, panelX + 12.0f, listY, "Known gems:", 12, sf::Color(200, 200, 200));
 
         std::string known;
         for (int id : gemInventory.unlockedGemIds) {
@@ -165,16 +165,21 @@ public:
             known += def->skill.name;
         }
         if (known.empty()) known = "(none)";
-        DrawText(target, panelX + 20.0f, listY + 20.0f, known, 13, sf::Color(160, 200, 255));
+        DrawText(target, panelX + 12.0f, listY + 16.0f, Truncate(known, contentWidth, 12), 12, sf::Color(160, 200, 255));
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 20.0f, panelY + panelH - 24.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
+            DrawText(target, panelX + 12.0f, listY + 32.0f, Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
         }
 
         target.setView(oldView);
     }
 
 private:
+    static constexpr float kPanelW = 460.0f;
+    static constexpr float kPanelH = 250.0f;
+    static constexpr float kPanelX = 20.0f;
+    static constexpr float kPanelY = 460.0f;
+
     bool IsSpiritSlot() const { return m_selectedSlot >= kSkillSlotCount; }
 
     // Option list for the selected slot: -1 = Empty, followed by every unlocked gem
@@ -241,6 +246,22 @@ private:
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.1f", value);
         return std::string(buf);
+    }
+
+    // Clips str to fit within maxWidth pixels at the given font size, appending "...".
+    // Skill/gem names can be long, so line width can't be bounded just by tuning layout constants.
+    std::string Truncate(const std::string& str, float maxWidth, unsigned int size) const {
+        sf::Text probe(*m_font, sf::String::fromUtf8(str.begin(), str.end()), size);
+        if (probe.getLocalBounds().size.x <= maxWidth) return str;
+
+        std::string result = str;
+        while (!result.empty()) {
+            result.pop_back();
+            std::string candidate = result + "...";
+            sf::Text probe2(*m_font, sf::String::fromUtf8(candidate.begin(), candidate.end()), size);
+            if (probe2.getLocalBounds().size.x <= maxWidth) return candidate;
+        }
+        return "...";
     }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {

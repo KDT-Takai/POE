@@ -38,11 +38,10 @@ public:
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
 
-        sf::Vector2u winSize = target.getSize();
-        float panelW = 620.0f;
-        float panelH = 480.0f;
-        float panelX = 40.0f;
-        float panelY = (winSize.y - panelH) / 2.0f;
+        float panelW = kPanelW;
+        float panelH = kPanelH;
+        float panelX = kPanelX;
+        float panelY = kPanelY;
 
         sf::RectangleShape bg({ panelW, panelH });
         bg.setPosition({ panelX, panelY });
@@ -52,40 +51,36 @@ public:
         target.draw(bg);
 
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleCharacterSheet));
-        DrawText(target, panelX + 20.0f, panelY + 15.0f, "Character Sheet (" + closeKey + " to close)", 22, sf::Color(255, 220, 120));
+        DrawText(target, panelX + 16.0f, panelY + 10.0f, "Character Sheet (" + closeKey + " to close)", 16, sf::Color(255, 220, 120));
+
+        float contentWidth = panelW - 32.0f;
 
         std::ostringstream statText;
         statText << std::fixed << std::setprecision(1);
-        statText << "Lv " << stats.level << "   XP " << stats.currentXP << "/" << stats.xpToNextLevel
-            << "   Gold " << stats.gold << "\n";
+        statText << "Lv " << stats.level << "  XP " << stats.currentXP << "/" << stats.xpToNextLevel << "  Gold " << stats.gold << "\n";
         if (stats.passivePoints > 0) {
             statText << "Passive Points: " << stats.passivePoints << " (P to spend)\n";
         }
-        statText << "\n";
-        statText << "Life: " << stats.currentHP << " / " << stats.maxHP << "\n";
-        statText << "Mana: " << stats.currentMP << " / " << stats.maxMP << "\n";
-        statText << "Energy Shield: " << stats.currentES << " / " << stats.maxES << "\n\n";
-        statText << "Str " << stats.str << "   Dex " << stats.dex << "   Int " << stats.intelligence << "\n\n";
-        statText << "Attack: " << stats.atk << "\n";
-        statText << "Crit Chance: " << (stats.critRate * 100.0f) << "%\n";
-        statText << "Crit Multiplier: " << (stats.critDamage * 100.0f) << "%\n";
-        statText << "Move Speed: " << stats.moveSpeed << "\n\n";
-        statText << "Evasion: " << stats.evasion << "\n";
-        statText << "Armour: " << stats.armour << "\n";
-        statText << "Accuracy: " << stats.accuracy << "\n\n";
-        statText << "Fire Res: " << (stats.fireRes * 100.0f) << "%\n";
-        statText << "Cold Res: " << (stats.iceRes * 100.0f) << "%\n";
-        statText << "Lightning Res: " << (stats.lightningRes * 100.0f) << "%\n";
-        statText << "Chaos Res: " << (stats.chaosRes * 100.0f) << "%\n";
+        statText << "HP " << stats.currentHP << "/" << stats.maxHP << "  MP " << stats.currentMP << "/" << stats.maxMP << "\n";
+        statText << "ES " << stats.currentES << "/" << stats.maxES << "\n";
+        statText << "Str " << stats.str << "  Dex " << stats.dex << "  Int " << stats.intelligence << "\n";
+        statText << "Atk " << stats.atk << "  Crit " << (stats.critRate * 100.0f) << "%  CritMulti " << (stats.critDamage * 100.0f) << "%\n";
+        statText << "MoveSpd " << stats.moveSpeed << "  Evasion " << stats.evasion << "  Armour " << stats.armour << "\n";
+        statText << "Accuracy " << stats.accuracy << "\n";
+        statText << "Res: Fire " << (stats.fireRes * 100.0f) << "% Cold " << (stats.iceRes * 100.0f)
+            << "% Light " << (stats.lightningRes * 100.0f) << "% Chaos " << (stats.chaosRes * 100.0f) << "%\n";
         if (stats.leechPercent > 0.0f) {
             statText << "Leech: " << (stats.leechPercent * 100.0f) << "%\n";
         }
 
-        DrawText(target, panelX + 20.0f, panelY + 50.0f, statText.str(), 15, sf::Color::White);
+        DrawText(target, panelX + 16.0f, panelY + 34.0f, statText.str(), 13, sf::Color::White);
 
-        float equipX = panelX + 340.0f;
-        float equipY = panelY + 50.0f;
-        DrawText(target, equipX, panelY + 15.0f, "Equipment", 18, sf::Color(255, 220, 120));
+        // Number of stat lines above (kept in sync manually since it's a single sf::Text block).
+        int statLineCount = 8 + (stats.passivePoints > 0 ? 1 : 0) + (stats.leechPercent > 0.0f ? 1 : 0);
+        float equipY = panelY + 34.0f + static_cast<float>(statLineCount) * 16.0f + 10.0f;
+
+        DrawText(target, panelX + 16.0f, equipY, "Equipment", 15, sf::Color(255, 220, 120));
+        equipY += 20.0f;
 
         for (size_t i = 0; i < equipment.slots.size(); ++i) {
             std::string slotLabel = ItemUIHelpers::SlotName(static_cast<EquipSlot>(i));
@@ -101,13 +96,36 @@ public:
                 line = slotLabel + ": (empty)";
             }
 
-            DrawText(target, equipX, equipY + static_cast<float>(i) * 24.0f, line, 14, color);
+            line = Truncate(line, contentWidth, 13);
+            DrawText(target, panelX + 16.0f, equipY + static_cast<float>(i) * 18.0f, line, 13, color);
         }
 
         target.setView(oldView);
     }
 
 private:
+    static constexpr float kPanelW = 460.0f;
+    static constexpr float kPanelH = 420.0f;
+    static constexpr float kPanelX = 20.0f;
+    static constexpr float kPanelY = 20.0f;
+
+    // Clips str to fit within maxWidth pixels at the given font size, appending "...".
+    // Item names are procedurally generated and can be arbitrarily long, so line width
+    // can't be bounded just by tuning the layout constants above.
+    std::string Truncate(const std::string& str, float maxWidth, unsigned int size) const {
+        sf::Text probe(*m_font, sf::String::fromUtf8(str.begin(), str.end()), size);
+        if (probe.getLocalBounds().size.x <= maxWidth) return str;
+
+        std::string result = str;
+        while (!result.empty()) {
+            result.pop_back();
+            std::string candidate = result + "...";
+            sf::Text probe2(*m_font, sf::String::fromUtf8(candidate.begin(), candidate.end()), size);
+            if (probe2.getLocalBounds().size.x <= maxWidth) return candidate;
+        }
+        return "...";
+    }
+
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {
         // std::string -> sf::Text's implicit sf::String ctor is ANSI/locale, not UTF-8.
         sf::Text text(*m_font, sf::String::fromUtf8(str.begin(), str.end()), size);
