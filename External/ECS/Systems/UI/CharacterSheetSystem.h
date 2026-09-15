@@ -8,6 +8,7 @@
 #include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
+#include "ItemUIHelpers.h"
 
 class CharacterSheetSystem {
 private:
@@ -84,15 +85,15 @@ public:
         DrawText(target, equipX, panelY + 15.0f, "Equipment", 18, sf::Color(255, 220, 120));
 
         for (size_t i = 0; i < equipment.slots.size(); ++i) {
-            std::string slotLabel = SlotName(static_cast<EquipSlot>(i));
+            std::string slotLabel = ItemUIHelpers::SlotName(static_cast<EquipSlot>(i));
             std::string line;
             sf::Color color = sf::Color(150, 150, 150);
 
             if (equipment.slots[i].has_value()) {
                 const ItemComponent& item = *equipment.slots[i];
-                line = slotLabel + ": " + item.baseName + " (" + RarityName(item.rarity) + ", " +
+                line = slotLabel + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", " +
                     std::to_string(item.affixes.size()) + " mods)";
-                color = RarityColor(item.rarity);
+                color = ItemUIHelpers::RarityColor(item.rarity);
             } else {
                 line = slotLabel + ": (empty)";
             }
@@ -113,38 +114,4 @@ private:
         target.draw(text);
     }
 
-    std::string SlotName(EquipSlot slot) {
-        switch (slot) {
-        case EquipSlot::Weapon: return "Weapon";
-        case EquipSlot::BodyArmour: return "Body Armour";
-        case EquipSlot::Helmet: return "Helmet";
-        case EquipSlot::Gloves: return "Gloves";
-        case EquipSlot::Boots: return "Boots";
-        case EquipSlot::Ring1: return "Ring 1";
-        case EquipSlot::Ring2: return "Ring 2";
-        case EquipSlot::Amulet: return "Amulet";
-        case EquipSlot::Belt: return "Belt";
-        default: return "Slot";
-        }
-    }
-
-    std::string RarityName(ItemRarity rarity) {
-        switch (rarity) {
-        case ItemRarity::Normal: return "Normal";
-        case ItemRarity::Magic: return "Magic";
-        case ItemRarity::Rare: return "Rare";
-        case ItemRarity::Unique: return "Unique";
-        default: return "?";
-        }
-    }
-
-    sf::Color RarityColor(ItemRarity rarity) {
-        switch (rarity) {
-        case ItemRarity::Normal: return sf::Color(220, 220, 220);
-        case ItemRarity::Magic: return sf::Color(120, 150, 255);
-        case ItemRarity::Rare: return sf::Color(255, 210, 60);
-        case ItemRarity::Unique: return sf::Color(200, 130, 40);
-        default: return sf::Color::White;
-        }
-    }
 };

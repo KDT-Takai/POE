@@ -23,6 +23,7 @@
 #include "../../ECS/Systems/UI/CharacterSheetSystem.h"
 #include "../../ECS/Systems/UI/InventorySystem.h"
 #include "../../ECS/Systems/Progression/PassiveTreeSystem.h"
+#include "../../ECS/Systems/Item/VendorSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 
 class GameScene : public SceneBase {
@@ -44,6 +45,9 @@ private:
     bool m_hasPortal = false;
     bool m_playerNearPortal = false;
     sf::Vector2f m_portalPos;
+    bool m_hasVendor = false;
+    bool m_playerNearVendor = false;
+    sf::Vector2f m_vendorPos;
 
     // Registry
 	std::unique_ptr<Registry> registry;
@@ -71,4 +75,5 @@ private:
     std::shared_ptr<CharacterSheetSystem> characterSheetSystem;
     std::shared_ptr<InventorySystem> inventorySystem;
     std::shared_ptr<PassiveTreeSystem> passiveTreeSystem;
+    std::shared_ptr<VendorSystem> vendorSystem;
 };

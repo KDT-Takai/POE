@@ -77,6 +77,8 @@
     <ClInclude Include="External\ECS\Systems\Item\EquipmentSystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemPickupSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\InventorySystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\ItemUIHelpers.h" />
+    <ClInclude Include="External\ECS\Systems\Item\VendorSystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\LevelSystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeData.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeSystem.h" />

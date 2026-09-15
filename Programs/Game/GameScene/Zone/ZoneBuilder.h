@@ -14,6 +14,8 @@ struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
     bool hasPortal = false;
     sf::Vector2f portalPos{ 0.f, 0.f };
+    bool hasVendor = false;
+    sf::Vector2f vendorPos{ 0.f, 0.f };
 };
 
 class ZoneBuilder {
@@ -36,6 +38,12 @@ public:
             SpawnPortal(registry, goalPos);
             result.hasPortal = true;
             result.portalPos = goalPos;
+
+            sf::Vector2f vendorPos(static_cast<float>(map.width / 2) * map.tileSize, static_cast<float>(map.height / 2) * map.tileSize);
+            SpawnVendor(registry, vendorPos);
+            result.hasVendor = true;
+            result.vendorPos = vendorPos;
+
             return result;
         }
 
@@ -156,5 +164,12 @@ private:
         portal.AddComponent(CircleComponent{ 24.0f, sf::Color(255, 210, 60), true });
         portal.AddComponent(TagComponent{ "Portal" });
         portal.AddComponent(InteractableComponent{ InteractType::Portal, true, false, false, -1 });
+    }
+
+    static void SpawnVendor(Registry& registry, sf::Vector2f pos) {
+        auto vendor = registry.CreateEntityObject();
+        vendor.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
+        vendor.AddComponent(CircleComponent{ 20.0f, sf::Color(80, 200, 255), true });
+        vendor.AddComponent(TagComponent{ "Vendor" });
     }
 };

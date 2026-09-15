@@ -42,6 +42,7 @@ GameScene::GameScene() {
 	characterSheetSystem = std::make_shared<CharacterSheetSystem>();
 	inventorySystem = std::make_shared<InventorySystem>();
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
+	vendorSystem = std::make_shared<VendorSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -50,6 +51,8 @@ GameScene::GameScene() {
     ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier());
     m_hasPortal = built.hasPortal;
     m_portalPos = built.portalPos;
+    m_hasVendor = built.hasVendor;
+    m_vendorPos = built.vendorPos;
 
     auto player = EntitySpawner::CreatePlayer(*registry, built.playerSpawn.x, built.playerSpawn.y);
     if (player) {
@@ -92,18 +95,25 @@ void GameScene::Update() {
 
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); }
+        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); }
     }
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::I)) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); }
+        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); }
     }
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::P)) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); }
+        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); }
+    }
+    if (m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::B)) {
+        int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
+            ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
+        vendorSystem->Toggle(playerLevel);
+        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); }
     }
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
+    vendorSystem->Update(*registry, dt);
     // ����
     inputSystem->Update(*registry, dt);
     // ������
@@ -148,18 +158,28 @@ void GameScene::Update() {
     }
     if (m_zoneKind == ZoneKind::Town) {
         m_playerNearPortal = false;
-        if (m_hasPortal && registry->HasComponent<TransformComponent>(playerEntity)) {
+        m_playerNearVendor = false;
+        if (registry->HasComponent<TransformComponent>(playerEntity)) {
             auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
-            float dx = trans.position.x - m_portalPos.x;
-            float dy = trans.position.y - m_portalPos.y;
-            float distSq = dx * dx + dy * dy;
-            m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-            if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen &&
-                InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
-                spdlog::info("Entering next zone.");
-                AdvanceToNextZone();
-                return;
+            if (m_hasVendor) {
+                float vdx = trans.position.x - m_vendorPos.x;
+                float vdy = trans.position.y - m_vendorPos.y;
+                m_playerNearVendor = (vdx * vdx + vdy * vdy) < (100.0f * 100.0f);
+            }
+
+            if (m_hasPortal) {
+                float dx = trans.position.x - m_portalPos.x;
+                float dy = trans.position.y - m_portalPos.y;
+                float distSq = dx * dx + dy * dy;
+                m_playerNearPortal = distSq < (150.0f * 150.0f);
+
+                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen &&
+                    InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
+                    spdlog::info("Entering next zone.");
+                    AdvanceToNextZone();
+                    return;
+                }
             }
         }
     } else {
@@ -196,7 +216,8 @@ void GameScene::Render(sf::RenderTarget& target) {
 
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
-        hudLine = m_playerNearPortal ? "Press Enter to proceed" : "";
+        if (m_playerNearPortal) hudLine = "Press Enter to proceed";
+        else if (m_playerNearVendor) hudLine = "Press B to trade";
     } else {
         int aliveEnemies = 0;
         auto enemyView = registry->View<CharacterStatsComponent>();
@@ -302,6 +323,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     characterSheetSystem->Render(*registry, target);
     inventorySystem->Render(*registry, target);
     passiveTreeSystem->Render(*registry, target);
+    vendorSystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
 }
