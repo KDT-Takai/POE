@@ -92,6 +92,10 @@ GameScene::GameScene() {
                     skillComp.skills[i].isValid = true;
                 }
             }
+
+            // The aura's stat bonus already lives in equipment.baseStats (restored above),
+            // so this only restores which gem each Spirit slot displays as equipped.
+            player.GetComponent<SpiritGemLoadoutComponent>().auraGemIds = campaign.GetSavedAuraLoadout();
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
@@ -121,6 +125,9 @@ void GameScene::AdvanceToNextZone() {
             loadout[i] = skillComp.skills[i].isValid ? skillComp.skills[i].gemId : -1;
         }
         campaign.SaveSkillLoadout(loadout);
+    }
+    if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
+        campaign.SaveAuraLoadout(registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity).auraGemIds);
     }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();

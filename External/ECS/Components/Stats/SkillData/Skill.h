@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "Components/Combat/DamageType.h"
+#include "Components/Item/Item.h"
 
 enum class SkillBehaviorType {
     None,
@@ -13,7 +14,8 @@ enum class SkillBehaviorType {
     Spark,      // ��
     GroundSlam,
     LightningWarp,
-    LightningBall
+    LightningBall,
+    Aura        // reserves Spirit while equipped; always-on, not an activated skill slot
 };
 
 struct SkillData {
@@ -29,6 +31,8 @@ struct SkillData {
     float currentCooldown = 0.0f;   // ���݂̑҂�����
     float castTime = 0.0f;          // �r������
     int mpCost = 0;                 // ����MP
+    float spiritCost = 0.0f;        // Aura only: reserved from maxSpirit while equipped
+    ItemAffix auraEffect;           // Aura only: applied/removed directly on equipment.baseStats (same ApplyAffix/RemoveAffix as passives)
 
     float damage = 0.0f;             // �З�
     float duration = 0.0f;          // ��������

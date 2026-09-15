@@ -54,6 +54,8 @@ public:
         stats.maxES = 40.0f;
         stats.currentES = stats.maxES;
         stats.leechPercent = 0.05f;
+        stats.maxSpirit = 100.0f;
+        stats.currentSpirit = 0.0f; // amount reserved by equipped Aura gems, not "remaining"
         entity.AddComponent(stats);
         entity.AddComponent(StatusEffectsComponent{});
 
@@ -131,6 +133,7 @@ public:
         SkillGemInventoryComponent gemInventory;
         gemInventory.unlockedGemIds = { 0, 1, 2, 3 };
         entity.AddComponent(gemInventory);
+        entity.AddComponent(SpiritGemLoadoutComponent{});
 
         return entity;
     }

@@ -55,6 +55,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::vector<int> m_savedPassiveTree;
     std::vector<int> m_savedUnlockedGems;
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
+    std::array<int, 2> m_savedAuraLoadout = { -1, -1 };
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -93,6 +94,9 @@ public:
 
     void SaveSkillLoadout(const std::array<int, 5>& gemIds) { m_savedSkillLoadout = gemIds; }
     const std::array<int, 5>& GetSavedSkillLoadout() const { return m_savedSkillLoadout; }
+
+    void SaveAuraLoadout(const std::array<int, 2>& gemIds) { m_savedAuraLoadout = gemIds; }
+    const std::array<int, 2>& GetSavedAuraLoadout() const { return m_savedAuraLoadout; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

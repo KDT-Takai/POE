@@ -391,6 +391,10 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
         out << "skillLoadout.slot" << i << "=" << m_savedSkillLoadout[i] << "\n";
     }
+
+    for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
+        out << "auraLoadout.slot" << i << "=" << m_savedAuraLoadout[i] << "\n";
+    }
 }
 
 bool CampaignManager::LoadFromDisk(const std::string& path) {
@@ -448,6 +452,10 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
 
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
         m_savedSkillLoadout[i] = GetI(kv, "skillLoadout.slot" + std::to_string(i), -1);
+    }
+
+    for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
+        m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
     }
 
     return true;

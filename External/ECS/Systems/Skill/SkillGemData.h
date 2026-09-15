@@ -114,6 +114,26 @@ private:
         frostBolt.isValid = true;
         gems.push_back({ 7, frostBolt });
 
+        // Aura gems: not activated skills. Equipping one in a Spirit slot (see
+        // SkillGemSystem) reserves spiritCost from maxSpirit for as long as it stays
+        // equipped, and its auraEffect is applied directly to equipment.baseStats
+        // (removed the same way on unequip; see SpiritAuraSystem).
+        SkillData determination;
+        determination.name = "Determination";
+        determination.behaviorType = SkillBehaviorType::Aura;
+        determination.spiritCost = 50.0f;
+        determination.auraEffect = { AffixStat::FlatArmour, 60.0f, 1, true, "Armour" };
+        determination.isValid = true;
+        gems.push_back({ 8, determination });
+
+        SkillData discipline;
+        discipline.name = "Discipline";
+        discipline.behaviorType = SkillBehaviorType::Aura;
+        discipline.spiritCost = 40.0f;
+        discipline.auraEffect = { AffixStat::FlatES, 40.0f, 1, true, "Energy Shield" };
+        discipline.isValid = true;
+        gems.push_back({ 9, discipline });
+
         return gems;
     }
 };
