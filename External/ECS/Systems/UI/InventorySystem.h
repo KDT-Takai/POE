@@ -352,8 +352,10 @@ public:
 
 private:
     PanelLayout ComputeLayout(sf::Vector2u winSize) const {
+        // PoE2同様、画面右側にドッキング(ゲームを止めずに開ける画面なので
+        // 中央を塞がず、フィールドの様子が見えるようにする)。
         PanelLayout layout;
-        layout.panelX = (static_cast<float>(winSize.x) - kPanelW) / 2.0f;
+        layout.panelX = static_cast<float>(winSize.x) - kPanelW - 20.0f;
         layout.panelY = (static_cast<float>(winSize.y) - kPanelH) / 2.0f;
 
         float totalBtnW = kButtonW * 3.0f + kButtonGap * 2.0f;

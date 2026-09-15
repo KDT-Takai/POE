@@ -173,16 +173,20 @@ void GameScene::Update() {
     vendorSystem->Update(*registry, dt);
     skillGemSystem->Update(*registry, dt);
 
-    // いずれかのメニューが開いている間はワールドシミュレーションを止める
-    // (パッシブツリー等をゆっくり操作できるようにするため)
-    bool isPaused = characterSheetSystem->isOpen || inventorySystem->isOpen || passiveTreeSystem->isOpen
-        || vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen;
+    // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
+    // ワールドシミュレーションを止める。ただしインベントリ(アイテム)/キャラクター
+    // シート(ステータス)はPoE2同様、開いたまま戦闘・移動を続けられるようにする。
+    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen;
+    // インベントリは開いたままでもワールドは動き続けるが、マウス操作(ドラッグ&
+    // ドロップ等)はインベントリ側が優先的に受け取るべきなので、地面アイテムの
+    // クリック拾得/Skill1割当の左クリックはここが開いている間だけ別途止める。
+    bool uiOwnsClicks = isPaused || inventorySystem->isOpen;
 
     // 地面のアイテムはクリックで拾う(徘徊での自動拾得は廃止)。カーソルが
     // アイテムの上にある間はSkill1の左クリック割当を抑制し、誤爆を防ぐ。
     Entity hoveredPickup = ItemPickupSystem::kInvalidEntity;
     Entity clickedPickup = ItemPickupSystem::kInvalidEntity;
-    if (!isPaused) {
+    if (!uiOwnsClicks) {
         sf::Vector2f mouseWorldPosForPickup = InputManager::Instance().GetMouseWorldPosition();
         hoveredPickup = ItemPickupSystem::FindNearestPickup(*registry, mouseWorldPosForPickup, ItemPickupSystem::kClickRadius);
         if (registry->IsValid(hoveredPickup) && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left)) {
@@ -192,7 +196,7 @@ void GameScene::Update() {
 
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt, registry->IsValid(hoveredPickup));
+        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup));
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N
@@ -333,8 +337,11 @@ void GameScene::Render(sf::RenderTarget& target) {
             target.draw(hudText);
         }
 
-        // 地面のアイテムにカーソルが乗っている間、名前をカーソル脇に表示する。
-        {
+        // 地面のアイテムにカーソルが乗っている間、名前をカーソル脇に表示する
+        // (マウスをUIパネルが占有している間は誤って表示しない)。
+        bool uiOwnsClicksForHover = passiveTreeSystem->isOpen || vendorSystem->isOpen ||
+            skillGemSystem->isOpen || keyBindSystem->isOpen || inventorySystem->isOpen;
+        if (!uiOwnsClicksForHover) {
             sf::Vector2f mouseWorldPos = InputManager::Instance().GetMouseWorldPosition();
             Entity hovered = ItemPickupSystem::FindNearestPickup(*registry, mouseWorldPos, ItemPickupSystem::kClickRadius);
             std::string hoverName;
