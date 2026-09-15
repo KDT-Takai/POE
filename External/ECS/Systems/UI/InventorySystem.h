@@ -180,7 +180,7 @@ private:
 
         lastActionMessage = "Equipped: " + picked.baseName;
         messageTimer = 2.5f;
-        m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        ClampSelection(inventory);
     }
 
     void SellSelected(InventoryComponent& inventory, CharacterStatsComponent& stats) {
@@ -193,7 +193,7 @@ private:
         messageTimer = 2.5f;
 
         inventory.items.erase(inventory.items.begin() + m_selectedIndex);
-        m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        ClampSelection(inventory);
     }
 
     void DiscardSelected(InventoryComponent& inventory) {
@@ -204,7 +204,17 @@ private:
         messageTimer = 2.5f;
 
         inventory.items.erase(inventory.items.begin() + m_selectedIndex);
-        m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        ClampSelection(inventory);
+    }
+
+    // std::clamp(x, 0, size-1) is undefined behavior once size reaches 0 (lo > hi);
+    // this happens whenever the last item is equipped/sold/discarded.
+    void ClampSelection(const InventoryComponent& inventory) {
+        if (inventory.items.empty()) {
+            m_selectedIndex = 0;
+        } else {
+            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        }
     }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {

@@ -40,6 +40,12 @@ public:
             }
         }
 
+        // Increased/Reduced-style modifiers are summed above (increasedAttackDamage/
+        // increasedMoveSpeed) rather than compounded per-source; apply the combined
+        // percentage as a single multiplier here (PoE-style stacking, see AI/DECISIONS.md).
+        live.atk *= (1.0f + live.increasedAttackDamage / 100.0f);
+        live.moveSpeed *= (1.0f + live.increasedMoveSpeed / 100.0f);
+
         live.maxHP = (std::max)(1.0f, live.maxHP);
         live.currentHP = (std::min)(savedCurrentHP, live.maxHP);
         live.currentMP = (std::min)(savedCurrentMP, live.maxMP);
@@ -65,7 +71,7 @@ public:
         case AffixStat::FlatLife: live.maxHP += affix.value; break;
         case AffixStat::FlatMana: live.maxMP += affix.value; break;
         case AffixStat::FlatES: live.maxES += affix.value; break;
-        case AffixStat::IncreasedAttackDamage: live.atk *= (1.0f + affix.value / 100.0f); break;
+        case AffixStat::IncreasedAttackDamage: live.increasedAttackDamage += affix.value; break;
         case AffixStat::FireRes: live.fireRes = (std::min)(0.75f, live.fireRes + affix.value / 100.0f); break;
         case AffixStat::ColdRes: live.iceRes = (std::min)(0.75f, live.iceRes + affix.value / 100.0f); break;
         case AffixStat::LightningRes: live.lightningRes = (std::min)(0.75f, live.lightningRes + affix.value / 100.0f); break;
@@ -75,7 +81,7 @@ public:
         case AffixStat::FlatAccuracy: live.accuracy += affix.value; break;
         case AffixStat::CritChance: live.critRate += affix.value / 100.0f; break;
         case AffixStat::CritMultiplier: live.critDamage += affix.value / 100.0f; break;
-        case AffixStat::MoveSpeed: live.moveSpeed *= (1.0f + affix.value / 100.0f); break;
+        case AffixStat::MoveSpeed: live.increasedMoveSpeed += affix.value; break;
         }
     }
 
@@ -85,7 +91,7 @@ public:
         case AffixStat::FlatLife: live.maxHP -= affix.value; break;
         case AffixStat::FlatMana: live.maxMP -= affix.value; break;
         case AffixStat::FlatES: live.maxES -= affix.value; break;
-        case AffixStat::IncreasedAttackDamage: live.atk /= (1.0f + affix.value / 100.0f); break;
+        case AffixStat::IncreasedAttackDamage: live.increasedAttackDamage -= affix.value; break;
         case AffixStat::FireRes: live.fireRes = (std::max)(0.0f, live.fireRes - affix.value / 100.0f); break;
         case AffixStat::ColdRes: live.iceRes = (std::max)(0.0f, live.iceRes - affix.value / 100.0f); break;
         case AffixStat::LightningRes: live.lightningRes = (std::max)(0.0f, live.lightningRes - affix.value / 100.0f); break;
@@ -95,7 +101,7 @@ public:
         case AffixStat::FlatAccuracy: live.accuracy -= affix.value; break;
         case AffixStat::CritChance: live.critRate -= affix.value / 100.0f; break;
         case AffixStat::CritMultiplier: live.critDamage -= affix.value / 100.0f; break;
-        case AffixStat::MoveSpeed: live.moveSpeed /= (1.0f + affix.value / 100.0f); break;
+        case AffixStat::MoveSpeed: live.increasedMoveSpeed -= affix.value; break;
         }
     }
 };

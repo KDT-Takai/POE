@@ -34,6 +34,12 @@ struct CharacterStatsComponent {
     float critRate = 0.05f;
     float critDamage = 1.50f;
 
+    // Sum of all "Increased X%" modifiers (equipment + passives) affecting atk/moveSpeed.
+    // Summed first, then applied as a single multiplier in EquipmentSystem::RecalculateStats
+    // (PoE-style Increased/Reduced stacking) instead of compounding per-source.
+    float increasedAttackDamage = 0.0f;
+    float increasedMoveSpeed = 0.0f;
+
     // Movement Stats
     float moveSpeed = 50.0f;
 
@@ -56,7 +62,7 @@ struct CharacterStatsComponent {
 
     // Leech
     float leechPercent = 0.0f;
-    float leechRateCap = 0.02f; // fraction of maxHP that can be leeched per second
+    float leechRateCap = 0.20f; // fraction of maxHP that can be leeched per second (PoE2 default)
     float pendingLeech = 0.0f;
 
     MonsterRarity rarity = MonsterRarity::Normal;
