@@ -246,7 +246,7 @@ private:
         int itemLevel = std::clamp(static_cast<int>(stats.maxHP / 15.0f), 1, 100);
 
         if (chanceRoll(rng) < 0.3f) {
-            std::uniform_int_distribution<int> currencyPick(0, 2);
+            std::uniform_int_distribution<int> currencyPick(0, 3);
             CurrencyType currencyType = static_cast<CurrencyType>(currencyPick(rng));
 
             auto currencyPickup = registry.CreateEntityObject();

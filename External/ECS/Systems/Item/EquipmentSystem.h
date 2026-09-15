@@ -14,6 +14,7 @@ public:
         int savedXPToNext = live.xpToNextLevel;
         int savedGold = live.gold;
         int savedPassivePoints = live.passivePoints;
+        int savedRegretOrbs = live.regretOrbs;
 
         live = equipment.baseStats;
 
@@ -22,6 +23,7 @@ public:
         live.xpToNextLevel = savedXPToNext;
         live.gold = savedGold;
         live.passivePoints = savedPassivePoints;
+        live.regretOrbs = savedRegretOrbs;
 
         for (auto& slotItem : equipment.slots) {
             if (!slotItem.has_value()) continue;
@@ -74,6 +76,26 @@ public:
         case AffixStat::CritChance: live.critRate += affix.value / 100.0f; break;
         case AffixStat::CritMultiplier: live.critDamage += affix.value / 100.0f; break;
         case AffixStat::MoveSpeed: live.moveSpeed *= (1.0f + affix.value / 100.0f); break;
+        }
+    }
+
+    // Exact inverse of ApplyAffix; must be called with the same affix used to apply.
+    static void RemoveAffix(CharacterStatsComponent& live, const ItemAffix& affix) {
+        switch (affix.stat) {
+        case AffixStat::FlatLife: live.maxHP -= affix.value; break;
+        case AffixStat::FlatMana: live.maxMP -= affix.value; break;
+        case AffixStat::FlatES: live.maxES -= affix.value; break;
+        case AffixStat::IncreasedAttackDamage: live.atk /= (1.0f + affix.value / 100.0f); break;
+        case AffixStat::FireRes: live.fireRes = (std::max)(0.0f, live.fireRes - affix.value / 100.0f); break;
+        case AffixStat::ColdRes: live.iceRes = (std::max)(0.0f, live.iceRes - affix.value / 100.0f); break;
+        case AffixStat::LightningRes: live.lightningRes = (std::max)(0.0f, live.lightningRes - affix.value / 100.0f); break;
+        case AffixStat::ChaosRes: live.chaosRes = (std::max)(0.0f, live.chaosRes - affix.value / 100.0f); break;
+        case AffixStat::FlatArmour: live.armour -= affix.value; break;
+        case AffixStat::FlatEvasion: live.evasion -= affix.value; break;
+        case AffixStat::FlatAccuracy: live.accuracy -= affix.value; break;
+        case AffixStat::CritChance: live.critRate -= affix.value / 100.0f; break;
+        case AffixStat::CritMultiplier: live.critDamage -= affix.value / 100.0f; break;
+        case AffixStat::MoveSpeed: live.moveSpeed /= (1.0f + affix.value / 100.0f); break;
         }
     }
 };

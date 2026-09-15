@@ -11,6 +11,11 @@ public:
     static std::string ApplyCurrency(EquipmentComponent& equipment, CharacterStatsComponent& live,
         CurrencyType type, int itemLevel, std::mt19937& rng) {
 
+        if (type == CurrencyType::Regret) {
+            live.regretOrbs++;
+            return CurrencyLabel(type) + " (" + std::to_string(live.regretOrbs) + " held)";
+        }
+
         ItemRarity requiredRarity = ItemRarity::Normal;
         switch (type) {
         case CurrencyType::Transmutation: requiredRarity = ItemRarity::Normal; break;
@@ -59,6 +64,7 @@ private:
         case CurrencyType::Transmutation: return "Orb of Transmutation";
         case CurrencyType::Regal: return "Regal Orb";
         case CurrencyType::Chaos: return "Chaos Orb";
+        case CurrencyType::Regret: return "Orb of Regret";
         }
         return "Currency";
     }

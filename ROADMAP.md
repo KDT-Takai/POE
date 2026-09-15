@@ -24,6 +24,7 @@
 - NPC/Vendor(商人)システム: タウン中央に商人NPCを配置 (`ZoneBuilder::SpawnVendor`)。近づいてBキーで開く`VendorSystem`から、プレイヤーレベルに応じて生成された在庫6点(訪問毎に再生成、購入で減る)をゴールドで購入しインベントリへ追加できる。買値はSellValueの3倍。売却は引き続きインベントリUI側で行う。
 - ゴールド経済: 拾った弱い装備を自動売却。
 - キャラクターシートUI (`CharacterSheetSystem`, Cキーで開閉)。
+- パッシブツリーのrespec: `CurrencyType::Regret` (Orb of Regret) を追加。ドロップ/`CurrencySystem::ApplyCurrency`経由で入手すると`CharacterStatsComponent::regretOrbs`に加算 (装備には触れない)。パッシブツリーUIでBackspaceキーを押すと、選択中の割り振り済みノードをオーブ1個消費して解放 (`PassiveTreeSystem::TryDeallocate`)。他の割り振り済みノードがスタートノードから到達不能にならないかBFSで検証 (`CanRemoveWithoutDisconnecting`) してから解放するため、途中のノードだけを抜いて枝を分断することはできない。ステータスへの適用は`EquipmentSystem::ApplyAffix`の逆演算`RemoveAffix`で行う。セーブ/ロード対応 (`regretOrbs`)。
 
 ### 永続化
 - ローカルファイルセーブ/ロード (`CampaignManager::SaveToDisk/LoadFromDisk`): キャンペーン進行 + ステータス + 装備。
@@ -41,8 +42,7 @@
 2. **サウンド** — 効果音・BGMが `test.mp3` 以外未整備 (アセット不足によりブロック中)。
 3. **スキル/モンスターバリエーション拡充** — 現状のスキル数・敵種類は最小限。
 4. **原因不明の間欠的クラッシュの再調査** — セッション前半で発生し、ASan 6分ストレステストでは未検出。実機デバッガでの再現待ち。
-5. **パッシブツリーの respec (再割り振り)** — 現状は一度割り振ったノードを戻す手段がない。PoEのオーブのような専用アイテムでの解放を検討。
-6. **Vendorの再入荷/リロール手段** — 現状は在庫を買い切ると同じタウン訪問中は補充されない(次にタウンへ入り直す＝新しいGameSceneで再生成)。ゴールドでのリロール等は未実装。
+5. **Vendorの再入荷/リロール手段** — 現状は在庫を買い切ると同じタウン訪問中は補充されない(次にタウンへ入り直す＝新しいGameSceneで再生成)。ゴールドでのリロール等は未実装。
 
 ## 既知の制約
 

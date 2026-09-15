@@ -54,6 +54,10 @@ public:
         if (keyInput.IsGetKey(sf::Keyboard::Key::Enter)) {
             TryAllocate(tree, registry.GetComponent<EquipmentComponent>(player), registry.GetComponent<CharacterStatsComponent>(player));
         }
+
+        if (keyInput.IsGetKey(sf::Keyboard::Key::Backspace)) {
+            TryDeallocate(tree, registry.GetComponent<EquipmentComponent>(player), registry.GetComponent<CharacterStatsComponent>(player));
+        }
     }
 
     void Render(Registry& registry, sf::RenderTarget& target) {
@@ -82,9 +86,10 @@ public:
         target.draw(bg);
 
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "Passive Tree (P to close) - Arrows move, Enter allocate", 15, sf::Color(255, 220, 120));
+            "Passive Tree (P to close) - Arrows move, Enter allocate, Backspace respec", 15, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
-            "Available Points: " + std::to_string(stats.passivePoints), 14, sf::Color(200, 200, 200));
+            "Available Points: " + std::to_string(stats.passivePoints) +
+            "   Orbs of Regret: " + std::to_string(stats.regretOrbs), 14, sf::Color(200, 200, 200));
 
         sf::Vector2f center(panelX + panelW / 2.0f, panelY + panelH / 2.0f + 15.0f);
 
@@ -195,6 +200,64 @@ private:
 
         lastActionMessage = "Allocated: " + node->effect.label;
         messageTimer = 2.0f;
+    }
+
+    void TryDeallocate(PassiveTreeComponent& tree, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
+        if (m_selectedNodeId == 0) return;
+        if (!IsAllocated(tree, m_selectedNodeId)) return;
+
+        if (stats.regretOrbs <= 0) {
+            lastActionMessage = "Need an Orb of Regret to respec";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        if (!CanRemoveWithoutDisconnecting(tree, m_selectedNodeId)) {
+            lastActionMessage = "Other allocated nodes depend on this one";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        const PassiveNodeDef* node = PassiveTreeData::Find(m_selectedNodeId);
+        if (!node) return;
+
+        auto& ids = tree.allocatedNodeIds;
+        ids.erase(std::remove(ids.begin(), ids.end(), m_selectedNodeId), ids.end());
+        stats.passivePoints++;
+        stats.regretOrbs--;
+        EquipmentSystem::RemoveAffix(equipment.baseStats, node->effect);
+        EquipmentSystem::RecalculateStats(stats, equipment);
+
+        lastActionMessage = "Respecced: " + node->effect.label;
+        messageTimer = 2.0f;
+    }
+
+    // Checks that removing `removeId` from the allocated set leaves every remaining
+    // allocated node still reachable from the start node (id 0) through allocated nodes.
+    bool CanRemoveWithoutDisconnecting(const PassiveTreeComponent& tree, int removeId) const {
+        std::vector<int> remaining;
+        for (int id : tree.allocatedNodeIds) {
+            if (id != removeId) remaining.push_back(id);
+        }
+
+        std::vector<int> reachable = { 0 };
+        std::vector<int> frontier = { 0 };
+        while (!frontier.empty()) {
+            int current = frontier.back();
+            frontier.pop_back();
+            const PassiveNodeDef* node = PassiveTreeData::Find(current);
+            if (!node) continue;
+            for (int neighborId : node->neighbors) {
+                if (neighborId == removeId) continue;
+                bool isRemainingAllocated = std::find(remaining.begin(), remaining.end(), neighborId) != remaining.end();
+                if (!isRemainingAllocated) continue;
+                if (std::find(reachable.begin(), reachable.end(), neighborId) != reachable.end()) continue;
+                reachable.push_back(neighborId);
+                frontier.push_back(neighborId);
+            }
+        }
+
+        return reachable.size() == remaining.size() + 1;
     }
 
     bool IsAllocated(const PassiveTreeComponent& tree, int id) const {

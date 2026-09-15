@@ -64,4 +64,5 @@ struct CharacterStatsComponent {
 
     int gold = 0;
     int passivePoints = 0;
+    int regretOrbs = 0;
 };

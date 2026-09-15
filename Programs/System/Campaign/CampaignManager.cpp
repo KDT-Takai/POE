@@ -45,6 +45,7 @@ namespace {
         out << prefix << "contactDamageType=" << static_cast<int>(s.contactDamageType) << "\n";
         out << prefix << "gold=" << s.gold << "\n";
         out << prefix << "passivePoints=" << s.passivePoints << "\n";
+        out << prefix << "regretOrbs=" << s.regretOrbs << "\n";
     }
 
     float GetF(const std::unordered_map<std::string, std::string>& m, const std::string& k, float def) {
@@ -138,6 +139,7 @@ namespace {
         s.contactDamageType = static_cast<DamageElement>(GetI(m, prefix + "contactDamageType", static_cast<int>(s.contactDamageType)));
         s.gold = GetI(m, prefix + "gold", s.gold);
         s.passivePoints = GetI(m, prefix + "passivePoints", s.passivePoints);
+        s.regretOrbs = GetI(m, prefix + "regretOrbs", s.regretOrbs);
     }
 }
 
