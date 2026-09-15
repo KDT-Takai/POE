@@ -107,6 +107,16 @@ public:
 
     void Close() { isOpen = false; m_dragging = false; }
 
+    // ワールドをポーズしないメニュー同士(インベントリ/キャラクターシート/スキルジェム)は
+    // マウスがカーソル下のパネルに実際に重なっている時だけスキル発動クリックを奪うべき
+    // なので、GameScene側でこの判定を使ってクリックの取り合いを解決する。
+    bool IsPointInPanel(sf::Vector2f point, sf::Vector2u winSize) const {
+        if (!isOpen) return false;
+        PanelLayout layout = ComputeLayout(winSize);
+        sf::FloatRect panelRect({ layout.panelX, layout.panelY }, { kPanelW, kPanelH });
+        return panelRect.contains(point);
+    }
+
     void Update(Registry& registry, float dt) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;

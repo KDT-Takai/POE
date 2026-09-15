@@ -141,14 +141,17 @@ void GameScene::Update() {
     auto& binds = KeyBindings::Instance();
     bool awaitingRebind = keyBindSystem->IsAwaitingKey();
 
-    // 「非ポーズ」系(アイテム/ステータス/ジェム)は互いに同時に開けるようにし、
-    // 「ポーズ」系(パッシブツリー/ベンダー/キーバインド)を開くときだけ全パネルを
-    // 閉じる(ポーズ系同士も排他)。自分自身は閉じ対象から除く。
+    // 画面は左(キャラクターシート/スキルジェム)・右(インベントリ)の2枠構成。
+    // 左枠はキャラクターシートとスキルジェムが排他(最後に開いた方だけ表示、
+    // タブ切り替えのように振る舞う)、右枠のインベントリは左枠と独立に同時に
+    // 開ける。これらは全て「非ポーズ」系。「ポーズ」系(パッシブツリー/ベンダー/
+    // キーバインド)を開くときだけ全パネルを閉じる(ポーズ系同士も排他)。
+    // 自分自身は閉じ対象から除く。
     auto closeFreePanels = [&]() { characterSheetSystem->isOpen = false; inventorySystem->Close(); skillGemSystem->Close(); };
 
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
@@ -160,7 +163,7 @@ void GameScene::Update() {
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
@@ -183,10 +186,18 @@ void GameScene::Update() {
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
     // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。
     bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen;
-    // インベントリは開いたままでもワールドは動き続けるが、マウス操作(ドラッグ&
-    // ドロップ等)はインベントリ側が優先的に受け取るべきなので、地面アイテムの
-    // クリック拾得/Skill1割当の左クリックはここが開いている間だけ別途止める。
-    bool uiOwnsClicks = isPaused || inventorySystem->isOpen;
+    // 非ポーズ系メニュー(インベントリ/キャラクターシート/スキルジェム)はゲームを
+    // 止めないので、開いている間もフィールド上でのスキル発動クリックは通したい。
+    // マウスが実際にそのパネルの上に重なっている時だけクリックをUI側へ譲る
+    // (単に「開いているかどうか」ではなく、カーソル位置で判定する)。
+    sf::RenderWindow* gameWindow = InputManager::Instance().GetWindow();
+    sf::Vector2u winSizeForUI = gameWindow ? gameWindow->getSize() : sf::Vector2u{ 1280, 720 };
+    sf::Vector2f mouseScreenPos = InputManager::Instance().GetMouseInput().GetMousePointF();
+    bool mouseOverFreeMenu =
+        inventorySystem->IsPointInPanel(mouseScreenPos, winSizeForUI) ||
+        characterSheetSystem->IsPointInPanel(mouseScreenPos) ||
+        skillGemSystem->IsPointInPanel(mouseScreenPos);
+    bool uiOwnsClicks = isPaused || mouseOverFreeMenu;
 
     // 地面のアイテムはクリックで拾う(徘徊での自動拾得は廃止)。カーソルが
     // アイテムの上にある間はSkill1の左クリック割当を抑制し、誤爆を防ぐ。
@@ -344,9 +355,12 @@ void GameScene::Render(sf::RenderTarget& target) {
         }
 
         // 地面のアイテムにカーソルが乗っている間、名前をカーソル脇に表示する
-        // (マウスをUIパネルが占有している間は誤って表示しない)。
-        bool uiOwnsClicksForHover = passiveTreeSystem->isOpen || vendorSystem->isOpen ||
-            skillGemSystem->isOpen || keyBindSystem->isOpen || inventorySystem->isOpen;
+        // (マウスが実際にUIパネルへ重なっている間だけ誤表示を防ぐため止める)。
+        sf::Vector2f mouseScreenPosForHover = InputManager::Instance().GetMouseInput().GetMousePointF();
+        bool uiOwnsClicksForHover = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen ||
+            inventorySystem->IsPointInPanel(mouseScreenPosForHover, target.getSize()) ||
+            characterSheetSystem->IsPointInPanel(mouseScreenPosForHover) ||
+            skillGemSystem->IsPointInPanel(mouseScreenPosForHover);
         if (!uiOwnsClicksForHover) {
             sf::Vector2f mouseWorldPos = InputManager::Instance().GetMouseWorldPosition();
             Entity hovered = ItemPickupSystem::FindNearestPickup(*registry, mouseWorldPos, ItemPickupSystem::kClickRadius);

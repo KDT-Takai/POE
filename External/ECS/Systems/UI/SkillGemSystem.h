@@ -40,6 +40,13 @@ public:
     void Toggle() { isOpen = !isOpen; }
     void Close() { isOpen = false; }
 
+    // Used by GameScene to resolve click ownership between the non-pausing menus:
+    // only steal the click if the cursor is actually over this panel's rect.
+    bool IsPointInPanel(sf::Vector2f point) const {
+        if (!isOpen) return false;
+        return sf::FloatRect({ kPanelX, kPanelY }, { kPanelW, kPanelH }).contains(point);
+    }
+
     void Update(Registry& registry, float dt) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
