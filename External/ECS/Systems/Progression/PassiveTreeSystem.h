@@ -207,7 +207,7 @@ private:
         box.setOutlineThickness(1.5f);
         target.draw(box);
 
-        sf::Text text(*m_font, label, 16);
+        sf::Text text(*m_font, sf::String::fromUtf8(label.begin(), label.end()), 16);
         text.setFillColor(sf::Color::White);
         text.setOutlineColor(sf::Color::Black);
         text.setOutlineThickness(1.0f);
@@ -334,7 +334,8 @@ private:
     }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {
-        sf::Text text(*m_font, str, size);
+        // std::string -> sf::Text's implicit sf::String ctor is ANSI/locale, not UTF-8.
+        sf::Text text(*m_font, sf::String::fromUtf8(str.begin(), str.end()), size);
         text.setFillColor(color);
         text.setOutlineColor(sf::Color::Black);
         text.setOutlineThickness(1.0f);

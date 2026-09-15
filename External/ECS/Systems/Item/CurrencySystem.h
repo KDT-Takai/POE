@@ -116,6 +116,7 @@ private:
         return -1;
     }
 
+public:
     static std::string CurrencyLabel(CurrencyType t) {
         switch (t) {
         case CurrencyType::Transmutation: return "Orb of Transmutation";

@@ -178,9 +178,21 @@ void GameScene::Update() {
     bool isPaused = characterSheetSystem->isOpen || inventorySystem->isOpen || passiveTreeSystem->isOpen
         || vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen;
 
+    // 地面のアイテムはクリックで拾う(徘徊での自動拾得は廃止)。カーソルが
+    // アイテムの上にある間はSkill1の左クリック割当を抑制し、誤爆を防ぐ。
+    Entity hoveredPickup = ItemPickupSystem::kInvalidEntity;
+    Entity clickedPickup = ItemPickupSystem::kInvalidEntity;
+    if (!isPaused) {
+        sf::Vector2f mouseWorldPosForPickup = InputManager::Instance().GetMouseWorldPosition();
+        hoveredPickup = ItemPickupSystem::FindNearestPickup(*registry, mouseWorldPosForPickup, ItemPickupSystem::kClickRadius);
+        if (registry->IsValid(hoveredPickup) && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left)) {
+            clickedPickup = hoveredPickup;
+        }
+    }
+
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt);
+        inputSystem->Update(*registry, dt, registry->IsValid(hoveredPickup));
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N
@@ -212,7 +224,7 @@ void GameScene::Update() {
         physicsSystem->Update(*registry, dt);
         // �Փˏ���
         collisionSystem->Update(*registry, dt);
-        itemPickupSystem->Update(*registry, dt);
+        itemPickupSystem->Update(*registry, dt, clickedPickup);
         bossPhaseSystem->Update(*registry, dt);
     }
 
@@ -311,7 +323,7 @@ void GameScene::Render(sf::RenderTarget& target) {
         target.draw(zoneText);
 
         if (!hudLine.empty()) {
-            sf::Text hudText(*m_font, hudLine, 20);
+            sf::Text hudText(*m_font, sf::String::fromUtf8(hudLine.begin(), hudLine.end()), 20);
             hudText.setFillColor(sf::Color::White);
             hudText.setOutlineColor(sf::Color::Black);
             hudText.setOutlineThickness(2.0f);
@@ -321,8 +333,25 @@ void GameScene::Render(sf::RenderTarget& target) {
             target.draw(hudText);
         }
 
+        // 地面のアイテムにカーソルが乗っている間、名前をカーソル脇に表示する。
+        {
+            sf::Vector2f mouseWorldPos = InputManager::Instance().GetMouseWorldPosition();
+            Entity hovered = ItemPickupSystem::FindNearestPickup(*registry, mouseWorldPos, ItemPickupSystem::kClickRadius);
+            std::string hoverName;
+            sf::Color hoverColor;
+            if (ItemPickupSystem::GetPickupDisplay(*registry, hovered, hoverName, hoverColor)) {
+                sf::Vector2f mouseScreen = InputManager::Instance().GetMouseInput().GetMousePointF();
+                sf::Text hoverText(*m_font, sf::String::fromUtf8(hoverName.begin(), hoverName.end()), 16);
+                hoverText.setFillColor(hoverColor);
+                hoverText.setOutlineColor(sf::Color::Black);
+                hoverText.setOutlineThickness(2.0f);
+                hoverText.setPosition({ mouseScreen.x + 16.0f, mouseScreen.y - 22.0f });
+                target.draw(hoverText);
+            }
+        }
+
         if (itemPickupSystem->messageTimer > 0.0f && !itemPickupSystem->lastMessage.empty()) {
-            sf::Text pickupText(*m_font, itemPickupSystem->lastMessage, 22);
+            sf::Text pickupText(*m_font, sf::String::fromUtf8(itemPickupSystem->lastMessage.begin(), itemPickupSystem->lastMessage.end()), 22);
             pickupText.setFillColor(sf::Color(255, 230, 120));
             pickupText.setOutlineColor(sf::Color::Black);
             pickupText.setOutlineThickness(2.0f);
@@ -333,7 +362,7 @@ void GameScene::Render(sf::RenderTarget& target) {
         }
 
         if (collisionSystem->levelUpMessageTimer > 0.0f && !collisionSystem->levelUpMessage.empty()) {
-            sf::Text levelText(*m_font, collisionSystem->levelUpMessage, 32);
+            sf::Text levelText(*m_font, sf::String::fromUtf8(collisionSystem->levelUpMessage.begin(), collisionSystem->levelUpMessage.end()), 32);
             levelText.setFillColor(sf::Color(255, 255, 255));
             levelText.setOutlineColor(sf::Color(255, 160, 0));
             levelText.setOutlineThickness(3.0f);

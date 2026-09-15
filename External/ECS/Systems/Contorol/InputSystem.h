@@ -12,7 +12,9 @@
 
 class InputSystem {
 public:
-    void Update(Registry& registry, float dt) {
+    // suppressLeftClickSkill: true while the cursor hovers a ground item pickup, so a
+    // click aimed at collecting it doesn't also fire Skill1 (see ItemPickupSystem).
+    void Update(Registry& registry, float dt, bool suppressLeftClickSkill = false) {
         auto& keyInput = InputManager::Instance().GetKeyInput();
 		auto& mouseInput = InputManager::Instance().GetMouseInput();
         auto& binds = KeyBindings::Instance();
@@ -133,7 +135,8 @@ public:
             //    input.attack = true;
             //}
             if (registry.HasComponent<PlayerSkill>(entity)) {
-                if (keyInput.IsGetKey(binds.Get(GameAction::Skill1)) || mouseInput.GetMouse(sf::Mouse::Button::Left)) input.skillInputs[0] = true;
+                bool leftClickCasts = mouseInput.GetMouse(sf::Mouse::Button::Left) && !suppressLeftClickSkill;
+                if (keyInput.IsGetKey(binds.Get(GameAction::Skill1)) || leftClickCasts) input.skillInputs[0] = true;
                 if (keyInput.IsGetKey(binds.Get(GameAction::Skill2))) input.skillInputs[1] = true;
                 if (keyInput.IsGetKey(binds.Get(GameAction::Skill3))) input.skillInputs[2] = true;
                 if (keyInput.IsGetKey(binds.Get(GameAction::Skill4))) input.skillInputs[3] = true;
