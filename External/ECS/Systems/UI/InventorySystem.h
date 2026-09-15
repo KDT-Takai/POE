@@ -129,30 +129,11 @@ public:
         auto& equipment = registry.GetComponent<EquipmentComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
-        if (!m_selectedIsEquipped) {
-            if (inventory.items.empty()) {
-                m_selectedIndex = 0;
-            } else {
-                m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
-
-                auto& keyInput = InputManager::Instance().GetKeyInput();
-                int count = static_cast<int>(inventory.items.size());
-
-                if (keyInput.IsGetKey(sf::Keyboard::Key::Down)) {
-                    m_selectedIndex = (m_selectedIndex + 1) % count;
-                }
-                if (keyInput.IsGetKey(sf::Keyboard::Key::Up)) {
-                    m_selectedIndex = (m_selectedIndex - 1 + count) % count;
-                }
-
-                if (keyInput.IsGetKey(sf::Keyboard::Key::Enter)) {
-                    EquipSelected(inventory, equipment, stats);
-                } else if (keyInput.IsGetKey(sf::Keyboard::Key::X)) {
-                    SellSelected(inventory, stats);
-                } else if (keyInput.IsGetKey(sf::Keyboard::Key::Delete)) {
-                    DiscardSelected(inventory);
-                }
-            }
+        // 選択とアクションは全てマウス(クリック/ドラッグ&ドロップ)で行う。
+        // Up/Down等の矢印キーはこのメニューがワールドを止めない仕様(非ポーズ系)
+        // のためプレイヤーの移動キーと衝突するので、キーボードでの選択操作は廃止した。
+        if (!m_selectedIsEquipped && !inventory.items.empty()) {
+            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
         }
 
         sf::RenderWindow* window = InputManager::Instance().GetWindow();

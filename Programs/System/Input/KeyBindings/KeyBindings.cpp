@@ -22,7 +22,7 @@ void KeyBindings::ResetToDefaults() {
     m_bindings[static_cast<size_t>(GameAction::ToggleCharacterSheet)] = sf::Keyboard::Key::C;
     m_bindings[static_cast<size_t>(GameAction::ToggleInventory)] = sf::Keyboard::Key::I;
     m_bindings[static_cast<size_t>(GameAction::TogglePassiveTree)] = sf::Keyboard::Key::P;
-    m_bindings[static_cast<size_t>(GameAction::ToggleSkillGems)] = sf::Keyboard::Key::K;
+    m_bindings[static_cast<size_t>(GameAction::ToggleSkillGems)] = sf::Keyboard::Key::G;
     m_bindings[static_cast<size_t>(GameAction::VendorToggle)] = sf::Keyboard::Key::B;
     m_bindings[static_cast<size_t>(GameAction::VendorReroll)] = sf::Keyboard::Key::T;
 }
