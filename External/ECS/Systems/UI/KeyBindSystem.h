@@ -160,9 +160,12 @@ public:
 
 private:
     bool IsReserved(sf::Keyboard::Key key) const {
-        static const std::array<sf::Keyboard::Key, 8> kReserved = {
+        // O itself is the fixed (non-rebindable) key that opens/closes this panel
+        // (see GameScene::Update); reserve it too so a rebind can't collide with it.
+        static const std::array<sf::Keyboard::Key, 9> kReserved = {
             sf::Keyboard::Key::Up, sf::Keyboard::Key::Down, sf::Keyboard::Key::Left, sf::Keyboard::Key::Right,
-            sf::Keyboard::Key::Enter, sf::Keyboard::Key::Backspace, sf::Keyboard::Key::X, sf::Keyboard::Key::Delete
+            sf::Keyboard::Key::Enter, sf::Keyboard::Key::Backspace, sf::Keyboard::Key::X, sf::Keyboard::Key::Delete,
+            sf::Keyboard::Key::O
         };
         for (auto reserved : kReserved) {
             if (reserved == key) return true;

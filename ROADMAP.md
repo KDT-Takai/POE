@@ -53,5 +53,7 @@
 
 ## 既知の制約
 
-- ~~自作ECSは高速化したが、まだ簡易実装 (Increased/More修飾はダメージ計算上簡略化されている)。~~ → 修正済み。`CharacterStatsComponent`に`increasedAttackDamage`/`increasedMoveSpeed`の合算専用フィールドを追加し、`EquipmentSystem::ApplyAffix`(装備)・`PassiveTreeSystem`経由の呼び出し(パッシブ)とも同系統%は加算するだけに変更、`RecalculateStats`の最後で1回だけ`atk`/`moveSpeed`に掛ける方式(PoEのIncreased/Reduced合算方式)へ修正。あわせて`leechRateCap`が0.02(2%/秒)になっていた数値ミスを0.20(本家PoE2準拠)へ修正。いずれもビルド未検証(環境制約は下記)だが、`EquipmentSystem.h`単体はcl.exe構文チェックでエラー無しを確認済み。
+- ~~自作ECSは高速化したが、まだ簡易実装 (Increased/More修飾はダメージ計算上簡略化されている)。~~ → 修正済み。`CharacterStatsComponent`に`increasedAttackDamage`/`increasedMoveSpeed`の合算専用フィールドを追加し、`EquipmentSystem::ApplyAffix`(装備)・`PassiveTreeSystem`経由の呼び出し(パッシブ)とも同系統%は加算するだけに変更、`RecalculateStats`の最後で1回だけ`atk`/`moveSpeed`に掛ける方式(PoEのIncreased/Reduced合算方式)へ修正。あわせて`leechRateCap`が0.02(2%/秒)になっていた数値ミスを0.20(本家PoE2準拠)へ修正。いずれもビルド未検証(環境制約は下記)だが、`EquipmentSystem.h`単体はcl.exe構文チェックでエラー無しを確認済み。あわせて`CampaignManager`の`WriteStats`/`ReadStats`に新設2フィールドのシリアライズを追加(これを忘れるとセーブ&ロードでパッシブの%系ボーナスが消える回帰バグになるところだった)。`CampaignManager.cpp`は`/utf-8`込みでcl.exe構文チェック済み。
+- `KeyBindSystem::IsReserved`にOキー(キーバインド画面自体の固定トグルキー)が含まれておらず、何らかのアクションをOへ再割り当てすると同時に両方トリガーされる不具合を発見・修正。予約キー一覧に追加。
+- `InventorySystem`同様のUB(`std::clamp(idx,0,size-1)`をsize==0で呼ぶ)が他のUI(SkillGemSystem/CharacterSheetSystem/KeyBindSystem/VendorSystem)には無いことを確認済み(VendorSystemは元々empty時に0へフォールバックする実装済みだった)。
 - ユーザーの他アプリ (Apex Legends / Citra) 使用中は、キーボード状態をグローバルにポーリングする入力方式 (`sf::Keyboard::isKeyPressed`) の都合上、安全な自動入力での実機テストができない制約がある。

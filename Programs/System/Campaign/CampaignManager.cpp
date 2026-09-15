@@ -28,6 +28,8 @@ namespace {
         out << prefix << "atkSpd=" << s.atkSpd << "\n";
         out << prefix << "critRate=" << s.critRate << "\n";
         out << prefix << "critDamage=" << s.critDamage << "\n";
+        out << prefix << "increasedAttackDamage=" << s.increasedAttackDamage << "\n";
+        out << prefix << "increasedMoveSpeed=" << s.increasedMoveSpeed << "\n";
         out << prefix << "moveSpeed=" << s.moveSpeed << "\n";
         out << prefix << "rollSpeed=" << s.rollSpeed << "\n";
         out << prefix << "rollDuration=" << s.rollDuration << "\n";
@@ -122,6 +124,8 @@ namespace {
         s.atkSpd = GetF(m, prefix + "atkSpd", s.atkSpd);
         s.critRate = GetF(m, prefix + "critRate", s.critRate);
         s.critDamage = GetF(m, prefix + "critDamage", s.critDamage);
+        s.increasedAttackDamage = GetF(m, prefix + "increasedAttackDamage", s.increasedAttackDamage);
+        s.increasedMoveSpeed = GetF(m, prefix + "increasedMoveSpeed", s.increasedMoveSpeed);
         s.moveSpeed = GetF(m, prefix + "moveSpeed", s.moveSpeed);
         s.rollSpeed = GetF(m, prefix + "rollSpeed", s.rollSpeed);
         s.rollDuration = GetF(m, prefix + "rollDuration", s.rollDuration);
