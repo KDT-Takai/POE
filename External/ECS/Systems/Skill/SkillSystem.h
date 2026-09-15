@@ -178,7 +178,7 @@ private:
                 ProjectileComponent proj;
                 proj.duration = 3.5f;
                 proj.isBouncy = true;
-                proj.damage = stats.atk;
+                proj.damage = stats.atk * (skill.damage / 100.0f);
                 proj.ownerEntity = pcEntity;
                 proj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(p, proj);
@@ -215,7 +215,7 @@ private:
                 ProjectileComponent proj;
                 proj.duration = 3.0f;
                 proj.isBouncy = false;
-                proj.damage = stats.atk;
+                proj.damage = stats.atk * (skill.damage / 100.0f);
                 proj.ownerEntity = pcEntity;
                 proj.damageType = skill.element;
                 reg.AddComponent<ProjectileComponent>(p, proj);
@@ -319,7 +319,7 @@ private:
 
                 ProjectileComponent proj;
                 proj.duration = 2.0f;
-                proj.damage = stats.atk;
+                proj.damage = stats.atk * (skill.damage / 100.0f);
                 proj.isBouncy = false;
                 proj.ownerEntity = pcEntity;
                 proj.damageType = skill.element;

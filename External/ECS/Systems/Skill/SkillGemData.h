@@ -33,7 +33,7 @@ private:
         spark.behaviorType = SkillBehaviorType::Spark;
         spark.cooldownTime = 0.3f;
         spark.mpCost = 4;
-        spark.damage = 25.0f;
+        spark.damage = 25.0f; // % of atk, per pellet (fires 7)
         spark.duration = 3.5f;
         spark.element = DamageElement::Lightning;
         spark.isValid = true;
@@ -44,7 +44,7 @@ private:
         slam.behaviorType = SkillBehaviorType::GroundSlam;
         slam.cooldownTime = 5.0f;
         slam.mpCost = 35;
-        slam.damage = 120.0f;
+        slam.damage = 120.0f; // % of atk
         slam.element = DamageElement::Physical;
         slam.isValid = true;
         gems.push_back({ 1, slam });
@@ -63,7 +63,7 @@ private:
         SkillData ball;
         ball.name = "Lightning Ball";
         ball.behaviorType = SkillBehaviorType::LightningBall;
-        ball.damage = 40.0f;
+        ball.damage = 40.0f; // % of atk, per bullet (fires 12)
         ball.cooldownTime = 12.0f;
         ball.mpCost = 40;
         ball.element = DamageElement::Lightning;
