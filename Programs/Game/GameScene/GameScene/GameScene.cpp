@@ -141,31 +141,36 @@ void GameScene::Update() {
     auto& binds = KeyBindings::Instance();
     bool awaitingRebind = keyBindSystem->IsAwaitingKey();
 
+    // 「非ポーズ」系(アイテム/ステータス/ジェム)は互いに同時に開けるようにし、
+    // 「ポーズ」系(パッシブツリー/ベンダー/キーバインド)を開くときだけ全パネルを
+    // 閉じる(ポーズ系同士も排他)。自分自身は閉じ対象から除く。
+    auto closeFreePanels = [&]() { characterSheetSystem->isOpen = false; inventorySystem->Close(); skillGemSystem->Close(); };
+
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
+        if (characterSheetSystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
+        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::TogglePassiveTree))) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
+        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (skillGemSystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
-        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); skillGemSystem->Close(); keyBindSystem->Close(); }
+        if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::O)) {
         keyBindSystem->Toggle();
-        if (keyBindSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); }
     }
     keyBindSystem->Update(*registry, dt);
     inventorySystem->Update(*registry, dt);
