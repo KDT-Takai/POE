@@ -35,6 +35,7 @@ GameScene::GameScene() {
 	sparkRenderSystem = std::make_shared<SparkRenderSystem>();
 	enemySpawnSystem = std::make_shared<EnemySpawnSystem>();
 	enemyAISystem = std::make_shared<EnemyAISystem>();
+	enemyRangedAttackSystem = std::make_shared<EnemyRangedAttackSystem>();
 	collisionSystem = std::make_shared<CollisionSystem>();
 	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
 	statusEffectSystem = std::make_shared<StatusEffectSystem>();
@@ -176,6 +177,7 @@ void GameScene::Update() {
     // �G
 //    enemySpawnSystem->Update(*registry, dt, playerPos);
 	enemyAISystem->Update(*registry, dt, playerPos);
+	enemyRangedAttackSystem->Update(*registry, dt, playerPos);
     // �ړ�
     movementSystem->Update(*registry, dt);
     statusEffectSystem->Update(*registry, dt);

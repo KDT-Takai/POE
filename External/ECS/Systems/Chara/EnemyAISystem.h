@@ -5,6 +5,7 @@
 #include "../../ECS/Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../ECS/Components/Control/PlayerInput/PlayerInput.h"
 #include "../../ECS/Components/Physics/Facing/Facing.h"
+#include "../../ECS/Components/Chara/RangedAttacker.h"
 #include <cmath>
 
 class EnemyAISystem {
@@ -23,10 +24,33 @@ public:
 
             sf::Vector2f diff = playerPos - trans.position;
             float distanceSq = diff.x * diff.x + diff.y * diff.y;
+            float distance = std::sqrt(distanceSq);
+
+            if (registry.HasComponent<RangedAttackerComponent>(entity)) {
+                auto& ranged = registry.GetComponent<RangedAttackerComponent>(entity);
+
+                if (distance > 0.001f) {
+                    sf::Vector2f direction = diff / distance;
+                    if (distance < ranged.preferredRange) {
+                        vel.velocity = -direction * stats.moveSpeed; // kite away
+                    } else if (distance > ranged.attackRange) {
+                        vel.velocity = direction * stats.moveSpeed; // close the gap
+                    } else {
+                        vel.velocity = { 0.0f, 0.0f }; // in firing band, hold position
+                    }
+
+                    if (registry.HasComponent<FacingComponent>(entity)) {
+                        auto& facing = registry.GetComponent<FacingComponent>(entity);
+                        if (direction.x > 0) facing.direction = 1;
+                        else if (direction.x < 0) facing.direction = -1;
+                    }
+                } else {
+                    vel.velocity = { 0.0f, 0.0f };
+                }
+                continue;
+            }
 
             if (distanceSq > 10.0f * 10.0f) {
-                float distance = std::sqrt(distanceSq);
-
                 sf::Vector2f direction = diff / distance;
 
                 vel.velocity = direction * stats.moveSpeed;

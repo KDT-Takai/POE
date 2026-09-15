@@ -97,6 +97,8 @@
     <ClInclude Include="External\ECS\Core\Entity.h" />
     <ClInclude Include="External\ECS\ECS.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemyAISystem.h" />
+    <ClInclude Include="External\ECS\Systems\Chara\EnemyRangedAttackSystem.h" />
+    <ClInclude Include="External\ECS\Components\Chara\RangedAttacker.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemySpawnSystem.h" />
     <ClInclude Include="External\ECS\Systems\Contorol\InputSystem.h" />
     <ClInclude Include="External\ECS\Systems\EditerSystem.h" />

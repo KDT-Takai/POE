@@ -9,6 +9,7 @@
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 #include "../../ECS/Components/Tags/Boss/BossPhase.h"
 #include "../../ECS/Components/Interaction/Interaction.h"
+#include "../../ECS/Components/Chara/RangedAttacker.h"
 
 struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
@@ -128,6 +129,21 @@ private:
                 (std::min)(255, zone.enemyColor.r + 60),
                 (std::min)(255, zone.enemyColor.g + 60),
                 255);
+        }
+
+        // レア/ユニークとは独立して、一定確率で遠距離攻撃アーケタイプにする
+        // (接触ダメージのみだった既存モンスターに行動パターンの幅を持たせる)
+        if (roll(rng) < 0.2f) {
+            stats.name = "射手の" + stats.name;
+            circle.radius *= 0.85f;
+
+            RangedAttackerComponent ranged;
+            ranged.preferredRange = 220.0f;
+            ranged.attackRange = 340.0f;
+            ranged.cooldownTime = (std::max)(0.8f, 2.4f - tierScale * 0.2f);
+            ranged.projectileSpeed = 260.0f;
+            ranged.damagePercent = 65.0f;
+            enemy.AddComponent(ranged);
         }
 
         stats.currentHP = stats.maxHP;

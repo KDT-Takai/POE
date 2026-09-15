@@ -187,6 +187,46 @@ public:
                     pStats.hitInvincibilityTimer = 0.6f;
                 }
             }
+
+            if (pStats.hitInvincibilityTimer <= 0.0f) {
+                for (auto projEntity : projectiles) {
+                    auto& proj = registry.GetComponent<ProjectileComponent>(projEntity);
+                    if (!proj.isEnemy) continue;
+
+                    auto& pTrans2 = registry.GetComponent<TransformComponent>(projEntity);
+                    auto& pCol2 = registry.GetComponent<BoxColliderComponent>(projEntity);
+                    sf::FloatRect boltRect = GetBounds(pTrans2.position, pCol2);
+
+                    if (!boltRect.findIntersection(playerRect)) continue;
+
+                    bool ownerValid = registry.IsValid(proj.ownerEntity) && registry.HasComponent<CharacterStatsComponent>(proj.ownerEntity);
+                    bool isCrit = ownerValid && CombatMath::RollCrit(registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critRate);
+                    float critMult = ownerValid ? registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critDamage : 1.0f;
+
+                    float rawDamage = proj.damage * (isCrit ? critMult : 1.0f);
+                    bool hasStatus = registry.HasComponent<StatusEffectsComponent>(playerEntity);
+                    if (hasStatus) {
+                        auto& pStatus = registry.GetComponent<StatusEffectsComponent>(playerEntity);
+                        if (pStatus.shockRemaining > 0.0f) rawDamage *= (1.0f + pStatus.shockIncreasedDamageTaken);
+                    }
+
+                    float dealt = CombatMath::ApplyDamage(pStats, rawDamage, proj.damageType);
+
+                    if (dealt > 0.0f) {
+                        registry.AddComponent(playerEntity, HitFlashComponent{ 0.08f });
+                        float shakeStrength = std::clamp(dealt / pStats.maxHP, 0.0f, 1.0f) * 12.0f;
+                        CameraManager::Instance().Shake(shakeStrength, 0.2f);
+                    }
+
+                    if (hasStatus) {
+                        CombatMath::ApplyAilmentOnHit(registry.GetComponent<StatusEffectsComponent>(playerEntity), proj.damageType, dealt, pStats.maxHP, isCrit);
+                    }
+
+                    pStats.hitInvincibilityTimer = 0.6f;
+                    destroyedProjectiles.push_back(projEntity);
+                    break;
+                }
+            }
         }
 
         for (auto e : destroyedProjectiles) {
