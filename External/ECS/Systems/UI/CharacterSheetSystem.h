@@ -80,11 +80,18 @@ public:
             statText << "Leech: " << (stats.leechPercent * 100.0f) << "%\n";
         }
 
-        DrawText(target, panelX + 16.0f, panelY + 34.0f, statText.str(), 13, sf::Color::White);
+        std::string statStr = statText.str();
+        sf::Text statTextObj(*m_font, sf::String::fromUtf8(statStr.begin(), statStr.end()), 13);
+        statTextObj.setFillColor(sf::Color::White);
+        statTextObj.setOutlineColor(sf::Color::Black);
+        statTextObj.setOutlineThickness(1.0f);
+        statTextObj.setPosition({ panelX + 16.0f, panelY + 34.0f });
+        target.draw(statTextObj);
 
-        // Number of stat lines above (kept in sync manually since it's a single sf::Text block).
-        int statLineCount = 8 + (stats.passivePoints > 0 ? 1 : 0) + (stats.leechPercent > 0.0f ? 1 : 0);
-        float equipY = panelY + 34.0f + static_cast<float>(statLineCount) * 16.0f + 10.0f;
+        // Position the equipment section below the stat block using its *measured* height
+        // rather than an assumed line-height, since actual font line spacing doesn't match
+        // a hand-picked pixel guess and caused the two sections to overlap.
+        float equipY = statTextObj.getGlobalBounds().position.y + statTextObj.getGlobalBounds().size.y + 14.0f;
 
         DrawText(target, panelX + 16.0f, equipY, "Equipment", 15, sf::Color(255, 220, 120));
         equipY += 20.0f;
@@ -111,8 +118,10 @@ public:
     }
 
 private:
+    // Shared with SkillGemSystem's identical constants: the two panels are tab-switched
+    // (mutually exclusive, last one toggled wins) so they occupy the same screen slot.
     static constexpr float kPanelW = 460.0f;
-    static constexpr float kPanelH = 420.0f;
+    static constexpr float kPanelH = 680.0f;
     static constexpr float kPanelX = 20.0f;
     static constexpr float kPanelY = 20.0f;
 

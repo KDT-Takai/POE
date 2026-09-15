@@ -182,10 +182,13 @@ public:
     }
 
 private:
+    // Shared with CharacterSheetSystem's identical constants: the two panels are
+    // tab-switched (mutually exclusive, last one toggled wins) so they occupy the
+    // same screen slot.
     static constexpr float kPanelW = 460.0f;
-    static constexpr float kPanelH = 250.0f;
+    static constexpr float kPanelH = 680.0f;
     static constexpr float kPanelX = 20.0f;
-    static constexpr float kPanelY = 460.0f;
+    static constexpr float kPanelY = 20.0f;
 
     bool IsSpiritSlot() const { return m_selectedSlot >= kSkillSlotCount; }
 
