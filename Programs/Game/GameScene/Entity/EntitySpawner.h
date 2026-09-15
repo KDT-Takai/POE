@@ -18,6 +18,7 @@
 #include "../ECS/Components/Item/Inventory.h"
 #include "../ECS/Components/Progression/PassiveTree.h"
 #include "../ECS/Components/Item/SkillGem.h"
+#include "../ECS/Components/Item/Waystone.h"
 
 class EntitySpawner {
 public:
@@ -134,6 +135,13 @@ public:
         gemInventory.unlockedGemIds = { 0, 1, 2, 3 };
         entity.AddComponent(gemInventory);
         entity.AddComponent(SpiritGemLoadoutComponent{});
+
+        // Starting Tier 1 Waystone so the endgame is reachable right after the campaign
+        // (real PoE2 grants this as a campaign-completion quest reward; we simplify by
+        // just starting new characters with one, since it's otherwise unusable early on).
+        WaystoneInventoryComponent waystones;
+        waystones.counts[0] = 1;
+        entity.AddComponent(waystones);
 
         return entity;
     }

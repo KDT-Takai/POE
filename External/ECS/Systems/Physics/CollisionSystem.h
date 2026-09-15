@@ -9,7 +9,10 @@
 #include "../../Components/Item/ItemPickup.h"
 #include "../../Components/Item/Currency.h"
 #include "../../Components/Item/SkillGem.h"
+#include "../../Components/Item/Waystone.h"
+#include "../../Components/Tags/Boss/Boss.h"
 #include "../Skill/SkillGemData.h"
+#include <System/Campaign/CampaignManager.h>
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
 #include <System/CameraManager/CameraManager.h>
@@ -279,6 +282,10 @@ private:
         static std::mt19937 rng(rd());
         std::uniform_real_distribution<float> chanceRoll(0.0f, 1.0f);
 
+        if (CampaignManager::Instance().CurrentAct().isEndgame) {
+            TrySpawnWaystoneDrop(registry, deadEntity, trans.position, stats.rarity);
+        }
+
         float dropChance = 0.15f;
         ItemRarity minRarity = ItemRarity::Normal;
         switch (stats.rarity) {
@@ -328,6 +335,30 @@ private:
             : sf::Color(220, 220, 220);
         pickup.AddComponent(CircleComponent{ 8.0f, dropColor, true });
         pickup.AddComponent(ItemPickupComponent{ item });
+    }
+
+    // Endgame-only: map bosses guarantee a Waystone one tier higher than the map just
+    // run (matches real PoE2), and Rare monsters have a chance to drop one at the same
+    // tier so mapping can be sustained without always needing a higher-tier stash.
+    void TrySpawnWaystoneDrop(Registry& registry, Entity deadEntity, sf::Vector2f pos, MonsterRarity rarity) {
+        int currentTier = CampaignManager::Instance().GetEndgameMapTier();
+        bool isBoss = registry.HasComponent<BossTag>(deadEntity);
+
+        int dropTier = 0;
+        if (isBoss) {
+            dropTier = (std::min)(currentTier + 1, WaystoneInventoryComponent::kMaxTier);
+        } else if (rarity == MonsterRarity::Rare) {
+            static std::random_device rd;
+            static std::mt19937 rng(rd());
+            std::uniform_real_distribution<float> roll(0.0f, 1.0f);
+            if (roll(rng) < 0.35f) dropTier = currentTier;
+        }
+        if (dropTier <= 0) return;
+
+        auto pickup = registry.CreateEntityObject();
+        pickup.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
+        pickup.AddComponent(CircleComponent{ 10.0f, sf::Color(0, 210, 255), true });
+        pickup.AddComponent(WaystonePickupComponent{ dropTier });
     }
 
     sf::FloatRect GetBounds(const sf::Vector2f& pos, const BoxColliderComponent& col) {

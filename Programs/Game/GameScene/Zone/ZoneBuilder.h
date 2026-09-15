@@ -23,7 +23,7 @@ struct ZoneBuildResult {
 
 class ZoneBuilder {
 public:
-    static ZoneBuildResult Build(Registry& registry, const ZoneDefinition& zone, int endgameMapTier) {
+    static ZoneBuildResult Build(Registry& registry, const ZoneDefinition& zone, int endgameMapTier, bool isEndgame) {
         ZoneBuildResult result;
 
         auto worldObj = (zone.kind == ZoneKind::Town)
@@ -61,13 +61,18 @@ public:
 
         float tierScale = 1.0f + 0.15f * static_cast<float>(endgameMapTier - 1);
 
+        // Endgame maps must complete requires clearing multiple Rare enemies plus the
+        // boss (see GameScene's all-enemies-dead check), so guarantee a handful of Rares
+        // instead of leaving it to the normal 4% per-monster roll.
+        int guaranteedRares = isEndgame ? (std::min)(3, zone.enemyCount) : 0;
+
         int trashCount = zone.enemyCount;
         for (int i = 0; i < trashCount && i < static_cast<int>(freeSlots.size()); ++i) {
-            SpawnTrash(registry, freeSlots[i], zone, tierScale);
+            SpawnTrash(registry, freeSlots[i], zone, tierScale, endgameMapTier, i < guaranteedRares);
         }
 
         if (zone.isBossZone) {
-            SpawnBoss(registry, goalPos, zone, tierScale);
+            SpawnBoss(registry, goalPos, zone, tierScale, endgameMapTier);
         }
 
         return result;
@@ -90,7 +95,8 @@ private:
         return sf::Vector2f(map.tileSize, map.tileSize);
     }
 
-    static void SpawnTrash(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale) {
+    static void SpawnTrash(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale,
+        int endgameMapTier, bool forceRare) {
         auto enemy = EntitySpawner::CreateEnemy(registry, pos);
 
         auto& stats = enemy.GetComponent<CharacterStatsComponent>();
@@ -98,6 +104,7 @@ private:
         stats.maxHP *= zone.enemyHpMult * tierScale;
         stats.atk *= zone.enemyAtkMult * tierScale;
         stats.contactDamageType = zone.enemyContactType;
+        ApplyTierResistance(stats, endgameMapTier);
 
         auto& circle = enemy.GetComponent<CircleComponent>();
         circle.color = zone.enemyColor;
@@ -105,7 +112,7 @@ private:
         static std::random_device rd;
         static std::mt19937 rng(rd());
         std::uniform_real_distribution<float> roll(0.0f, 1.0f);
-        float r = roll(rng);
+        float r = forceRare ? 0.0f : roll(rng);
 
         if (r < 0.04f) {
             stats.rarity = MonsterRarity::Rare;
@@ -175,16 +182,17 @@ private:
         enemy.AddComponent(TagComponent{ stats.name });
     }
 
-    static void SpawnBoss(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale) {
+    static void SpawnBoss(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale, int endgameMapTier) {
         auto boss = EntitySpawner::CreateEnemy(registry, pos);
 
         auto& stats = boss.GetComponent<CharacterStatsComponent>();
         stats.name = zone.bossName;
         stats.maxHP *= zone.bossHpMult * tierScale;
-        stats.currentHP = stats.maxHP;
         stats.atk *= zone.bossAtkMult * tierScale;
         stats.rarity = MonsterRarity::Unique;
         stats.contactDamageType = zone.enemyContactType;
+        ApplyTierResistance(stats, endgameMapTier);
+        stats.currentHP = stats.maxHP;
 
         auto& circle = boss.GetComponent<CircleComponent>();
         circle.color = zone.bossColor;
@@ -197,6 +205,17 @@ private:
         boss.AddComponent(TagComponent{ zone.bossName });
         boss.AddComponent(BossTag{});
         boss.AddComponent(BossPhaseComponent{});
+    }
+
+    // Endgame Waystones raise monster resistances by tier (in addition to the existing
+    // HP/attack tierScale), matching PoE2's map-tier scaling. A no-op outside endgame
+    // since endgameMapTier stays 1 for the whole campaign until the first map is opened.
+    static void ApplyTierResistance(CharacterStatsComponent& stats, int endgameMapTier) {
+        float bonus = (std::min)(0.75f, 0.03f * static_cast<float>(endgameMapTier - 1));
+        stats.fireRes = (std::min)(0.9f, stats.fireRes + bonus);
+        stats.iceRes = (std::min)(0.9f, stats.iceRes + bonus);
+        stats.lightningRes = (std::min)(0.9f, stats.lightningRes + bonus);
+        stats.chaosRes = (std::min)(0.9f, stats.chaosRes + bonus);
     }
 
     static void SpawnPortal(Registry& registry, sf::Vector2f pos) {

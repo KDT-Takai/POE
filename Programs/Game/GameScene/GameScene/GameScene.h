@@ -42,6 +42,8 @@ public:
 
 private:
     void AdvanceToNextZone();
+    void TryOpenEndgameMapFromHub();
+    std::string HeldWaystoneSummary() const;
 
     Entity playerEntity = -1;
 

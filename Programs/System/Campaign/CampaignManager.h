@@ -6,6 +6,7 @@
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
+#include "Components/Item/Waystone.h"
 #include "../Singleton/Singleton.h"
 
 enum class ZoneKind { Town, Combat };
@@ -56,6 +57,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::vector<int> m_savedUnlockedGems;
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, 2> m_savedAuraLoadout = { -1, -1 };
+    std::array<int, WaystoneInventoryComponent::kMaxTier> m_savedWaystones{};
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -66,6 +68,10 @@ public:
     const ActDefinition& CurrentAct() const { return m_acts[m_actIndex]; }
     const ZoneDefinition& CurrentZone() const { return CurrentAct().zones[m_zoneIndex]; }
     int GetEndgameMapTier() const { return m_endgameMapTier; }
+
+    // Spends a held Waystone (tier chosen by the caller, see WaystoneInventoryComponent)
+    // to open the endgame map zone at that tier. Returns false for an out-of-range tier.
+    bool OpenEndgameMap(int tier);
 
     std::string GetProgressLabel() const;
 
@@ -97,6 +103,9 @@ public:
 
     void SaveAuraLoadout(const std::array<int, 2>& gemIds) { m_savedAuraLoadout = gemIds; }
     const std::array<int, 2>& GetSavedAuraLoadout() const { return m_savedAuraLoadout; }
+
+    void SaveWaystones(const std::array<int, WaystoneInventoryComponent::kMaxTier>& counts) { m_savedWaystones = counts; }
+    const std::array<int, WaystoneInventoryComponent::kMaxTier>& GetSavedWaystones() const { return m_savedWaystones; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

@@ -54,7 +54,7 @@ GameScene::GameScene() {
     const ZoneDefinition& zone = campaign.CurrentZone();
     m_zoneKind = zone.kind;
 
-    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier());
+    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame);
     m_hasPortal = built.hasPortal;
     m_portalPos = built.portalPos;
     m_hasVendor = built.hasVendor;
@@ -96,6 +96,7 @@ GameScene::GameScene() {
             // The aura's stat bonus already lives in equipment.baseStats (restored above),
             // so this only restores which gem each Spirit slot displays as equipped.
             player.GetComponent<SpiritGemLoadoutComponent>().auraGemIds = campaign.GetSavedAuraLoadout();
+            player.GetComponent<WaystoneInventoryComponent>().counts = campaign.GetSavedWaystones();
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
@@ -129,9 +130,51 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
         campaign.SaveAuraLoadout(registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity).auraGemIds);
     }
+    if (registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) {
+        campaign.SaveWaystones(registry->GetComponent<WaystoneInventoryComponent>(playerEntity).counts);
+    }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
+}
+
+// "T3x2 T1x1" style summary of held Waystones for the hub's HUD prompt.
+std::string GameScene::HeldWaystoneSummary() const {
+    if (!registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) return "none";
+    const auto& waystones = registry->GetComponent<WaystoneInventoryComponent>(playerEntity);
+
+    std::string summary;
+    for (int t = WaystoneInventoryComponent::kMaxTier; t >= 1; --t) {
+        int count = waystones.counts[t - 1];
+        if (count <= 0) continue;
+        if (!summary.empty()) summary += " ";
+        summary += "T" + std::to_string(t) + "x" + std::to_string(count);
+    }
+    return summary.empty() ? "none" : summary;
+}
+
+// Endgame hub's map device: spends the player's highest-tier held Waystone to open a
+// map at that tier (matches PoE2's advice to always run your best Waystone). Refuses
+// (with a message, no zone change) if the player holds none.
+void GameScene::TryOpenEndgameMapFromHub() {
+    if (!registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) return;
+    auto& waystones = registry->GetComponent<WaystoneInventoryComponent>(playerEntity);
+
+    int highestTier = -1;
+    for (int t = WaystoneInventoryComponent::kMaxTier; t >= 1; --t) {
+        if (waystones.counts[t - 1] > 0) { highestTier = t; break; }
+    }
+
+    if (highestTier < 0) {
+        itemPickupSystem->lastMessage = "Need a Waystone to open a map";
+        itemPickupSystem->messageTimer = 2.5f;
+        return;
+    }
+
+    waystones.counts[highestTier - 1]--;
+    CampaignManager::Instance().OpenEndgameMap(highestTier);
+    spdlog::info("Opening endgame map at tier {}.", highestTier);
+    AdvanceToNextZone();
 }
 
 void GameScene::Update() {
@@ -289,8 +332,12 @@ void GameScene::Update() {
 
                 if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
                     InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
-                    spdlog::info("Entering next zone.");
-                    AdvanceToNextZone();
+                    if (CampaignManager::Instance().CurrentAct().isEndgame) {
+                        TryOpenEndgameMapFromHub();
+                    } else {
+                        spdlog::info("Entering next zone.");
+                        AdvanceToNextZone();
+                    }
                     return;
                 }
             }
@@ -329,7 +376,13 @@ void GameScene::Render(sf::RenderTarget& target) {
 
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
-        if (m_playerNearPortal) hudLine = "Press Enter to proceed";
+        if (m_playerNearPortal) {
+            if (CampaignManager::Instance().CurrentAct().isEndgame) {
+                hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
+            } else {
+                hudLine = "Press Enter to proceed";
+            }
+        }
         else if (m_playerNearVendor) hudLine = "Press B to trade";
     } else {
         int aliveEnemies = 0;

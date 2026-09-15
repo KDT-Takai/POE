@@ -5,6 +5,7 @@
 #include "Components/Item/Inventory.h"
 #include "Components/Item/Currency.h"
 #include "Components/Item/SkillGem.h"
+#include "Components/Item/Waystone.h"
 #include "Components/Physics/Transform/Transform.h"
 #include "Components/Control/PlayerInput/PlayerInput.h"
 #include "Components/Stats/CharacterStats/CharacterStats.h"
@@ -50,6 +51,7 @@ public:
         for (auto e : registry.View<ItemPickupComponent, TransformComponent>()) consider(e);
         for (auto e : registry.View<CurrencyPickupComponent, TransformComponent>()) consider(e);
         for (auto e : registry.View<SkillGemPickupComponent, TransformComponent>()) consider(e);
+        for (auto e : registry.View<WaystonePickupComponent, TransformComponent>()) consider(e);
         return best;
     }
 
@@ -73,6 +75,11 @@ public:
             const GemDefinition* def = SkillGemData::Find(gemId);
             outName = def ? def->skill.name : "Unknown Gem";
             outColor = sf::Color(255, 90, 220);
+            return true;
+        }
+        if (registry.HasComponent<WaystonePickupComponent>(e)) {
+            outName = "Waystone (Tier " + std::to_string(registry.GetComponent<WaystonePickupComponent>(e).tier) + ")";
+            outColor = sf::Color(0, 210, 255);
             return true;
         }
         return false;
@@ -128,6 +135,14 @@ public:
                 } else {
                     lastMessage = "Already known: " + gemName;
                 }
+                messageTimer = 2.5f;
+            }
+            registry.DestroyEntity(clickedPickup);
+        } else if (registry.HasComponent<WaystonePickupComponent>(clickedPickup)) {
+            int tier = registry.GetComponent<WaystonePickupComponent>(clickedPickup).tier;
+            if (registry.HasComponent<WaystoneInventoryComponent>(player) && tier >= 1 && tier <= WaystoneInventoryComponent::kMaxTier) {
+                registry.GetComponent<WaystoneInventoryComponent>(player).counts[tier - 1]++;
+                lastMessage = "Picked up: Waystone (Tier " + std::to_string(tier) + ")";
                 messageTimer = 2.5f;
             }
             registry.DestroyEntity(clickedPickup);

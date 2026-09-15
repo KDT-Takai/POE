@@ -297,13 +297,19 @@ std::string CampaignManager::GetProgressLabel() const {
     return label;
 }
 
+bool CampaignManager::OpenEndgameMap(int tier) {
+    if (tier < 1 || tier > WaystoneInventoryComponent::kMaxTier) return false;
+    m_endgameMapTier = tier;
+    m_zoneIndex = 1; // the endgame act's single map zone (index 0 is always the hub town)
+    return true;
+}
+
 void CampaignManager::CompleteCurrentZoneAndAdvance() {
     const auto& act = CurrentAct();
 
     if (act.isEndgame) {
-        if (CurrentZone().kind == ZoneKind::Combat) {
-            m_endgameMapTier++;
-        }
+        // The map's tier is chosen by which Waystone the player spends at the hub's map
+        // device (see OpenEndgameMap), not by an auto-incrementing counter here.
         m_zoneIndex = (m_zoneIndex + 1) % static_cast<int>(act.zones.size());
         return;
     }
@@ -335,6 +341,7 @@ void CampaignManager::ResetCampaign() {
     m_savedEquipment = EquipmentComponent{};
     m_savedInventory.clear();
     m_savedPassiveTree.clear();
+    m_savedWaystones.fill(0);
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -394,6 +401,10 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         out << "auraLoadout.slot" << i << "=" << m_savedAuraLoadout[i] << "\n";
+    }
+
+    for (size_t i = 0; i < m_savedWaystones.size(); ++i) {
+        out << "waystones.tier" << i << "=" << m_savedWaystones[i] << "\n";
     }
 }
 
@@ -456,6 +467,10 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
+    }
+
+    for (size_t i = 0; i < m_savedWaystones.size(); ++i) {
+        m_savedWaystones[i] = GetI(kv, "waystones.tier" + std::to_string(i), 0);
     }
 
     return true;
