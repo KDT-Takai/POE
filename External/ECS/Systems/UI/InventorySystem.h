@@ -2,8 +2,10 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <sstream>
+#include <iomanip>
 #include <algorithm>
 #include <array>
+#include <vector>
 #include "../../Registry/Registry.h"
 #include "../../Components/Item/Item.h"
 #include "../../Components/Item/Inventory.h"
@@ -21,14 +23,18 @@
 #include "System/Input/KeyBindings/KeyBindings.h"
 #include "ItemUIHelpers.h"
 
-// PoEスタイルのアイテム画面: 左に体の部位に見立てた装備欄(ペーパードール)、
-// 右に24マスの所持品グリッド。クリックで選択して下部ボタンで操作するほか、
-// ドラッグ&ドロップにも対応(装備⇔バッグ間の移動、バッグ内の入れ替え、
-// パネル外へドロップすると足元の地面にアイテムを捨てる)。
+// PoE2本家に寄せたアイテム画面: 左に体の部位に見立てた装備欄(ペーパードール)、
+// 右に24マスの所持品グリッド。操作は全てマウスのみ(ボタンは無し):
+//   - 左ドラッグ&ドロップ: アイテムを移動(装備⇔バッグ、バッグ内入れ替え、
+//     パネル外へドロップで足元の地面に捨てる)
+//   - 右クリック: そのスロットに応じて装備/外すを即実行(クイック装備)
+//   - Ctrl+左クリック: そのアイテムを即売却(クイック売却)
+//   - カーソルを乗せる: 名前/レアリティ/追加効果/売却額のツールチップを表示
+//     (バッグアイテムの場合、同スロットの装備中アイテムとの比較も表示)
 class InventorySystem {
 private:
     static constexpr float kPanelW = 760.0f;
-    static constexpr float kPanelH = 500.0f;
+    static constexpr float kPanelH = 400.0f;
     static constexpr float kContentX = 20.0f;
     static constexpr float kContentY = 70.0f;
 
@@ -43,11 +49,6 @@ private:
     static constexpr float kCellW = 70.0f;
     static constexpr float kCellH = 70.0f;
     static constexpr float kCellGap = 6.0f;
-
-    static constexpr float kFooterY = kContentY + 298.0f + 10.0f; // ドール/グリッドの高い方の下
-    static constexpr float kButtonW = 130.0f;
-    static constexpr float kButtonH = 36.0f;
-    static constexpr float kButtonGap = 20.0f;
 
     struct DollSlotDef {
         EquipSlot slot;
@@ -70,17 +71,9 @@ private:
     struct PanelLayout {
         float panelX = 0.0f;
         float panelY = 0.0f;
-        sf::FloatRect equipBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
-        sf::FloatRect sellBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
-        sf::FloatRect discardBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
     };
 
     std::shared_ptr<sf::Font> m_font;
-
-    // 選択状態: どちらか一方のみ有効
-    bool m_selectedIsEquipped = false;
-    int m_selectedIndex = 0;                       // !m_selectedIsEquippedのとき有効なバッグ内index
-    EquipSlot m_selectedSlot = EquipSlot::Weapon;   // m_selectedIsEquippedのとき有効な装備スロット
 
     // ドラッグ状態
     bool m_dragging = false;
@@ -100,8 +93,6 @@ public:
 
     void Toggle() {
         isOpen = !isOpen;
-        m_selectedIsEquipped = false;
-        m_selectedIndex = 0;
         m_dragging = false;
     }
 
@@ -129,13 +120,6 @@ public:
         auto& equipment = registry.GetComponent<EquipmentComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
-        // 選択とアクションは全てマウス(クリック/ドラッグ&ドロップ)で行う。
-        // Up/Down等の矢印キーはこのメニューがワールドを止めない仕様(非ポーズ系)
-        // のためプレイヤーの移動キーと衝突するので、キーボードでの選択操作は廃止した。
-        if (!m_selectedIsEquipped && !inventory.items.empty()) {
-            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
-        }
-
         sf::RenderWindow* window = InputManager::Instance().GetWindow();
         if (!window) return;
         PanelLayout layout = ComputeLayout(window->getSize());
@@ -150,36 +134,42 @@ public:
                 HandleDrop(registry, player, mouse, layout, inventory, equipment, stats);
                 m_dragging = false;
             }
-            return; // ドラッグ中はクリック操作(選択/ボタン)を行わない
+            return; // ドラッグ中は他の操作(右クリック等)を行わない
         }
 
-        if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
-            EquipSlot clickedSlot;
-            int clickedCell = HitTestGridCell(layout, mouse);
-            bool onDoll = HitTestDoll(layout, mouse, clickedSlot);
+        EquipSlot hoveredDollSlot;
+        bool onDoll = HitTestDoll(layout, mouse, hoveredDollSlot);
+        int hoveredCell = HitTestGridCell(layout, mouse);
+        bool hoveredCellHasItem = hoveredCell >= 0 && hoveredCell < static_cast<int>(inventory.items.size());
 
-            if (onDoll && equipment.slots[static_cast<size_t>(clickedSlot)].has_value()) {
-                m_selectedIsEquipped = true;
-                m_selectedSlot = clickedSlot;
+        auto& keyInput = InputManager::Instance().GetKeyInput();
+        bool ctrlHeld = keyInput.GetKey(sf::Keyboard::Key::LControl) || keyInput.GetKey(sf::Keyboard::Key::RControl);
+
+        if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
+            if (ctrlHeld) {
+                // PoE2のCtrl+クリック(ヴェンダー/倉庫への即移動)を、売却の即実行として踏襲。
+                if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
+                    QuickSellDoll(hoveredDollSlot, equipment, stats);
+                } else if (hoveredCellHasItem) {
+                    QuickSellBag(hoveredCell, inventory, stats);
+                }
+            } else if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
                 m_dragging = true;
                 m_dragFromEquipped = true;
-                m_dragSlot = clickedSlot;
-                m_dragItemCache = *equipment.slots[static_cast<size_t>(clickedSlot)];
-            } else if (clickedCell >= 0 && clickedCell < static_cast<int>(inventory.items.size())) {
-                m_selectedIsEquipped = false;
-                m_selectedIndex = clickedCell;
+                m_dragSlot = hoveredDollSlot;
+                m_dragItemCache = *equipment.slots[static_cast<size_t>(hoveredDollSlot)];
+            } else if (hoveredCellHasItem) {
                 m_dragging = true;
                 m_dragFromEquipped = false;
-                m_dragBagIndex = clickedCell;
-                m_dragItemCache = inventory.items[clickedCell];
-            } else if (layout.equipBtn.contains(mouse)) {
-                if (m_selectedIsEquipped) UnequipSelected(inventory, equipment, stats);
-                else EquipSelected(inventory, equipment, stats);
-            } else if (layout.sellBtn.contains(mouse)) {
-                if (m_selectedIsEquipped) SellEquippedSlot(equipment, stats);
-                else SellSelected(inventory, stats);
-            } else if (layout.discardBtn.contains(mouse)) {
-                if (!m_selectedIsEquipped) DiscardSelected(inventory);
+                m_dragBagIndex = hoveredCell;
+                m_dragItemCache = inventory.items[hoveredCell];
+            }
+        } else if (mouseInput.IsGetMouse(sf::Mouse::Button::Right)) {
+            // PoE2の右クリック(装備/外す即実行)を踏襲。
+            if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
+                QuickUnequip(hoveredDollSlot, inventory, equipment, stats);
+            } else if (hoveredCellHasItem) {
+                QuickEquip(hoveredCell, inventory, equipment, stats);
             }
         }
     }
@@ -210,7 +200,7 @@ public:
 
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleInventory));
         DrawText(target, panelX + 20.0f, panelY + 15.0f,
-            "所持品 (" + closeKey + " で閉じる) - クリックまたはドラッグで操作、パネル外にドロップで地面に捨てる",
+            "所持品 (" + closeKey + " で閉じる) - ドラッグで移動/右クリックで装備・外す/Ctrl+クリックで売却",
             15, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
             std::to_string(inventory.items.size()) + " / " + std::to_string(InventoryComponent::kCapacity) + " 個所持",
@@ -218,12 +208,14 @@ public:
 
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
 
+        const ItemComponent* hoveredItem = nullptr;
+        const ItemComponent* hoveredCompare = nullptr;
+
         // 装備欄(ペーパードール)
         for (const auto& def : kDollSlots) {
             sf::FloatRect rect = DollSlotRect(layout, def);
             bool hasItem = equipment.slots[static_cast<size_t>(def.slot)].has_value();
             bool draggingAway = m_dragging && m_dragFromEquipped && def.slot == m_dragSlot;
-            bool selected = m_selectedIsEquipped && def.slot == m_selectedSlot;
             bool hovered = rect.contains(mouse);
 
             sf::RectangleShape box(rect.size);
@@ -235,14 +227,15 @@ public:
             }
             if (draggingAway) fill = sf::Color(30, 30, 35, 120);
             box.setFillColor(hovered ? sf::Color((std::min)(255, fill.r + 25), (std::min)(255, fill.g + 25), (std::min)(255, fill.b + 25), fill.a) : fill);
-            box.setOutlineColor(selected ? sf::Color::Yellow : sf::Color(120, 120, 130));
-            box.setOutlineThickness(selected ? 2.5f : 1.5f);
+            box.setOutlineColor(hovered && hasItem ? sf::Color::Yellow : sf::Color(120, 120, 130));
+            box.setOutlineThickness(hovered && hasItem ? 2.5f : 1.5f);
             target.draw(box);
 
             if (hasItem && !draggingAway) {
                 const ItemComponent& item = *equipment.slots[static_cast<size_t>(def.slot)];
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, 7), 11, ItemUIHelpers::RarityColor(item.rarity));
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+                if (hovered && !m_dragging) hoveredItem = &item;
             } else if (!hasItem) {
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y / 2.0f - 7.0f, def.label, 12, sf::Color(110, 110, 115));
             }
@@ -253,7 +246,6 @@ public:
             sf::FloatRect rect = CellRect(layout, i);
             bool hasItem = i < static_cast<int>(inventory.items.size());
             bool draggingAway = m_dragging && !m_dragFromEquipped && hasItem && i == m_dragBagIndex;
-            bool selected = !m_selectedIsEquipped && hasItem && i == m_selectedIndex;
             bool hovered = rect.contains(mouse);
 
             sf::RectangleShape box(rect.size);
@@ -265,60 +257,25 @@ public:
             }
             if (draggingAway) fill = sf::Color(20, 20, 24);
             box.setFillColor(hovered && hasItem ? sf::Color((std::min)(255, fill.r + 25), (std::min)(255, fill.g + 25), (std::min)(255, fill.b + 25)) : fill);
-            box.setOutlineColor(selected ? sf::Color::Yellow : sf::Color(90, 90, 100));
-            box.setOutlineThickness(selected ? 2.5f : 1.0f);
+            box.setOutlineColor(hovered && hasItem ? sf::Color::Yellow : sf::Color(90, 90, 100));
+            box.setOutlineThickness(hovered && hasItem ? 2.5f : 1.0f);
             target.draw(box);
 
             if (hasItem && !draggingAway) {
                 const ItemComponent& item = inventory.items[i];
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ShortSlotCode(item.slot), 11, ItemUIHelpers::RarityColor(item.rarity));
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+                if (hovered && !m_dragging) {
+                    hoveredItem = &item;
+                    size_t slotIdx = static_cast<size_t>(item.slot);
+                    if (equipment.slots[slotIdx].has_value()) hoveredCompare = &(*equipment.slots[slotIdx]);
+                }
             }
-        }
-
-        // 選択中アイテムの詳細(フッター)
-        std::string detailLine1, detailLine2;
-        if (m_selectedIsEquipped) {
-            if (equipment.slots[static_cast<size_t>(m_selectedSlot)].has_value()) {
-                const ItemComponent& item = *equipment.slots[static_cast<size_t>(m_selectedSlot)];
-                detailLine1 = ItemUIHelpers::SlotName(item.slot) + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) +
-                    ", 装備Lv" + std::to_string(item.itemLevel) + ", 追加効果" + std::to_string(item.affixes.size()) +
-                    "個, スコア" + std::to_string(static_cast<int>(item.PowerScore())) + ")";
-                detailLine2 = "装備中 - 「外す」ボタンでバッグに戻せます。";
-            }
-        } else if (!inventory.items.empty()) {
-            const ItemComponent& item = inventory.items[m_selectedIndex];
-            detailLine1 = ItemUIHelpers::SlotName(item.slot) + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) +
-                ", 装備Lv" + std::to_string(item.itemLevel) + ", 追加効果" + std::to_string(item.affixes.size()) +
-                "個, スコア" + std::to_string(static_cast<int>(item.PowerScore())) + ")";
-            size_t slotIdx = static_cast<size_t>(item.slot);
-            if (equipment.slots[slotIdx].has_value()) {
-                const ItemComponent& equipped = *equipment.slots[slotIdx];
-                detailLine2 = "そのスロットに装備中: " + equipped.baseName + " (スコア" +
-                    std::to_string(static_cast<int>(equipped.PowerScore())) + ")";
-            } else {
-                detailLine2 = "そのスロットは空です。";
-            }
-        } else {
-            detailLine1 = "(バッグは空です)";
-        }
-        DrawText(target, panelX + kContentX, panelY + kFooterY, detailLine1, 13, sf::Color(220, 220, 220));
-        if (!detailLine2.empty()) {
-            DrawText(target, panelX + kContentX, panelY + kFooterY + 18.0f, detailLine2, 13, sf::Color(200, 200, 200));
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + kContentX, panelY + kFooterY + 36.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
+            DrawText(target, panelX + kContentX, panelY + kPanelH - 22.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
         }
-
-        bool hasSelection = m_selectedIsEquipped
-            ? equipment.slots[static_cast<size_t>(m_selectedSlot)].has_value()
-            : !inventory.items.empty();
-        std::string equipLabel = m_selectedIsEquipped ? "外す" : "装備";
-        DrawButton(target, layout.equipBtn, equipLabel, layout.equipBtn.contains(mouse), hasSelection ? sf::Color(60, 110, 150) : sf::Color(60, 60, 65));
-        DrawButton(target, layout.sellBtn, "売却", layout.sellBtn.contains(mouse), hasSelection ? sf::Color(150, 130, 50) : sf::Color(60, 60, 65));
-        bool canDiscard = hasSelection && !m_selectedIsEquipped;
-        DrawButton(target, layout.discardBtn, "破棄", layout.discardBtn.contains(mouse), canDiscard ? sf::Color(130, 60, 60) : sf::Color(60, 60, 65));
 
         // ドラッグ中のゴースト(カーソルに追従)
         if (m_dragging) {
@@ -336,6 +293,8 @@ public:
             if (!panelRect.contains(mouse)) {
                 DrawText(target, mouse.x + gw / 2.0f + 6.0f, mouse.y - 6.0f, "地面に捨てる", 12, sf::Color(255, 120, 120));
             }
+        } else if (hoveredItem) {
+            DrawItemTooltip(target, mouse, *hoveredItem, hoveredCompare, target.getSize());
         }
 
         target.setView(oldView);
@@ -348,13 +307,6 @@ private:
         PanelLayout layout;
         layout.panelX = static_cast<float>(winSize.x) - kPanelW - 20.0f;
         layout.panelY = (static_cast<float>(winSize.y) - kPanelH) / 2.0f;
-
-        float totalBtnW = kButtonW * 3.0f + kButtonGap * 2.0f;
-        float btnX = layout.panelX + (kPanelW - totalBtnW) / 2.0f;
-        float btnY = layout.panelY + kFooterY + 56.0f;
-        layout.equipBtn = sf::FloatRect({ btnX, btnY }, { kButtonW, kButtonH });
-        layout.sellBtn = sf::FloatRect({ btnX + kButtonW + kButtonGap, btnY }, { kButtonW, kButtonH });
-        layout.discardBtn = sf::FloatRect({ btnX + (kButtonW + kButtonGap) * 2.0f, btnY }, { kButtonW, kButtonH });
         return layout;
     }
 
@@ -409,9 +361,7 @@ private:
                 if (m_dragBagIndex < 0 || m_dragBagIndex >= static_cast<int>(inventory.items.size())) return;
                 const ItemComponent& item = inventory.items[m_dragBagIndex];
                 if (item.slot == targetSlot) {
-                    m_selectedIsEquipped = false;
-                    m_selectedIndex = m_dragBagIndex;
-                    EquipSelected(inventory, equipment, stats);
+                    QuickEquip(m_dragBagIndex, inventory, equipment, stats);
                 }
             } else if (targetSlot != m_dragSlot) {
                 // 指輪1⇔指輪2のみ入れ替えに対応(それ以外の異スロット間ドラッグは無効)
@@ -420,22 +370,16 @@ private:
                 if (bothRings) {
                     std::swap(equipment.slots[static_cast<size_t>(m_dragSlot)], equipment.slots[static_cast<size_t>(targetSlot)]);
                     EquipmentSystem::RecalculateStats(stats, equipment);
-                    m_selectedSlot = targetSlot;
                 }
             }
         } else if (targetCell >= 0) {
             if (m_dragFromEquipped) {
-                m_selectedIsEquipped = true;
-                m_selectedSlot = m_dragSlot;
-                UnequipSelected(inventory, equipment, stats);
+                QuickUnequip(m_dragSlot, inventory, equipment, stats);
             } else if (targetCell < static_cast<int>(inventory.items.size()) && targetCell != m_dragBagIndex) {
                 std::swap(inventory.items[m_dragBagIndex], inventory.items[targetCell]);
-                m_selectedIsEquipped = false;
-                m_selectedIndex = targetCell;
             }
         }
-        // ドール/グリッドどちらでもない場所(フッターやボタン付近)へのドロップは
-        // 何もせず元の位置に留める。
+        // ドール/グリッドどちらでもない場所へのドロップは何もせず元の位置に留める。
     }
 
     void DropDraggedItemOnGround(Registry& registry, Entity player, InventoryComponent& inventory,
@@ -447,12 +391,10 @@ private:
             dropped = *slotOpt;
             slotOpt.reset();
             EquipmentSystem::RecalculateStats(stats, equipment);
-            m_selectedIsEquipped = false;
         } else {
             if (m_dragBagIndex < 0 || m_dragBagIndex >= static_cast<int>(inventory.items.size())) return;
             dropped = inventory.items[m_dragBagIndex];
             inventory.items.erase(inventory.items.begin() + m_dragBagIndex);
-            ClampSelection(inventory);
         }
 
         if (!registry.HasComponent<TransformComponent>(player)) return;
@@ -487,50 +429,28 @@ private:
         return s.substr(0, maxLen);
     }
 
-    void DrawButton(sf::RenderTarget& target, const sf::FloatRect& rect, const std::string& label, bool hovered, sf::Color fillColor) {
-        sf::RectangleShape box(rect.size);
-        box.setPosition(rect.position);
-        sf::Color drawColor = hovered
-            ? sf::Color((std::min)(255, fillColor.r + 35), (std::min)(255, fillColor.g + 35), (std::min)(255, fillColor.b + 35), fillColor.a)
-            : fillColor;
-        box.setFillColor(drawColor);
-        box.setOutlineColor(sf::Color(200, 200, 200));
-        box.setOutlineThickness(1.5f);
-        target.draw(box);
-
-        sf::Text text(*m_font, sf::String::fromUtf8(label.begin(), label.end()), 15);
-        text.setFillColor(sf::Color::White);
-        text.setOutlineColor(sf::Color::Black);
-        text.setOutlineThickness(1.0f);
-        sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition({
-            rect.position.x + (rect.size.x - textBounds.size.x) / 2.0f - textBounds.position.x,
-            rect.position.y + (rect.size.y - textBounds.size.y) / 2.0f - textBounds.position.y
-            });
-        target.draw(text);
-    }
-
-    void EquipSelected(InventoryComponent& inventory, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
-        if (inventory.items.empty()) return;
-        ItemComponent picked = inventory.items[m_selectedIndex];
+    // バッグのアイテムを対応する装備欄へ即装備する(既に何か装備していれば入れ替えてバッグへ戻す)。
+    void QuickEquip(int bagIndex, InventoryComponent& inventory, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
+        if (bagIndex < 0 || bagIndex >= static_cast<int>(inventory.items.size())) return;
+        ItemComponent picked = inventory.items[bagIndex];
         size_t slotIdx = static_cast<size_t>(picked.slot);
         auto& currentSlot = equipment.slots[slotIdx];
 
         if (currentSlot.has_value()) {
-            inventory.items[m_selectedIndex] = *currentSlot;
+            inventory.items[bagIndex] = *currentSlot;
         } else {
-            inventory.items.erase(inventory.items.begin() + m_selectedIndex);
+            inventory.items.erase(inventory.items.begin() + bagIndex);
         }
         currentSlot = picked;
         EquipmentSystem::RecalculateStats(stats, equipment);
 
         lastActionMessage = "装備した: " + picked.baseName;
         messageTimer = 2.5f;
-        ClampSelection(inventory);
     }
 
-    void UnequipSelected(InventoryComponent& inventory, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
-        auto& slotOpt = equipment.slots[static_cast<size_t>(m_selectedSlot)];
+    // 装備欄のアイテムを即座に外してバッグへ戻す(満杯なら失敗する)。
+    void QuickUnequip(EquipSlot slot, InventoryComponent& inventory, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
+        auto& slotOpt = equipment.slots[static_cast<size_t>(slot)];
         if (!slotOpt.has_value()) return;
 
         if (inventory.items.size() >= InventoryComponent::kCapacity) {
@@ -546,26 +466,22 @@ private:
 
         lastActionMessage = "外した: " + name;
         messageTimer = 2.5f;
-
-        m_selectedIsEquipped = false;
-        m_selectedIndex = static_cast<int>(inventory.items.size()) - 1;
     }
 
-    void SellSelected(InventoryComponent& inventory, CharacterStatsComponent& stats) {
-        if (inventory.items.empty()) return;
-        const ItemComponent& item = inventory.items[m_selectedIndex];
+    void QuickSellBag(int bagIndex, InventoryComponent& inventory, CharacterStatsComponent& stats) {
+        if (bagIndex < 0 || bagIndex >= static_cast<int>(inventory.items.size())) return;
+        const ItemComponent& item = inventory.items[bagIndex];
         int goldValue = ItemFactory::SellValue(item);
         stats.gold += goldValue;
 
         lastActionMessage = "売却した: " + item.baseName + " (" + std::to_string(goldValue) + "ゴールド)";
         messageTimer = 2.5f;
 
-        inventory.items.erase(inventory.items.begin() + m_selectedIndex);
-        ClampSelection(inventory);
+        inventory.items.erase(inventory.items.begin() + bagIndex);
     }
 
-    void SellEquippedSlot(EquipmentComponent& equipment, CharacterStatsComponent& stats) {
-        auto& slotOpt = equipment.slots[static_cast<size_t>(m_selectedSlot)];
+    void QuickSellDoll(EquipSlot slot, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
+        auto& slotOpt = equipment.slots[static_cast<size_t>(slot)];
         if (!slotOpt.has_value()) return;
 
         int goldValue = ItemFactory::SellValue(*slotOpt);
@@ -575,27 +491,62 @@ private:
 
         slotOpt.reset();
         EquipmentSystem::RecalculateStats(stats, equipment);
-        m_selectedIsEquipped = false;
     }
 
-    void DiscardSelected(InventoryComponent& inventory) {
-        if (inventory.items.empty()) return;
-        const ItemComponent& item = inventory.items[m_selectedIndex];
+    // カーソルを乗せたアイテムの詳細ツールチップ。バッグアイテムの場合は同スロットの
+    // 装備中アイテムとの比較(PoE2のホバー比較と同様)も併記する。
+    void DrawItemTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item,
+        const ItemComponent* compared, sf::Vector2u winSize) {
+        struct Line { std::string text; sf::Color color; };
+        std::vector<Line> lines;
 
-        lastActionMessage = "破棄した: " + item.baseName;
-        messageTimer = 2.5f;
+        lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
+        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
+            " - Lv" + std::to_string(item.itemLevel), sf::Color(190, 190, 190) });
 
-        inventory.items.erase(inventory.items.begin() + m_selectedIndex);
-        ClampSelection(inventory);
-    }
+        for (const auto& affix : item.affixes) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1) << (affix.value >= 0.0f ? "+" : "") << affix.value << " " << affix.label;
+            lines.push_back({ ss.str(), sf::Color(150, 200, 255) });
+        }
 
-    // std::clamp(x, 0, size-1)はsize==0のときlo>hiとなり未定義動作になるため
-    // (最後の1個を装備/売却/破棄した瞬間に発生する)、空チェックを必ず挟む。
-    void ClampSelection(const InventoryComponent& inventory) {
-        if (inventory.items.empty()) {
-            m_selectedIndex = 0;
-        } else {
-            m_selectedIndex = std::clamp(m_selectedIndex, 0, static_cast<int>(inventory.items.size()) - 1);
+        std::ostringstream sellSs;
+        sellSs << "売却額: " << ItemFactory::SellValue(item) << " ゴールド";
+        lines.push_back({ sellSs.str(), sf::Color(200, 180, 120) });
+
+        if (compared) {
+            std::ostringstream cmp;
+            cmp << "装備中: " << compared->baseName << " (スコア " << static_cast<int>(compared->PowerScore()) << ")";
+            lines.push_back({ cmp.str(), sf::Color(170, 170, 170) });
+            std::ostringstream self;
+            self << "このアイテム: スコア " << static_cast<int>(item.PowerScore());
+            lines.push_back({ self.str(), sf::Color(170, 220, 170) });
+        }
+
+        float lineH = 18.0f;
+        float maxWidth = 0.0f;
+        for (const auto& line : lines) {
+            sf::Text probe(*m_font, sf::String::fromUtf8(line.text.begin(), line.text.end()), 13);
+            maxWidth = (std::max)(maxWidth, probe.getLocalBounds().size.x);
+        }
+
+        float boxW = maxWidth + 24.0f;
+        float boxH = static_cast<float>(lines.size()) * lineH + 16.0f;
+
+        float x = mouse.x + 18.0f;
+        float y = mouse.y + 10.0f;
+        if (x + boxW > static_cast<float>(winSize.x) - 4.0f) x = mouse.x - boxW - 18.0f;
+        if (y + boxH > static_cast<float>(winSize.y) - 4.0f) y = static_cast<float>(winSize.y) - boxH - 4.0f;
+
+        sf::RectangleShape box({ boxW, boxH });
+        box.setPosition({ x, y });
+        box.setFillColor(sf::Color(10, 10, 14, 235));
+        box.setOutlineColor(sf::Color(150, 150, 160));
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
+
+        for (size_t i = 0; i < lines.size(); ++i) {
+            DrawText(target, x + 12.0f, y + 8.0f + static_cast<float>(i) * lineH, lines[i].text, 13, lines[i].color);
         }
     }
 
