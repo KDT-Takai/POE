@@ -102,6 +102,8 @@
     <ClInclude Include="External\ECS\Components\Chara\RangedAttacker.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemyAreaAttackSystem.h" />
     <ClInclude Include="External\ECS\Components\Chara\AreaAttacker.h" />
+    <ClInclude Include="External\ECS\Systems\Chara\EnemySummonSystem.h" />
+    <ClInclude Include="External\ECS\Components\Chara\Summoner.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemySpawnSystem.h" />
     <ClInclude Include="External\ECS\Systems\Contorol\InputSystem.h" />
     <ClInclude Include="External\ECS\Systems\EditerSystem.h" />

@@ -17,6 +17,7 @@
 #include "../../ECS/Systems/Chara/EnemyAISystem.h"
 #include "../../ECS/Systems/Chara/EnemyRangedAttackSystem.h"
 #include "../../ECS/Systems/Chara/EnemyAreaAttackSystem.h"
+#include "../../ECS/Systems/Chara/EnemySummonSystem.h"
 #include "../../ECS/Systems/Physics/CollisionSystem.h"
 #include "../../ECS/Systems/UI/HealthBarRenderSystem.h"
 #include "../../ECS/Systems/Combat/StatusEffectSystem.h"
@@ -73,6 +74,7 @@ private:
 	std::shared_ptr<EnemyAISystem> enemyAISystem;
 	std::shared_ptr<EnemyRangedAttackSystem> enemyRangedAttackSystem;
 	std::shared_ptr<EnemyAreaAttackSystem> enemyAreaAttackSystem;
+	std::shared_ptr<EnemySummonSystem> enemySummonSystem;
 	std::shared_ptr<CollisionSystem> collisionSystem;
     std::shared_ptr<HealthBarRenderSystem> healthBarRenderSystem;
     std::shared_ptr<StatusEffectSystem> statusEffectSystem;

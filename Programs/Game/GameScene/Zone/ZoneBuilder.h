@@ -11,6 +11,7 @@
 #include "../../ECS/Components/Interaction/Interaction.h"
 #include "../../ECS/Components/Chara/RangedAttacker.h"
 #include "../../ECS/Components/Chara/AreaAttacker.h"
+#include "../../ECS/Components/Chara/Summoner.h"
 
 struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
@@ -134,7 +135,7 @@ private:
 
         // レア/ユニークとは独立して、一定確率で行動パターンの異なるアーケタイプにする
         // (接触ダメージのみだった既存モンスターに行動パターンの幅を持たせる。
-        //  遠距離/範囲攻撃は互いに排他)
+        //  遠距離/範囲攻撃/召喚は互いに排他)
         float archetypeRoll = roll(rng);
         if (archetypeRoll < 0.15f) {
             stats.name = "叩き潰す" + stats.name;
@@ -159,6 +160,15 @@ private:
             ranged.projectileSpeed = 260.0f;
             ranged.damagePercent = 65.0f;
             enemy.AddComponent(ranged);
+        } else if (archetypeRoll < 0.45f) {
+            stats.name = "召喚術士の" + stats.name;
+
+            SummonerComponent summoner;
+            summoner.triggerRange = 260.0f;
+            summoner.summonInterval = (std::max)(3.0f, 5.5f - tierScale * 0.3f);
+            summoner.maxActiveSummons = 2;
+            summoner.statScale = 0.5f;
+            enemy.AddComponent(summoner);
         }
 
         stats.currentHP = stats.maxHP;
