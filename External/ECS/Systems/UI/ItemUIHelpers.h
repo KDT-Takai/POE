@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <SFML/Graphics.hpp>
 #include <string>
 #include "Components/Item/Item.h"
@@ -6,25 +6,25 @@
 namespace ItemUIHelpers {
     inline std::string SlotName(EquipSlot slot) {
         switch (slot) {
-        case EquipSlot::Weapon: return "Weapon";
-        case EquipSlot::BodyArmour: return "Body Armour";
-        case EquipSlot::Helmet: return "Helmet";
-        case EquipSlot::Gloves: return "Gloves";
-        case EquipSlot::Boots: return "Boots";
-        case EquipSlot::Ring1: return "Ring 1";
-        case EquipSlot::Ring2: return "Ring 2";
-        case EquipSlot::Amulet: return "Amulet";
-        case EquipSlot::Belt: return "Belt";
-        default: return "Slot";
+        case EquipSlot::Weapon: return "武器";
+        case EquipSlot::BodyArmour: return "胴防具";
+        case EquipSlot::Helmet: return "兜";
+        case EquipSlot::Gloves: return "手袋";
+        case EquipSlot::Boots: return "靴";
+        case EquipSlot::Ring1: return "指輪1";
+        case EquipSlot::Ring2: return "指輪2";
+        case EquipSlot::Amulet: return "首飾り";
+        case EquipSlot::Belt: return "ベルト";
+        default: return "スロット";
         }
     }
 
     inline std::string RarityName(ItemRarity rarity) {
         switch (rarity) {
-        case ItemRarity::Normal: return "Normal";
-        case ItemRarity::Magic: return "Magic";
-        case ItemRarity::Rare: return "Rare";
-        case ItemRarity::Unique: return "Unique";
+        case ItemRarity::Normal: return "ノーマル";
+        case ItemRarity::Magic: return "マジック";
+        case ItemRarity::Rare: return "レア";
+        case ItemRarity::Unique: return "ユニーク";
         default: return "?";
         }
     }
