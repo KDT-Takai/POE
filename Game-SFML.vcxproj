@@ -70,6 +70,7 @@
     <ClInclude Include="External\ECS\Components\Item\Equipment.h" />
     <ClInclude Include="External\ECS\Components\Item\ItemPickup.h" />
     <ClInclude Include="External\ECS\Components\Item\Currency.h" />
+    <ClInclude Include="External\ECS\Components\Item\SkillGem.h" />
     <ClInclude Include="External\ECS\Components\Item\Inventory.h" />
     <ClInclude Include="External\ECS\Components\Progression\PassiveTree.h" />
     <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
@@ -107,9 +108,11 @@
     <ClInclude Include="External\ECS\Systems\Physics\ProjectileSystem.h" />
     <ClInclude Include="External\ECS\Systems\RenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SkillGemData.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SparkRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SparkVisualSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\HealthBarRenderSystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\SkillGemSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\Transform\Transform.h" />

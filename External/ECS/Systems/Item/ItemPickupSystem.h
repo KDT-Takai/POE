@@ -4,15 +4,18 @@
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
 #include "Components/Item/Currency.h"
+#include "Components/Item/SkillGem.h"
 #include "Components/Physics/Transform/Transform.h"
 #include "Components/Control/PlayerInput/PlayerInput.h"
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "EquipmentSystem.h"
 #include "CurrencySystem.h"
 #include "ItemFactory.h"
+#include "../Skill/SkillGemData.h"
 #include <vector>
 #include <string>
 #include <random>
+#include <algorithm>
 
 class ItemPickupSystem {
 public:
@@ -65,6 +68,30 @@ public:
                 static std::mt19937 rng(rd());
                 lastMessage = CurrencySystem::ApplyCurrency(equipment, stats, currency.type, stats.level, rng);
                 messageTimer = 2.5f;
+                toRemove.push_back(e);
+            }
+        }
+
+        for (auto e : registry.View<SkillGemPickupComponent, TransformComponent>()) {
+            auto& pickupTrans = registry.GetComponent<TransformComponent>(e);
+            float dx = pickupTrans.position.x - playerTrans.position.x;
+            float dy = pickupTrans.position.y - playerTrans.position.y;
+            if (dx * dx + dy * dy < 40.0f * 40.0f) {
+                auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(e);
+                const GemDefinition* def = SkillGemData::Find(gemPickup.gemId);
+                std::string gemName = def ? def->skill.name : "Unknown Gem";
+
+                if (registry.HasComponent<SkillGemInventoryComponent>(player)) {
+                    auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
+                    auto& ids = gemInventory.unlockedGemIds;
+                    if (std::find(ids.begin(), ids.end(), gemPickup.gemId) == ids.end()) {
+                        ids.push_back(gemPickup.gemId);
+                        lastMessage = "Learned skill gem: " + gemName + " (press K to equip)";
+                    } else {
+                        lastMessage = "Already known: " + gemName;
+                    }
+                    messageTimer = 2.5f;
+                }
                 toRemove.push_back(e);
             }
         }

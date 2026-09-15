@@ -20,6 +20,7 @@ struct SkillData {
     std::string name = "Empty";
     std::string description = "";
     int level = 1;
+    int gemId = -1; // SkillGemData id that granted this skill; -1 = not from a gem (empty slot)
 
     SkillBehaviorType behaviorType = SkillBehaviorType::Melee;
     DamageElement element = DamageElement::Physical;

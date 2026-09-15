@@ -378,6 +378,15 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
     for (size_t i = 0; i < m_savedPassiveTree.size(); ++i) {
         out << "passiveTree.node" << i << "=" << m_savedPassiveTree[i] << "\n";
     }
+
+    out << "unlockedGems.count=" << m_savedUnlockedGems.size() << "\n";
+    for (size_t i = 0; i < m_savedUnlockedGems.size(); ++i) {
+        out << "unlockedGems.gem" << i << "=" << m_savedUnlockedGems[i] << "\n";
+    }
+
+    for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
+        out << "skillLoadout.slot" << i << "=" << m_savedSkillLoadout[i] << "\n";
+    }
 }
 
 bool CampaignManager::LoadFromDisk(const std::string& path) {
@@ -425,6 +434,16 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     int passiveTreeCount = GetI(kv, "passiveTree.count", 0);
     for (int i = 0; i < passiveTreeCount; ++i) {
         m_savedPassiveTree.push_back(GetI(kv, "passiveTree.node" + std::to_string(i), 0));
+    }
+
+    m_savedUnlockedGems.clear();
+    int unlockedGemCount = GetI(kv, "unlockedGems.count", 0);
+    for (int i = 0; i < unlockedGemCount; ++i) {
+        m_savedUnlockedGems.push_back(GetI(kv, "unlockedGems.gem" + std::to_string(i), 0));
+    }
+
+    for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
+        m_savedSkillLoadout[i] = GetI(kv, "skillLoadout.slot" + std::to_string(i), -1);
     }
 
     return true;

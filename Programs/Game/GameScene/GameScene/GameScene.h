@@ -24,6 +24,7 @@
 #include "../../ECS/Systems/UI/InventorySystem.h"
 #include "../../ECS/Systems/Progression/PassiveTreeSystem.h"
 #include "../../ECS/Systems/Item/VendorSystem.h"
+#include "../../ECS/Systems/UI/SkillGemSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 
 class GameScene : public SceneBase {
@@ -76,4 +77,5 @@ private:
     std::shared_ptr<InventorySystem> inventorySystem;
     std::shared_ptr<PassiveTreeSystem> passiveTreeSystem;
     std::shared_ptr<VendorSystem> vendorSystem;
+    std::shared_ptr<SkillGemSystem> skillGemSystem;
 };

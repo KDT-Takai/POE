@@ -8,6 +8,8 @@
 #include "../../Components/Combat/StatusEffects.h"
 #include "../../Components/Item/ItemPickup.h"
 #include "../../Components/Item/Currency.h"
+#include "../../Components/Item/SkillGem.h"
+#include "../Skill/SkillGemData.h"
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
 #include <System/CameraManager/CameraManager.h>
@@ -103,9 +105,14 @@ public:
                                 if (proj.type == SkillBehaviorType::LightningWarp) {
                                     auto& pStats = registry.GetComponent<CharacterStatsComponent>(playerEnt);
                                     auto& pSkill = registry.GetComponent<PlayerSkill>(playerEnt);
-                                    // �}�i�S�� & �N�[���^�C�����Z�b�g
+                                    // �}�i�S�� & �N�[���^�C�����Z�b�g (�X�L���X���b�g�͎��R�Ɋ��蓖�Ĉʒu���ς��̂ŁA
+                                    // �Œ�C���f�b�N�X�ł͂Ȃ�behaviorType��T���čX�V����)
                                     pStats.currentMP = pStats.maxMP;
-                                    pSkill.skills[2].currentCooldown = 0.0f;
+                                    for (auto& s : pSkill.skills) {
+                                        if (s.isValid && s.behaviorType == SkillBehaviorType::LightningWarp) {
+                                            s.currentCooldown = 0.0f;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -244,6 +251,18 @@ private:
         if (chanceRoll(rng) > dropChance) return;
 
         int itemLevel = std::clamp(static_cast<int>(stats.maxHP / 15.0f), 1, 100);
+
+        if (chanceRoll(rng) < 0.08f) {
+            const auto& gemList = SkillGemData::Gems();
+            std::uniform_int_distribution<int> gemPick(0, static_cast<int>(gemList.size()) - 1);
+            int gemId = gemList[gemPick(rng)].id;
+
+            auto gemPickup = registry.CreateEntityObject();
+            gemPickup.AddComponent(TransformComponent{ trans.position, {1.f, 1.f}, 0.f });
+            gemPickup.AddComponent(CircleComponent{ 9.0f, sf::Color(255, 90, 220), true });
+            gemPickup.AddComponent(SkillGemPickupComponent{ gemId });
+            return;
+        }
 
         if (chanceRoll(rng) < 0.3f) {
             std::uniform_int_distribution<int> currencyPick(0, 3);

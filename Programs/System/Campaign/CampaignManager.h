@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <string>
 #include <vector>
+#include <array>
 #include <SFML/Graphics/Color.hpp>
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Item/Equipment.h"
@@ -52,6 +53,8 @@ class CampaignManager : public Singleton<CampaignManager> {
     EquipmentComponent m_savedEquipment;
     std::vector<ItemComponent> m_savedInventory;
     std::vector<int> m_savedPassiveTree;
+    std::vector<int> m_savedUnlockedGems;
+    std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -84,6 +87,12 @@ public:
 
     void SavePassiveTree(const std::vector<int>& nodeIds) { m_savedPassiveTree = nodeIds; }
     const std::vector<int>& GetSavedPassiveTree() const { return m_savedPassiveTree; }
+
+    void SaveUnlockedGems(const std::vector<int>& gemIds) { m_savedUnlockedGems = gemIds; }
+    const std::vector<int>& GetSavedUnlockedGems() const { return m_savedUnlockedGems; }
+
+    void SaveSkillLoadout(const std::array<int, 5>& gemIds) { m_savedSkillLoadout = gemIds; }
+    const std::array<int, 5>& GetSavedSkillLoadout() const { return m_savedSkillLoadout; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

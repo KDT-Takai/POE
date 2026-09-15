@@ -11,6 +11,7 @@
 #include "../../Components/Physics/BoxCollider/BoxCollider.h"
 #include "../../Components/Physics/Transform/Transform.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
+#include "../../Components/Combat/StatusEffects.h"
 #include "../../../../Programs/System/Input/InputManager.h"
 #include <cmath>
 #include <random>
@@ -332,6 +333,67 @@ private:
                 // �ړ����x���Z�b�g
                 reg.AddComponent<VelocityComponent>(ball, VelocityComponent{ velocity });
             }
+            break;
+        }
+        case SkillBehaviorType::Buff:
+        {
+            if (!reg.HasComponent<StatusEffectsComponent>(pcEntity)) break;
+            auto& status = reg.GetComponent<StatusEffectsComponent>(pcEntity);
+            auto& liveStats = reg.GetComponent<CharacterStatsComponent>(pcEntity);
+
+            // Refresh: undo any still-active buff before reapplying so re-casting never stacks multiplicatively.
+            if (status.buffRemaining > 0.0f) {
+                liveStats.atk /= status.buffAtkMult;
+                liveStats.moveSpeed /= status.buffSpeedMult;
+            }
+
+            float atkMult = 1.0f + skill.buffAtk;
+            float speedMult = 1.0f + skill.buffSpeed;
+            liveStats.atk *= atkMult;
+            liveStats.moveSpeed *= speedMult;
+
+            status.buffAtkMult = atkMult;
+            status.buffSpeedMult = speedMult;
+            status.buffRemaining = skill.duration;
+            break;
+        }
+        case SkillBehaviorType::AreaEffect:
+        {
+            sf::Vector2f centerOffset(16.0f, 16.0f);
+            sf::Vector2f center = origin + centerOffset;
+
+            float blastSize = skill.range > 0.0f ? skill.range : 180.0f;
+            float offset = -blastSize / 2.0f;
+
+            auto damageEntity = reg.CreateEntity();
+            reg.AddComponent<TransformComponent>(damageEntity, TransformComponent{ center, sf::Vector2f(1.0f, 1.0f) });
+            reg.AddComponent<BoxColliderComponent>(damageEntity, BoxColliderComponent{
+                blastSize, blastSize, offset, offset, false, false
+                });
+
+            ProjectileComponent dmgProj;
+            dmgProj.duration = 0.25f;
+            dmgProj.damage = stats.atk * (skill.damage / 100.0f);
+            dmgProj.isBouncy = true;
+            dmgProj.ownerEntity = pcEntity;
+            dmgProj.type = SkillBehaviorType::AreaEffect;
+            dmgProj.damageType = skill.element;
+            reg.AddComponent<ProjectileComponent>(damageEntity, dmgProj);
+            reg.AddComponent<VelocityComponent>(damageEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
+
+            auto visualEntity = reg.CreateEntity();
+            reg.AddComponent<TransformComponent>(visualEntity, TransformComponent{ center, sf::Vector2f(1.0f, 1.0f) });
+            ProjectileComponent timerProj;
+            timerProj.duration = 0.25f;
+            timerProj.damage = 0;
+            reg.AddComponent<ProjectileComponent>(visualEntity, timerProj);
+
+            SparkVisualComponent sparkVis;
+            sparkVis.style = VisualStyle::Explosion;
+            sparkVis.maxDuration = 0.25f;
+            sparkVis.color = sf::Color(150, 220, 255, 255);
+            reg.AddComponent<SparkVisualComponent>(visualEntity, sparkVis);
+            reg.AddComponent<VelocityComponent>(visualEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
             break;
         }
         default:

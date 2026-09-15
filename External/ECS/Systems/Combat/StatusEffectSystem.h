@@ -4,6 +4,8 @@
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Physics/Velocity/Velocity.h"
 #include "Components/VFX/HitFlash.h"
+#include "Components/Item/Equipment.h"
+#include "Systems/Item/EquipmentSystem.h"
 #include <algorithm>
 
 class StatusEffectSystem {
@@ -59,6 +61,20 @@ public:
             if (status.freezeRemaining > 0.0f) status.freezeRemaining -= dt;
             if (status.shockRemaining > 0.0f) status.shockRemaining -= dt;
             if (status.stunRemaining > 0.0f) status.stunRemaining -= dt;
+
+            if (status.buffRemaining > 0.0f) {
+                status.buffRemaining -= dt;
+                if (status.buffRemaining <= 0.0f) {
+                    status.buffRemaining = 0.0f;
+                    status.buffAtkMult = 1.0f;
+                    status.buffSpeedMult = 1.0f;
+                    // Recompute from equipment/passives rather than dividing the multiplier back out,
+                    // so a stat recalc that happened mid-buff (level up, re-equip) can't corrupt atk/moveSpeed.
+                    if (registry.HasComponent<EquipmentComponent>(entity)) {
+                        EquipmentSystem::RecalculateStats(stats, registry.GetComponent<EquipmentComponent>(entity));
+                    }
+                }
+            }
 
             if (!registry.HasComponent<VelocityComponent>(entity)) continue;
             auto& vel = registry.GetComponent<VelocityComponent>(entity);

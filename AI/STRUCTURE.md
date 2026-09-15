@@ -37,6 +37,7 @@
 - **XP/レベリング**: `External/ECS/Systems/Progression/LevelSystem.h`
 - **パッシブツリーUI（Pキー、ノード割り振り）**: `External/ECS/Systems/Progression/PassiveTreeSystem.h`, `PassiveTreeData.h`, `External/ECS/Components/Progression/PassiveTree.h`
 - **Vendor（商人、Bキーで購入）**: `External/ECS/Systems/Item/VendorSystem.h`（NPC自体は`ZoneBuilder::SpawnVendor`でタウン中央に配置）
+- **スキルジェム（Kキー、5スロット自由付け替え）**: `External/ECS/Systems/UI/SkillGemSystem.h`、ジェムの静的定義は`External/ECS/Systems/Skill/SkillGemData.h`、ドロップ/所持は`External/ECS/Components/Item/SkillGem.h`（`SkillGemPickupComponent`/`SkillGemInventoryComponent`）
 - **アイテムUI共通ヘルパー（スロット名/レアリティ名・色）**: `External/ECS/Systems/UI/ItemUIHelpers.h`（CharacterSheetSystem/InventorySystem/VendorSystemが共有）
 - **キャラクターシートUI（Cキー）**: `External/ECS/Systems/UI/CharacterSheetSystem.h`
 - **ボスフェーズ（HP50%でEnrage）**: `External/ECS/Systems/Chara/BossPhaseSystem.h`

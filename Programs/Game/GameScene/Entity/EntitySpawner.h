@@ -17,6 +17,7 @@
 #include "../ECS/Components/Item/Equipment.h"
 #include "../ECS/Components/Item/Inventory.h"
 #include "../ECS/Components/Progression/PassiveTree.h"
+#include "../ECS/Components/Item/SkillGem.h"
 
 class EntitySpawner {
 public:
@@ -81,6 +82,7 @@ public:
         SkillData& spark = skillComp.skills[0];
         spark.name = "Spark";
         spark.level = 1;
+        spark.gemId = 0;
         spark.behaviorType = SkillBehaviorType::Spark;
         spark.cooldownTime = 0.3f;
         spark.mpCost = 4.0f;
@@ -92,6 +94,7 @@ public:
         SkillData& Slam = skillComp.skills[1];
         Slam.name = "Thunder Slam";
         Slam.level = 1;
+        Slam.gemId = 1;
         Slam.behaviorType = SkillBehaviorType::GroundSlam;
         Slam.cooldownTime = 5.0f;
         Slam.mpCost = 35.0f;
@@ -102,6 +105,7 @@ public:
         SkillData& Warp = skillComp.skills[2];
         Warp.name = "Lightning Warp";
         Warp.level = 1;
+        Warp.gemId = 2;
         Warp.behaviorType = SkillBehaviorType::LightningWarp;
         Warp.range = 350.0f;
         Warp.damage = 80.0f;
@@ -114,6 +118,7 @@ public:
         SkillData& ball = skillComp.skills[3];
         ball.name = "Lightning ball";
         ball.level = 1;
+        ball.gemId = 3;
         ball.behaviorType = SkillBehaviorType::LightningBall;
         ball.damage = 40.0f;
         ball.cooldownTime = 12.0f;
@@ -122,6 +127,10 @@ public:
         ball.isValid = true;
 
         entity.AddComponent(skillComp);
+
+        SkillGemInventoryComponent gemInventory;
+        gemInventory.unlockedGemIds = { 0, 1, 2, 3 };
+        entity.AddComponent(gemInventory);
 
         return entity;
     }

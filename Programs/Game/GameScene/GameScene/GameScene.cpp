@@ -1,6 +1,7 @@
 #include "GameScene.h"
 #include <ECS.h>
 #include <algorithm>
+#include <array>
 #include <System/CameraManager/CameraManager.h>
 #include <System/Time/Time.h>
 #include <System/DebugGui/DebugGui.h>
@@ -43,6 +44,7 @@ GameScene::GameScene() {
 	inventorySystem = std::make_shared<InventorySystem>();
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
 	vendorSystem = std::make_shared<VendorSystem>();
+	skillGemSystem = std::make_shared<SkillGemSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -65,6 +67,27 @@ GameScene::GameScene() {
             EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
             player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
+
+            // Older saves (pre-skill-gem feature) have no unlocked-gem data; keep the
+            // EntitySpawner-seeded starter loadout in that case instead of blanking it out.
+            if (!campaign.GetSavedUnlockedGems().empty()) {
+                player.GetComponent<SkillGemInventoryComponent>().unlockedGemIds = campaign.GetSavedUnlockedGems();
+
+                auto& skillComp = player.GetComponent<PlayerSkill>();
+                const auto& loadout = campaign.GetSavedSkillLoadout();
+                for (size_t i = 0; i < loadout.size(); ++i) {
+                    int gemId = loadout[i];
+                    if (gemId < 0) {
+                        skillComp.skills[i] = SkillData{};
+                        continue;
+                    }
+                    const GemDefinition* def = SkillGemData::Find(gemId);
+                    if (!def) continue;
+                    skillComp.skills[i] = def->skill;
+                    skillComp.skills[i].gemId = gemId;
+                    skillComp.skills[i].isValid = true;
+                }
+            }
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
@@ -84,6 +107,17 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<PassiveTreeComponent>(playerEntity)) {
         campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);
     }
+    if (registry->HasComponent<SkillGemInventoryComponent>(playerEntity)) {
+        campaign.SaveUnlockedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).unlockedGemIds);
+    }
+    if (registry->HasComponent<PlayerSkill>(playerEntity)) {
+        auto& skillComp = registry->GetComponent<PlayerSkill>(playerEntity);
+        std::array<int, 5> loadout;
+        for (size_t i = 0; i < loadout.size(); ++i) {
+            loadout[i] = skillComp.skills[i].isValid ? skillComp.skills[i].gemId : -1;
+        }
+        campaign.SaveSkillLoadout(loadout);
+    }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
@@ -95,25 +129,30 @@ void GameScene::Update() {
 
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::C)) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); }
+        if (characterSheetSystem->isOpen) { inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
     }
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::I)) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); }
+        if (inventorySystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
     }
     if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::P)) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); }
+        if (passiveTreeSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); vendorSystem->Close(); skillGemSystem->Close(); }
+    }
+    if (InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::K)) {
+        skillGemSystem->Toggle();
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); }
     }
     if (m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::B)) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
-        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); }
+        if (vendorSystem->isOpen) { characterSheetSystem->isOpen = false; inventorySystem->Close(); passiveTreeSystem->Close(); skillGemSystem->Close(); }
     }
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
+    skillGemSystem->Update(*registry, dt);
     // ����
     inputSystem->Update(*registry, dt);
     // ������
@@ -174,7 +213,7 @@ void GameScene::Update() {
                 float distSq = dx * dx + dy * dy;
                 m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen &&
+                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen &&
                     InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
                     spdlog::info("Entering next zone.");
                     AdvanceToNextZone();
@@ -324,6 +363,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     inventorySystem->Render(*registry, target);
     passiveTreeSystem->Render(*registry, target);
     vendorSystem->Render(*registry, target);
+    skillGemSystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
 }
