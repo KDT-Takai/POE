@@ -165,7 +165,18 @@ void GameScene::Update() {
         skillGemSystem->Toggle();
         if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
-    if (!awaitingRebind && m_playerNearVendor && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) {
+    // PoE2同様、NPCへの話しかけは左クリックが基本操作。Bキーはその代替として残す。
+    m_clickedOnVendor = false;
+    if (m_hasVendor && !vendorSystem->isOpen) {
+        sf::Vector2f mouseWorldForVendor = InputManager::Instance().GetMouseWorldPosition();
+        float vdx = mouseWorldForVendor.x - m_vendorPos.x;
+        float vdy = mouseWorldForVendor.y - m_vendorPos.y;
+        m_clickedOnVendor = (vdx * vdx + vdy * vdy) < (28.0f * 28.0f) &&
+            InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
+    }
+    bool vendorTalkTriggered = m_playerNearVendor &&
+        ((!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) || m_clickedOnVendor);
+    if (vendorTalkTriggered) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
@@ -213,7 +224,7 @@ void GameScene::Update() {
 
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup));
+        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnVendor);
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N

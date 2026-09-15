@@ -52,6 +52,7 @@ private:
     bool m_hasVendor = false;
     bool m_playerNearVendor = false;
     sf::Vector2f m_vendorPos;
+    bool m_clickedOnVendor = false; // このフレームで商人を左クリックしたか(スキル発動クリックとの競合防止用)
 
     // Registry
 	std::unique_ptr<Registry> registry;
