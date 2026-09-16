@@ -12,7 +12,7 @@ enum class GameAction {
     Roll,
     Skill1, Skill2, Skill3, Skill4, Skill5,
     ToggleCharacterSheet, ToggleInventory, TogglePassiveTree, ToggleSkillGems,
-    VendorToggle, VendorReroll,
+    VendorReroll,
     Count
 };
 

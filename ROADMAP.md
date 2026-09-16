@@ -46,6 +46,11 @@
 **Vendor画面をPoE2本家の取引ウィンドウ相当へ全面刷新**: 右にプレイヤーの所持品グリッド(6x4、常時表示)、左に商人側パネル(Buy/Buybackの2タブ、Left/Rightまたはタブをクリックで切替)という構成に変更。売却は右のバッグからアイテムを左パネルへドラッグ&ドロップ、またはCtrl+左クリックで即売却する。**売却したアイテムは消えず「Buyback」タブに一時保管され、売った時と同じ金額で買い戻せる**(誤って売却しても復元できるようにするPoE2の仕様を再現。最大12件保持、超過分は古い順に破棄)。購入/買い戻しはリスト行をクリックするか、従来通りUp/Down+Enterでも操作可能(Vendorはワールドを一時停止する「ポーズ」系画面のため、矢印キーを使ってもプレイヤー移動とは競合しない)。
 またNPCへの話しかけ操作もPoE2同様「左クリック」を基本にした: 商人に近づいた状態で商人本体を左クリックするとVendor画面が開く(`GameScene::m_clickedOnVendor`で判定し、同フレームのSkill1発動クリックと競合しないよう抑制する)。従来のBキーはその代替として残した。
 
+**フォローアップ: 「左クリックの判定が分かりづらい」「Bキーがまだ残っている」との指摘を受けて修正**。
+- **Bキーでの話しかけを完全に廃止**: `GameAction::VendorToggle`をキーバインド一覧(enum/デフォルト/表示名/セーブキー)ごと削除し、リバインドUIにも出てこないようにした(残しておくと「割り当てても何も起きない」キーになってしまうため)。
+- **クリック判定を視覚化**: 商人に近づいている間、ワールド上に商人を中心としたクリック可能範囲の輪(半径36px、`GameScene::kVendorClickRadius`)を常時表示し、カーソルが輪の内側にあるときは黄色く強調表示することで「ここをクリックすれば良い」と分かるようにした。
+- **Vendor画面を閉じる手段をB以外に用意**: パネル右上に「Close」ボタンを新設し、クリックで閉じられるようにした(`VendorSystem`のUpdate/Renderに`closeBtnRect`を追加)。あわせてヘッダーの「Bキーで閉じる」表記や、拠点でのHUD表記("Press B to trade")も「Click the merchant to trade」に修正。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

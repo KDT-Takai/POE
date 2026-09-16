@@ -55,6 +55,8 @@ private:
     bool m_playerNearVendor = false;
     sf::Vector2f m_vendorPos;
     bool m_clickedOnVendor = false; // このフレームで商人を左クリックしたか(スキル発動クリックとの競合防止用)
+    bool m_hoveringVendor = false;  // クリック可能範囲にカーソルがあるか(輪の描画に使用)
+    static constexpr float kVendorClickRadius = 36.0f;
 
     // Registry
 	std::unique_ptr<Registry> registry;

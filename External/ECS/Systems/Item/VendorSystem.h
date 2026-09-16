@@ -127,6 +127,7 @@ public:
         bool ctrlHeld = keyInput.GetKey(sf::Keyboard::Key::LControl) || keyInput.GetKey(sf::Keyboard::Key::RControl);
 
         if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
+            if (layout.closeBtnRect.contains(mouse)) { Close(); return; }
             if (bagHoverHasItem && ctrlHeld) {
                 SellFromBag(bagHover, inventory, stats);
                 return;
@@ -193,14 +194,22 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
-        std::string closeKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorToggle));
         std::string rerollKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorReroll));
         DrawText(target, panelX + 20.0f, panelY + 12.0f,
-            "Vendor (" + closeKeyName + " to close) - drag or Ctrl+click your items to sell, click a listing to buy/reclaim, " + rerollKeyName + " reroll stock",
+            "Vendor - drag or Ctrl+click your items to sell, click a listing to buy/reclaim, " + rerollKeyName + " reroll stock",
             13, sf::Color(255, 220, 120));
         DrawText(target, panelX + 20.0f, panelY + 30.0f,
             "Gold: " + std::to_string(playerStats.gold) + "   Reroll cost: " + std::to_string(RerollPrice(playerStats.level)) + "g",
             13, sf::Color(255, 215, 90));
+
+        sf::RectangleShape closeBtn(layout.closeBtnRect.size);
+        closeBtn.setPosition(layout.closeBtnRect.position);
+        bool closeHovered = layout.closeBtnRect.contains(InputManager::Instance().GetMouseInput().GetMousePointF());
+        closeBtn.setFillColor(closeHovered ? sf::Color(140, 50, 50) : sf::Color(90, 35, 35));
+        closeBtn.setOutlineColor(sf::Color(200, 150, 150));
+        closeBtn.setOutlineThickness(1.0f);
+        target.draw(closeBtn);
+        DrawText(target, layout.closeBtnRect.position.x + 18.0f, layout.closeBtnRect.position.y + 5.0f, "Close", 13, sf::Color::White);
 
         // --- Left column: vendor panel (Buy / Buyback tabs) ---
         bool buyActive = m_activeTab == VendorTab::Buy;
@@ -287,6 +296,7 @@ private:
         float rightX = 0.0f;
         sf::FloatRect buyTabRect;
         sf::FloatRect buybackTabRect;
+        sf::FloatRect closeBtnRect;
         float listY = 0.0f;
         float lineHeight = 20.0f;
     };
@@ -298,6 +308,7 @@ private:
         layout.rightX = layout.panelX + 20.0f + kLeftW + kRightGap;
         layout.buyTabRect = sf::FloatRect({ layout.panelX + 20.0f, layout.panelY + 56.0f }, { 90.0f, 24.0f });
         layout.buybackTabRect = sf::FloatRect({ layout.panelX + 118.0f, layout.panelY + 56.0f }, { 140.0f, 24.0f });
+        layout.closeBtnRect = sf::FloatRect({ layout.panelX + kPanelW - 90.0f, layout.panelY + 10.0f }, { 70.0f, 24.0f });
         layout.listY = layout.panelY + 90.0f;
         layout.lineHeight = 20.0f;
         return layout;

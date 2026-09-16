@@ -23,7 +23,6 @@ void KeyBindings::ResetToDefaults() {
     m_bindings[static_cast<size_t>(GameAction::ToggleInventory)] = sf::Keyboard::Key::I;
     m_bindings[static_cast<size_t>(GameAction::TogglePassiveTree)] = sf::Keyboard::Key::P;
     m_bindings[static_cast<size_t>(GameAction::ToggleSkillGems)] = sf::Keyboard::Key::G;
-    m_bindings[static_cast<size_t>(GameAction::VendorToggle)] = sf::Keyboard::Key::B;
     m_bindings[static_cast<size_t>(GameAction::VendorReroll)] = sf::Keyboard::Key::T;
 }
 
@@ -55,7 +54,6 @@ std::string KeyBindings::ActionLabel(GameAction action) {
     case GameAction::ToggleInventory: return "Inventory";
     case GameAction::TogglePassiveTree: return "Passive Tree";
     case GameAction::ToggleSkillGems: return "Skill Gems";
-    case GameAction::VendorToggle: return "Talk to Vendor";
     case GameAction::VendorReroll: return "Vendor Reroll Stock";
     default: return "Unknown";
     }
@@ -77,7 +75,6 @@ std::string KeyBindings::ActionKey(GameAction action) {
     case GameAction::ToggleInventory: return "toggleInventory";
     case GameAction::TogglePassiveTree: return "togglePassiveTree";
     case GameAction::ToggleSkillGems: return "toggleSkillGems";
-    case GameAction::VendorToggle: return "vendorToggle";
     case GameAction::VendorReroll: return "vendorReroll";
     default: return "unknown";
     }

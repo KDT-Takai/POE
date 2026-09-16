@@ -208,18 +208,19 @@ void GameScene::Update() {
         skillGemSystem->Toggle();
         if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
     }
-    // PoE2同様、NPCへの話しかけは左クリックが基本操作。Bキーはその代替として残す。
+    // PoE2同様、NPCへの話しかけは左クリックのみ(Bキーの「話しかける」操作は廃止)。
+    // 商人本体にカーソルが乗っているかは常時判定し、Render側で当たり判定の輪を
+    // 表示することでクリック可能な範囲を視覚的に分かるようにする。
+    m_hoveringVendor = false;
     m_clickedOnVendor = false;
-    if (m_hasVendor && !vendorSystem->isOpen) {
+    if (m_hasVendor && m_playerNearVendor && !vendorSystem->isOpen) {
         sf::Vector2f mouseWorldForVendor = InputManager::Instance().GetMouseWorldPosition();
         float vdx = mouseWorldForVendor.x - m_vendorPos.x;
         float vdy = mouseWorldForVendor.y - m_vendorPos.y;
-        m_clickedOnVendor = (vdx * vdx + vdy * vdy) < (28.0f * 28.0f) &&
-            InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
+        m_hoveringVendor = (vdx * vdx + vdy * vdy) < (kVendorClickRadius * kVendorClickRadius);
+        m_clickedOnVendor = m_hoveringVendor && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
     }
-    bool vendorTalkTriggered = m_playerNearVendor &&
-        ((!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::VendorToggle))) || m_clickedOnVendor);
-    if (vendorTalkTriggered) {
+    if (m_clickedOnVendor) {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
@@ -371,6 +372,18 @@ void GameScene::Render(sf::RenderTarget& target) {
     sparkRenderSystem->Render(*registry, target);
 	healthBarRenderSystem->Render(*registry, target);
 
+    // 商人がクリック可能な範囲を視覚的に示す輪(近づいている間のみ表示、
+    // カーソルが範囲内なら明るく強調してクリックできることが分かるようにする)。
+    if (m_hasVendor && m_playerNearVendor && !vendorSystem->isOpen) {
+        sf::CircleShape ring(kVendorClickRadius);
+        ring.setOrigin({ kVendorClickRadius, kVendorClickRadius });
+        ring.setPosition(m_vendorPos);
+        ring.setFillColor(sf::Color::Transparent);
+        ring.setOutlineThickness(2.0f);
+        ring.setOutlineColor(m_hoveringVendor ? sf::Color(255, 255, 120, 220) : sf::Color(80, 200, 255, 140));
+        target.draw(ring);
+    }
+
     target.setView(target.getDefaultView());
 	uiSystem->Render(*registry, target);
 
@@ -383,7 +396,7 @@ void GameScene::Render(sf::RenderTarget& target) {
                 hudLine = "Press Enter to proceed";
             }
         }
-        else if (m_playerNearVendor) hudLine = "Press B to trade";
+        else if (m_playerNearVendor) hudLine = "Click the merchant to trade";
     } else {
         int aliveEnemies = 0;
         auto enemyView = registry->View<CharacterStatsComponent>();
