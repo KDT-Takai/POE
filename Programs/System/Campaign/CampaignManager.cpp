@@ -329,10 +329,19 @@ void CampaignManager::CompleteCurrentZoneAndAdvance() {
         m_savedEquipment.baseStats.fireRes -= 0.10f;
         m_savedEquipment.baseStats.iceRes -= 0.10f;
         m_savedEquipment.baseStats.lightningRes -= 0.10f;
+        m_actsClearedForResPenalty++;
+        m_pendingResPenaltyNotice = true;
         if (m_actIndex >= static_cast<int>(m_acts.size())) {
             m_actIndex = static_cast<int>(m_acts.size()) - 1; // Endgameに留まる
         }
     }
+}
+
+bool CampaignManager::ConsumePendingResPenaltyNotice(int& outTotalPenaltyPercent) {
+    if (!m_pendingResPenaltyNotice) return false;
+    m_pendingResPenaltyNotice = false;
+    outTotalPenaltyPercent = m_actsClearedForResPenalty * 10;
+    return true;
 }
 
 void CampaignManager::ReturnToLastTown() {

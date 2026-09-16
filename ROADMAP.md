@@ -117,6 +117,8 @@
 - `equipment.baseStats`に加算する方式を選んだのは、`EquipmentSystem::RecalculateStats`が毎回`live = equipment.baseStats`から再構築するため(既存のレベルアップ/パッシブツリー加点と同じパターン、`AI/DECISIONS.md`参照)。セーブ/ロードの`WriteStats`/`ReadStats`は既存の`fireRes`等のフィールドをそのまま使うため追加シリアライズは不要。
 - ペナルティは装備の耐性ロールで打ち消す設計(本家と同じ「幕を進めるほど耐性持ちの装備が必要になる」体験)のため、上限クランプ等は設けていない。
 
+**フォローアップ: 耐性ペナルティ発生時のHUD通知を追加**。「他に進める作業ある?」に対しユーザーが選択した項目。それまでは幕クリアで耐性が-10%されても画面上に何も表示されず気付きにくかったため、`CampaignManager`に`ConsumePendingResPenaltyNotice(int&)`を新設(ペナルティ適用時に立てる`m_pendingResPenaltyNotice`フラグを1回だけ消費し、通算ペナルティ%を返す)。`GameScene`のプレイヤー生成直後(`CompleteCurrentZoneAndAdvance`でシーンが張り替わった後の新ゾーン読み込み時)でこれを呼び、trueが返れば`itemPickupSystem->lastMessage`に「幕クリア: 全耐性 -10% (通算 -X%)」を4秒間(通常のアイテム取得トースト2.5秒より長め、重要な情報のため)表示する。このフラグはディスクへ永続化しない(同一セッション内、幕クリア直後の1回だけ意味を持つ一時通知のため)。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

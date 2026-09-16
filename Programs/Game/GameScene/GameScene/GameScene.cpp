@@ -100,6 +100,12 @@ GameScene::GameScene() {
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
+
+    int totalResPenaltyPercent = 0;
+    if (campaign.ConsumePendingResPenaltyNotice(totalResPenaltyPercent)) {
+        itemPickupSystem->lastMessage = "幕クリア: 全耐性 -10% (通算 -" + std::to_string(totalResPenaltyPercent) + "%)";
+        itemPickupSystem->messageTimer = 4.0f;
+    }
 }
 
 void GameScene::AdvanceToNextZone() {

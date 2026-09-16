@@ -49,6 +49,13 @@ class CampaignManager : public Singleton<CampaignManager> {
     int m_zoneIndex = 0;
     int m_endgameMapTier = 1;
 
+    // Set for one frame's worth of zone-load when CompleteCurrentZoneAndAdvance just
+    // applied the per-act resistance penalty; GameScene shows a HUD toast in the new
+    // zone and consumes it. Not persisted to disk -- only meaningful within the same
+    // session, right after the act transition that set it.
+    bool m_pendingResPenaltyNotice = false;
+    int m_actsClearedForResPenalty = 0;
+
     bool m_hasSavedPlayer = false;
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
@@ -77,6 +84,11 @@ public:
 
     // 現在ゾーンをクリアして次へ進める(タウン/エンドゲームも含めて自動判定)
     void CompleteCurrentZoneAndAdvance();
+
+    // True once, right after a story幕クリアで耐性ペナルティが課された直後だけ(GameSceneが
+    // 新ゾーン読み込み後にHUDトーストを出してこれを呼ぶと自動でfalseに戻る)。
+    // outTotalPenaltyPercent には通算ペナルティ(%, 常に10刻み)を返す。
+    bool ConsumePendingResPenaltyNotice(int& outTotalPenaltyPercent);
     // 死亡時: 現在の幕の入口タウンへ戻す
     void ReturnToLastTown();
     // タイトルからの新規開始
