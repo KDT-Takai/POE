@@ -152,6 +152,31 @@ namespace ItemUIHelpers {
         }
     }
 
+    // Canonical Japanese name for a stat, derived purely from AffixStat rather than
+    // trusting ItemAffix::label -- CampaignManager's save format never serializes
+    // `label` (only stat/value/tier/isPrefix), so any equipped/bagged item that has
+    // gone through a save/load round-trip has an empty label. Deriving it here fixes
+    // display for both fresh and already-saved items without touching the save format.
+    inline std::string AffixLabel(AffixStat stat) {
+        switch (stat) {
+        case AffixStat::FlatLife: return "生命力";
+        case AffixStat::FlatMana: return "マナ";
+        case AffixStat::FlatES: return "エナジーシールド";
+        case AffixStat::IncreasedAttackDamage: return "攻撃ダメージ増加";
+        case AffixStat::FireRes: return "火耐性";
+        case AffixStat::ColdRes: return "冷気耐性";
+        case AffixStat::LightningRes: return "電気耐性";
+        case AffixStat::ChaosRes: return "カオス耐性";
+        case AffixStat::FlatArmour: return "アーマー";
+        case AffixStat::FlatEvasion: return "回避力";
+        case AffixStat::FlatAccuracy: return "命中率";
+        case AffixStat::CritChance: return "クリティカル率";
+        case AffixStat::CritMultiplier: return "クリティカルダメージ";
+        case AffixStat::MoveSpeed: return "移動速度";
+        default: return "?";
+        }
+    }
+
     // "火耐性 +10%" / "マナ +10" style line, matching real PoE2's stat-name-first mod
     // display (label first, then the signed value, rounded to a whole number since
     // PoE2 doesn't show decimals on these). Shared so Inventory/Vendor/CharacterSheet
@@ -160,7 +185,7 @@ namespace ItemUIHelpers {
         long rounded = std::lround(affix.value);
         std::string sign = (rounded >= 0) ? "+" : "";
         std::string unit = IsPercentAffix(affix.stat) ? "%" : "";
-        return affix.label + " " + sign + std::to_string(rounded) + unit;
+        return AffixLabel(affix.stat) + " " + sign + std::to_string(rounded) + unit;
     }
 
     inline sf::Color RarityColor(ItemRarity rarity) {
