@@ -28,11 +28,14 @@ private:
     static constexpr float kButtonW = 150.0f;
     static constexpr float kButtonH = 36.0f;
     static constexpr float kButtonGap = 24.0f;
-    // Node/text sizes stay fixed in screen pixels regardless of tree scale, so labels
-    // and click targets stay readable/clickable even when the tree is scaled down to
-    // fit a smaller window.
+    // Base node radii at zoom=1 (the "fit whole tree" default). These scale with m_zoom
+    // (see NodeRadiusPx) so node spacing and node size shrink/grow together -- a fixed
+    // screen-pixel radius would make nodes overlap once zoomed out past their spacing.
+    // Clamped to a min/max pixel range so they never vanish or balloon at the extremes.
     static constexpr float kNodeRadius = 10.0f;
     static constexpr float kStartNodeRadius = 12.0f;
+    static constexpr float kMinNodeRadiusPx = 4.0f;
+    static constexpr float kMaxNodeRadiusPx = 22.0f;
 
     // Pan (left-drag) and zoom (wheel) range. minZoom is well below 1.0 so the tree can
     // shrink below its "fit whole tree" size too, not just enlarge past it.
@@ -224,7 +227,7 @@ public:
 
         for (const auto& node : PassiveTreeData::Nodes()) {
             sf::Vector2f pos = NodeScreenPos(layout, node);
-            float radius = (node.id == 0) ? kStartNodeRadius : kNodeRadius;
+            float radius = NodeRadiusPx(node.id == 0);
 
             sf::CircleShape circle(radius);
             circle.setOrigin({ radius, radius });
@@ -309,10 +312,15 @@ private:
         return layout.center + sf::Vector2f(node.x, node.y) * layout.scale;
     }
 
+    float NodeRadiusPx(bool isStart) const {
+        float base = isStart ? kStartNodeRadius : kNodeRadius;
+        return std::clamp(base * m_zoom, kMinNodeRadiusPx, kMaxNodeRadiusPx);
+    }
+
     int HitTestNode(const PanelLayout& layout, sf::Vector2f mouse) const {
         for (const auto& node : PassiveTreeData::Nodes()) {
             sf::Vector2f pos = NodeScreenPos(layout, node);
-            float radius = (node.id == 0 ? kStartNodeRadius : kNodeRadius) + 6.0f; // slack for easier clicking
+            float radius = NodeRadiusPx(node.id == 0) + 6.0f; // slack for easier clicking
             sf::Vector2f d = mouse - pos;
             if (d.x * d.x + d.y * d.y <= radius * radius) return node.id;
         }
