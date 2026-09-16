@@ -142,4 +142,42 @@ namespace ItemUIHelpers {
         default: return sf::Color::White;
         }
     }
+
+    // Cosmetic-only socket count (PoE2-style: only weapons/armour pieces have sockets,
+    // jewelry never does). There's no rune/gem-in-socket mechanic implemented yet -- this
+    // is purely a visual indicator of the item derived from its rarity, not a system.
+    inline int SocketCount(const ItemComponent& item) {
+        switch (item.slot) {
+        case EquipSlot::Weapon:
+        case EquipSlot::BodyArmour:
+        case EquipSlot::Helmet:
+        case EquipSlot::Gloves:
+        case EquipSlot::Boots:
+            break;
+        default:
+            return 0;
+        }
+        switch (item.rarity) {
+        case ItemRarity::Normal: return 0;
+        case ItemRarity::Magic: return 1;
+        case ItemRarity::Rare: return 2;
+        case ItemRarity::Unique: return 2;
+        default: return 0;
+        }
+    }
+
+    // Small empty circles along a cell's bottom edge representing SocketCount(). Shapes
+    // only (no text), so this doesn't need a font and can be shared as a free function.
+    inline void DrawSocketPips(sf::RenderTarget& target, float x, float y, int count) {
+        constexpr float kPipRadius = 3.0f;
+        constexpr float kPipGap = 3.0f;
+        for (int i = 0; i < count; ++i) {
+            sf::CircleShape pip(kPipRadius);
+            pip.setPosition({ x + static_cast<float>(i) * (kPipRadius * 2.0f + kPipGap), y });
+            pip.setFillColor(sf::Color(40, 40, 45));
+            pip.setOutlineColor(sf::Color(210, 210, 220));
+            pip.setOutlineThickness(1.0f);
+            target.draw(pip);
+        }
+    }
 }

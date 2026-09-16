@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <random>
 #include <algorithm>
@@ -267,6 +268,7 @@ public:
         }
 
         sf::Vector2f bagMouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+        const ItemComponent* hoveredBagItem = nullptr;
         for (size_t i = 0; i < inventory.items.size(); ++i) {
             const ItemComponent& item = inventory.items[i];
             if (item.gridCol < 0 || item.gridRow < 0) continue;
@@ -285,8 +287,18 @@ public:
             box.setOutlineThickness(hovered ? 2.0f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, ItemUIHelpers::ShortSlotCode(item.slot), 10, rc);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 10, rc);
             DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
+            ItemUIHelpers::DrawSocketPips(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 24.0f, ItemUIHelpers::SocketCount(item));
+
+            if (hovered) hoveredBagItem = &item;
+        }
+
+        // ホバーしたセルより後のセルに描き潰されないよう、ツールチップは
+        // バッグの全セルを描き終えたあとにまとめて描く。
+        if (hoveredBagItem) {
+            DrawItemTooltip(target, bagMouse, *hoveredBagItem);
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
@@ -442,8 +454,10 @@ private:
             box.setOutlineThickness(selected ? 2.5f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::ShortSlotCode(item.slot), 11, rc);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 11, rc);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+            ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
 
             if (hovered) {
                 hoveredItem = &item;
@@ -452,28 +466,71 @@ private:
         }
 
         if (hoveredItem) {
-            DrawShopTooltip(target, mouse, *hoveredItem, hoveredPrice);
+            DrawItemTooltip(target, mouse, *hoveredItem, hoveredPrice);
         }
     }
 
-    void DrawShopTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item, int price) {
-        std::string line1 = item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ")";
-        std::string line2 = ItemUIHelpers::SlotName(item.slot) + " - " + std::to_string(item.affixes.size()) + " mods - " + std::to_string(price) + "g";
+    std::string Truncate(const std::string& s, size_t maxLen) const {
+        if (s.size() <= maxLen) return s;
+        return s.substr(0, maxLen);
+    }
 
-        sf::Text probe1(*m_font, sf::String::fromUtf8(line1.begin(), line1.end()), 13);
-        sf::Text probe2(*m_font, sf::String::fromUtf8(line2.begin(), line2.end()), 12);
-        float w = (std::max)(probe1.getLocalBounds().size.x, probe2.getLocalBounds().size.x) + 20.0f;
-        float h = 44.0f;
+    // Full name/rarity/level/sockets/mods tooltip, shared by the shop grid (price >= 0:
+    // buy/buyback price shown) and the player's own bag (price < 0: sell value shown
+    // instead, since it's not for sale here).
+    void DrawItemTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item, int price = -1) {
+        struct Line { std::string text; sf::Color color; };
+        std::vector<Line> lines;
 
-        sf::RectangleShape box({ w, h });
-        box.setPosition({ mouse.x + 16.0f, mouse.y + 8.0f });
+        lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
+            " - iLvl " + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
+            sf::Color(190, 190, 190) });
+
+        int sockets = ItemUIHelpers::SocketCount(item);
+        if (sockets > 0) {
+            lines.push_back({ "Sockets: " + std::to_string(sockets), sf::Color(210, 210, 220) });
+        }
+
+        for (const auto& affix : item.affixes) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1) << (affix.value >= 0.0f ? "+" : "") << affix.value << " " << affix.label;
+            lines.push_back({ ss.str(), sf::Color(150, 200, 255) });
+        }
+
+        if (price >= 0) {
+            lines.push_back({ std::to_string(price) + "g", sf::Color(255, 215, 90) });
+        } else {
+            lines.push_back({ "Sell value: " + std::to_string(ItemFactory::SellValue(item)) + "g", sf::Color(200, 180, 120) });
+        }
+
+        float lineH = 18.0f;
+        float maxWidth = 0.0f;
+        for (const auto& line : lines) {
+            sf::Text probe(*m_font, sf::String::fromUtf8(line.text.begin(), line.text.end()), 13);
+            maxWidth = (std::max)(maxWidth, probe.getLocalBounds().size.x);
+        }
+
+        float boxW = maxWidth + 24.0f;
+        float boxH = static_cast<float>(lines.size()) * lineH + 16.0f;
+
+        sf::Vector2u winSize = target.getSize();
+        float x = mouse.x + 18.0f;
+        float y = mouse.y + 10.0f;
+        if (x + boxW > static_cast<float>(winSize.x) - 4.0f) x = mouse.x - boxW - 18.0f;
+        if (y + boxH > static_cast<float>(winSize.y) - 4.0f) y = static_cast<float>(winSize.y) - boxH - 4.0f;
+
+        sf::RectangleShape box({ boxW, boxH });
+        box.setPosition({ x, y });
         box.setFillColor(sf::Color(10, 10, 14, 235));
         box.setOutlineColor(sf::Color(150, 150, 160));
         box.setOutlineThickness(1.5f);
         target.draw(box);
 
-        DrawText(target, mouse.x + 26.0f, mouse.y + 14.0f, line1, 13, ItemUIHelpers::RarityColor(item.rarity));
-        DrawText(target, mouse.x + 26.0f, mouse.y + 32.0f, line2, 12, sf::Color(200, 200, 200));
+        for (size_t i = 0; i < lines.size(); ++i) {
+            DrawText(target, x + 12.0f, y + 8.0f + static_cast<float>(i) * lineH, lines[i].text, 13, lines[i].color);
+        }
     }
 
     void GenerateStock(int playerLevel) {

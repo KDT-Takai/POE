@@ -235,6 +235,7 @@ public:
                 const ItemComponent& item = *equipment.slots[static_cast<size_t>(def.slot)];
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, 7), 11, ItemUIHelpers::RarityColor(item.rarity));
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+                ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
                 if (hovered && !m_dragging) hoveredItem = &item;
             } else if (!hasItem) {
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y / 2.0f - 7.0f, def.label, 12, sf::Color(110, 110, 115));
@@ -273,8 +274,10 @@ public:
             box.setOutlineThickness(hovered ? 2.5f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::ShortSlotCode(item.slot), 11, rc);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 11, rc);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+            ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
 
             if (hovered && !m_dragging) {
                 hoveredItem = &item;
@@ -569,6 +572,11 @@ private:
         lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
             " - Lv" + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
             sf::Color(190, 190, 190) });
+
+        int sockets = ItemUIHelpers::SocketCount(item);
+        if (sockets > 0) {
+            lines.push_back({ "ソケット: " + std::to_string(sockets), sf::Color(210, 210, 220) });
+        }
 
         for (const auto& affix : item.affixes) {
             std::ostringstream ss;
