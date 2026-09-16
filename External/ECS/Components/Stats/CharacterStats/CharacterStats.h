@@ -59,6 +59,9 @@ struct CharacterStatsComponent {
     float evasion = 0.0f;
     float armour = 0.0f;
     float accuracy = 100.0f;
+    // No shield/block-granting equipment slot exists yet, so this stays 0 until one is
+    // added -- kept as a real stat (not hardcoded in the UI) so it's ready to wire up.
+    float blockChance = 0.0f;
 
     // Leech
     float leechPercent = 0.0f;

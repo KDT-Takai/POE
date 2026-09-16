@@ -100,6 +100,12 @@
 - Gold(ゴールド)は本家のキャラクターシートには存在しない情報のため削除(Vendor画面で確認可能)。
 - 本家に存在するBlock(ブロック率)・Charges(チャージ)・ダメージ回避/変換の内訳セクションは、対応するゲームシステム自体が本実装に無いため今回は追加していない(将来実装する場合の拡張余地として`ROADMAP`に記録)。
 
+**キャラクターシートの情報量をPoE2本家に合わせて拡張**: 「ライフ/ES/マナ/スピリットの量やアーマー/回避/ブロック/各耐性/DEX/INT/STR、ライフの詳細(最大値・秒間回復量合計)、ESも最大値と秒間回復、をPoE2を参考に増やして」との指摘。本家の実際の防御ステータス欄は最大値だけでなく秒間回復量も併記する仕様([Character screen | PoE Wiki](https://pathofexile.fandom.com/wiki/Character_screen)、[PoE 2 Guide: Character Sheet Explained](https://mobalytics.gg/poe-2/guides/character-sheet)等で確認)と分かったため、以下を追加:
+- **生命力/マナに秒間自動回復量を併記**: 既存の`CharacterStatsComponent::healthRegen`/`manaRegen`(いずれも実装済みの固定値、`SkillSystem::Update`が`currentHP += healthRegen * dt`のように毎フレーム適用)をそのまま表示に追加しただけで、新規ロジックは無い。
+- **エナジーシールドに秒間回復量を併記**: `StatusEffectSystem`の実装(被弾で`esRegenDelay=3.0f`にリセットされ、0まで減った後は`maxES * 0.33f`/秒で回復)に合わせて「回復 X/秒, 被弾から3秒後」と表記。
+- **ブロック率を新規追加**: 本実装には盾やブロック付与装備スロットが無く、ブロックを増加させる手段が一切無いため実質常に0%になるが、本家同様「実データとして持つ値をそのまま表示する」設計に合わせて`CharacterStatsComponent::blockChance`(初期値0.0f)を新設し表示に追加した(ハードコードした0%ではなく、将来ブロック源を実装した際にそのまま繋ぎ込める)。`CampaignManager::WriteStats`/`ReadStats`にも同時にシリアライズを追加(`label`と同じ保存漏れバグを繰り返さないため)。
+- Charges(帯電/激怒/勇敢チャージ)・ダメージ回避/変換の内訳は引き続き対応システム自体が無いため保留。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

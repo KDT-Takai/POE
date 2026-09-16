@@ -74,17 +74,23 @@ public:
         // 属性
         statText << "STR " << stats.str << "  DEX " << stats.dex << "  INT " << stats.intelligence << "\n\n";
 
-        // 主要ステータス(Life/Mana/Spirit/耐性)
-        statText << "生命力 " << stats.currentHP << "/" << stats.maxHP << "\n";
-        statText << "マナ " << stats.currentMP << "/" << stats.maxMP << "\n";
+        // 主要ステータス(Life/Mana/Spirit/Energy Shield/耐性) -- 本家同様、最大値だけでなく
+        // 秒間回復量も表示する。ESはStatusEffectSystemの実装(被弾後esRegenDelay=3秒が
+        // 経過してからmaxESの33%/秒で回復)に合わせて表記する。
+        statText << "生命力 " << stats.currentHP << "/" << stats.maxHP
+            << "  (自動回復 " << stats.healthRegen << "/秒)\n";
+        statText << "マナ " << stats.currentMP << "/" << stats.maxMP
+            << "  (自動回復 " << stats.manaRegen << "/秒)\n";
+        statText << "エナジーシールド " << stats.currentES << "/" << stats.maxES
+            << "  (回復 " << (stats.maxES * 0.33f) << "/秒, 被弾から3秒後)\n";
         statText << "スピリット " << stats.currentSpirit << "/" << stats.maxSpirit << "\n";
         statText << "耐性: 火 " << (stats.fireRes * 100.0f) << "% 冷気 " << (stats.iceRes * 100.0f)
             << "% 電気 " << (stats.lightningRes * 100.0f) << "% カオス " << (stats.chaosRes * 100.0f) << "%\n\n";
 
-        // 詳細な防御(Energy Shield/Armour/Evasion)
-        statText << "エナジーシールド " << stats.currentES << "/" << stats.maxES << "\n";
+        // 詳細な防御(Armour/Evasion/Block)
         statText << "アーマー " << stats.armour << "\n";
-        statText << "回避力 " << stats.evasion << "\n\n";
+        statText << "回避力 " << stats.evasion << "\n";
+        statText << "ブロック率 " << (stats.blockChance * 100.0f) << "%\n\n";
 
         // その他
         statText << "移動速度 " << stats.moveSpeed << "\n";

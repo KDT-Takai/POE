@@ -41,6 +41,7 @@ namespace {
         out << prefix << "evasion=" << s.evasion << "\n";
         out << prefix << "armour=" << s.armour << "\n";
         out << prefix << "accuracy=" << s.accuracy << "\n";
+        out << prefix << "blockChance=" << s.blockChance << "\n";
         out << prefix << "leechPercent=" << s.leechPercent << "\n";
         out << prefix << "leechRateCap=" << s.leechRateCap << "\n";
         out << prefix << "rarity=" << static_cast<int>(s.rarity) << "\n";
@@ -137,6 +138,7 @@ namespace {
         s.evasion = GetF(m, prefix + "evasion", s.evasion);
         s.armour = GetF(m, prefix + "armour", s.armour);
         s.accuracy = GetF(m, prefix + "accuracy", s.accuracy);
+        s.blockChance = GetF(m, prefix + "blockChance", s.blockChance);
         s.leechPercent = GetF(m, prefix + "leechPercent", s.leechPercent);
         s.leechRateCap = GetF(m, prefix + "leechRateCap", s.leechRateCap);
         s.rarity = static_cast<MonsterRarity>(GetI(m, prefix + "rarity", static_cast<int>(s.rarity)));
