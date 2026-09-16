@@ -144,6 +144,8 @@
 
 **フォローアップ: ノード円を少し小さく調整**。「もう少し円小さくていい」との指摘を受け、`kNodeRadius`10→7px・`kStartNodeRadius`12→9px、クランプ範囲も`kMinNodeRadiusPx`4→3px・`kMaxNodeRadiusPx`22→16pxへ縮小(比率は維持)。クリック判定の当たり半径は変えていない(見た目だけ小さくし、クリックのしやすさは維持)。
 
+**Escapeキーで全メニューを閉じられるように統一**。「基本的に何かしらのメニューはESCで抜けれるようにしといて」との指摘。従来は各パネルに個別の開閉キー(I/C/G/P/O/Vendorクリック)しかなく、Escapeで閉じる手段が無かった。`GameScene::Update`に、`awaitingRebind`でない時にEscapeが押されたら6つの全メニュー(CharacterSheet/Inventory/SkillGem/PassiveTree/Vendor/KeyBind)を`Close()`する処理を追加。`KeyBindSystem`は既にEscapeを「キー再割り当て待ち状態のキャンセル」に内部使用しており(`m_awaitingKey`時のみ)、これはパネル自体を閉じるものではないため、`!awaitingRebind`ガードで衝突を避けた(既存の他の開閉キー判定と同じガード)。Escapeは`Shared/NAMING.md`/`AI/DECISIONS.md`が定める「メニュー内の固定キー(Up/Down/Enter/Backspace等)」の仲間として扱い、`GameAction`(リバインド可能操作)には追加していない。
+
 **フォローアップ: `PoE2_仕様書.xlsx`を最新化**。「他に進める作業ある?」に対しユーザーが選択した項目。直近で追加したブロック率(汎用サフィックス化)・幕クリア耐性ペナルティの実装は、本家の仕様(Blockは盾専用/Act1-3+Cruel再攻略の6章構成)と意図的に異なる簡略実装のため、既存の「実装状況(2026-09時点)」行の慣例(セクション末尾へ`大分類`ごとに実装との乖離を1行で追記)に倣い、2行を新規追加(No 462: 02_プレイヤーキャラクター仕様、No 463: 12_マップ・ワールド)。前者はResistances/Block/Spell Suppressionの差分、後者はAct構成(6つの固有エリアの一本道 vs 本家のNormal+Cruel再攻略)と、両者を跨ぐ「章クリア時-10%×6章=-60%」という数値上の対応関係を記載。
 
 **フォローアップ: 耐性ペナルティ発生時のHUD通知を追加**。「他に進める作業ある?」に対しユーザーが選択した項目。それまでは幕クリアで耐性が-10%されても画面上に何も表示されず気付きにくかったため、`CampaignManager`に`ConsumePendingResPenaltyNotice(int&)`を新設(ペナルティ適用時に立てる`m_pendingResPenaltyNotice`フラグを1回だけ消費し、通算ペナルティ%を返す)。`GameScene`のプレイヤー生成直後(`CompleteCurrentZoneAndAdvance`でシーンが張り替わった後の新ゾーン読み込み時)でこれを呼び、trueが返れば`itemPickupSystem->lastMessage`に「幕クリア: 全耐性 -10% (通算 -X%)」を4秒間(通常のアイテム取得トースト2.5秒より長め、重要な情報のため)表示する。このフラグはディスクへ永続化しない(同一セッション内、幕クリア直後の1回だけ意味を持つ一時通知のため)。

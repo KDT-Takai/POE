@@ -198,6 +198,17 @@ void GameScene::Update() {
     // 自分自身は閉じ対象から除く。
     auto closeFreePanels = [&]() { characterSheetSystem->isOpen = false; inventorySystem->Close(); skillGemSystem->Close(); };
 
+    // Escape closes whatever menu(s) happen to be open (fixed key, not rebindable --
+    // same convention as Up/Down/Enter/Backspace navigation keys, see AI/DECISIONS.md).
+    // Guarded by !awaitingRebind so it doesn't fight KeyBindSystem's own use of Escape
+    // to cancel a pending "press a key to rebind" wait without closing the whole panel.
+    if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Escape)) {
+        closeFreePanels();
+        passiveTreeSystem->Close();
+        vendorSystem->Close();
+        keyBindSystem->Close();
+    }
+
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
         if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
