@@ -399,7 +399,7 @@ void GameScene::Update() {
         bool anyEnemyAlive = false;
 
         for (auto entity : enemyView) {
-            if (!registry->HasComponent<PlayerTag>(entity)) {
+            if (!registry->HasComponent<PlayerTag>(entity) && !registry->HasComponent<AllyTagComponent>(entity)) {
                 anyEnemyAlive = true;
                 break;
             }

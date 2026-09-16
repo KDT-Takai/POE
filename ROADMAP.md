@@ -4,6 +4,8 @@
 
 ## 済 (Done)
 
+**Permanent Minion生存中にゾーンクリア判定が成立しないバグを修正**。`PoE2_仕様書.xlsx`の実装調査中に発見。`GameScene::Update`のゾーンクリア判定(`View<CharacterStatsComponent>()`のうち`PlayerTag`を持たないエンティティが1体でもいれば「敵が残っている」とみなす実装)が、`AllyTagComponent`(Permanent Minion)を除外していなかったため、自分の召喚ミニオンが生存している間は敵を全滅させてもゾーンクリアと判定されなかった。判定条件へ`!registry->HasComponent<AllyTagComponent>(entity)`を追加して修正。
+
 **POE2型ジェムシステム完全実装指示への対応: 依存関係調査+4件の実バグ修正+Permanent Minion新規実装+デバッグツール**。ユーザーから「周辺システムが存在している前提を置かず、まずプロジェクト全体を調査してから足りない基盤も含めて実装せよ」という大規模指示(Skill/Support/Spirit Gem・Uncut Gem・Spirit予約・Support互換性・Skill Bar等、82項目)を受けた。実コードを調査した結果、ジェムシステム本体(Skill/Support/Spirit Gemの分離、Uncut Gem→インベントリ→Gemcutting→装着、Spirit予約/解放、Save/Load)は既にPoE2準拠で接続・動作していることを確認(前回までの複数回のセッションで実装済み)。全82項目を無条件に実装するとご指示自体の§77(重複システムの併設禁止)に反する規模になるため、調査結果を`System/Status/Used By/Missing Feature/Action`形式の依存関係表としてユーザーに提示し、実在する4件のバグ+新規機能2件に絞って承認を得た上で実装した(Trigger/Meta Skillの拡張余地確保は対象外)。
 - **①武器要件の発動時再チェック**: 従来`SkillGemSystem::AssignGem`でスロット割当時にのみ武器装備チェックがあり、装着後に武器を外しても発動を止める仕組みが無かった(=UIだけ制限して実処理は素通りする、ご指示§16で明示的に禁止されているパターン)。中央関数`SkillActivation::CanUseSkill`(新規`External/ECS/Systems/Skill/SkillActivationSystem.h`)を新設し、生存/有効/クールダウン/マナ/武器要件を一箇所で判定、`SkillSystem::Update`の実発動ゲートをこれに差し替えた(UIと実戦の判定式が乖離しないよう一元化、ご指示§63)。
 - **②MaxSpiritを装備から加算可能な汎用ステータスへ拡張+安全な再評価**: 従来`maxSpirit`は`EntitySpawner`が100固定で以後変化しない値だったため、「MaxSpirit低下時にReservationを安全に再評価する」ご指示§7の対象ケースが実質存在しなかった。`AffixStat::FlatSpirit`を新設し`EquipmentSystem::ApplyAffix/RemoveAffix`・`ItemFactory::SuffixPool`(装備サフィックスとしてロール可能)へ接続、既存の汎用Modifierパイプラインに乗せた。その上で`SpiritAuraSystem::ReevaluateReservations`を新設(予約合計を再計算し、Maxを超えていれば末尾スロットから自動OFF、Effect/Minion/Spirit予約が矛盾なく解放される)、`GameScene::Update`から毎フレーム呼び出す設計にした(装備変更/レベルアップ/パッシブ振り直し等、MaxSpiritを変えうる全箇所を個別にフックせず単一の安全弁として機能させる)。
