@@ -145,7 +145,9 @@ public:
             const SkillData& skill = skillComp.skills[i];
             std::string line = "[" + kSlotKeys[i] + "] " + (skill.isValid ? skill.name : "-- Empty --");
             if (skill.isValid) {
-                line += "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp)";
+                line += "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp";
+                if (DealsElementalDamage(skill.behaviorType)) line += ", " + ElementName(skill.element);
+                line += ")";
             }
 
             DrawText(target, panelX + 16.0f, y + L.rowHeight / 2.0f - 7.0f, Truncate(line, contentWidth, 12), 12,
@@ -210,6 +212,9 @@ public:
                 const GemDefinition* def = SkillGemData::Find(gemId);
                 if (!def) continue;
                 label = def->skill.name;
+                if (DealsElementalDamage(def->skill.behaviorType)) {
+                    label += " (" + ElementName(def->skill.element) + ")";
+                }
                 color = sf::Color(220, 220, 255);
             }
             DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
@@ -306,6 +311,35 @@ private:
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%.1f", value);
         return std::string(buf);
+    }
+
+    // True for behavior types that actually deal elemental damage -- Dash/Buff/Aura
+    // leave `element` at its unused default (Physical), so showing it there would be
+    // misleading (e.g. a Determination aura is not a "Physical" skill).
+    bool DealsElementalDamage(SkillBehaviorType type) const {
+        switch (type) {
+        case SkillBehaviorType::Melee:
+        case SkillBehaviorType::Projectile:
+        case SkillBehaviorType::AreaEffect:
+        case SkillBehaviorType::Spark:
+        case SkillBehaviorType::GroundSlam:
+        case SkillBehaviorType::LightningWarp:
+        case SkillBehaviorType::LightningBall:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    std::string ElementName(DamageElement element) const {
+        switch (element) {
+        case DamageElement::Physical: return "Physical";
+        case DamageElement::Fire: return "Fire";
+        case DamageElement::Cold: return "Cold";
+        case DamageElement::Lightning: return "Lightning";
+        case DamageElement::Chaos: return "Chaos";
+        default: return "";
+        }
     }
 
     // Clips str to fit within maxWidth pixels at the given font size, appending "...".
