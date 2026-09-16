@@ -26,8 +26,8 @@
 
 ## 主要機能とその場所
 
-- **キャンペーン進行（Act1-4/幕間/Endgame、ゾーン遷移、セーブ/ロード）**: `Programs/System/Campaign/CampaignManager.h/.cpp`
-- **エンドゲーム(ウェイストーン制マップ)**: 所持ウェイストーンは`External/ECS/Components/Item/Waystone.h`(`WaystoneInventoryComponent`: ティア1-15の所持数、`WaystonePickupComponent`: ドロップ)。マップを開く処理は`CampaignManager::OpenEndgameMap`と`GameScene::TryOpenEndgameMapFromHub`(拠点のポータルで最高ティアを消費)。ドロップは`CollisionSystem::TrySpawnWaystoneDrop`(ボス確定+1ティア、Rareは同ティア35%)。ティアによる耐性スケーリングは`ZoneBuilder::ApplyTierResistance`。
+- **進行管理(エンドゲームループのみ、ゾーン遷移、セーブ/ロード)**: `Programs/System/Campaign/CampaignManager.h/.cpp`。Act1-4/幕間のストーリーキャンペーンは廃止済み(`AI/DECISIONS.md`参照)、`m_acts`はエンドゲーム用の1要素のみを保持する。
+- **エンドゲーム(ウェイストーン制マップ、本作の唯一のゲームループ)**: 所持ウェイストーンは`External/ECS/Components/Item/Waystone.h`(`WaystoneInventoryComponent`: ティア1-15の所持数、`WaystonePickupComponent`: ドロップ)。マップを開く処理は`CampaignManager::OpenEndgameMap`と`GameScene::TryOpenEndgameMapFromHub`(拠点のポータルで最高ティアを消費)。ドロップは`CollisionSystem::TrySpawnWaystoneDrop`(ボス確定+1ティア、Rareは同ティア35%)。ティアによる耐性スケーリングは`ZoneBuilder::ApplyTierResistance`。プレイヤーは`EntitySpawner::CreatePlayer`でTier1ウェイストーンを1個所持した状態でエンドゲームハブから始まる。
 - **戦闘計算（命中率/Armour軽減/属性耐性/ES/Leech/状態異常発生率）**: `External/ECS/Systems/Combat/CombatMath.h`
 - **状態異常（Ignite/Chill/Freeze/Shock/Poison/Bleed/Stun）**: `External/ECS/Systems/Combat/StatusEffectSystem.h`, `External/ECS/Components/Combat/StatusEffects.h`
 - **装備（9スロット、affix、PowerScore比較）**: `External/ECS/Systems/Item/EquipmentSystem.h`, `External/ECS/Components/Item/Equipment.h`

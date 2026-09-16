@@ -1,8 +1,15 @@
 # ROADMAP
 
-2D ARPG (PoE2-style) — Act1-4 / Interludes / Endgame を目指す垂直スライス開発のロードマップ。
+2D ARPG (PoE2-style) — ウェイストーンでマップを開いてクリアするPoE2エンドゲームループの再現を目指す垂直スライス開発のロードマップ(2026-09-17: Act1-4/幕間キャンペーンを廃止し、エンドゲームループのみの構成へ方針転換)。
 
 ## 済 (Done)
+
+**Act1-4/幕間のストーリーキャンペーンを廃止し、ウェイストーン制エンドゲームループのみのゲームへ作り直した**。ユーザーから「今回のゲームはウェイストーンを入れてマップを開く→クリアを目指す、PoE2のエンドゲームだけを再現しよう」という方針転換の指示を受け、`AskUserQuestion`でスコープを確認したところ「Actキャンペーンを廃止し、エンドゲームループだけのゲームに作り直す」ことが確定した。調査の結果、エンドゲームループの仕組み自体(拠点→ウェイストーン消費→マップ生成→クリア→拠点、`CampaignManager::OpenEndgameMap`/`CompleteCurrentZoneAndAdvance`、`ZoneBuilder`のTierスケーリング)は既存実装で完成していたため、実質的な変更は「非エンドゲームの6幕(Act1/Act2/幕間I/Act3/Act4/幕間II)を`CampaignManager::BuildActs`から削除し、エンドゲームAct1つだけを残す」という削減作業のみで済んだ。
+- `CampaignManager::BuildActs`から6幕分の`ActDefinition`ブロック(合計20超のゾーン定義)を削除し、エンドゲーム(`地図の狭間`)のみを構築するように変更。プレイヤーは`EntitySpawner`が最初から持たせるTier1ウェイストーンで即座にマップへ挑戦できる。
+- 幕(Act)クリアに紐づいていた耐性ペナルティ機能(`m_pendingResPenaltyNotice`/`m_actsClearedForResPenalty`/`ConsumePendingResPenaltyNotice`、幕クリア毎に全耐性-10%)は、Act進行自体が無くなり二度と発動しない死んだコードになるため完全に削除した。`CampaignManager::CompleteCurrentZoneAndAdvance`もハブ↔マップの単純なトグルのみに簡素化。
+- `GameScene.cpp`の「タウンのポータルでEnter」処理と「Press Enterヒント」表示にあった`CurrentAct().isEndgame`の分岐(非エンドゲーム時の`AdvanceToNextZone`直接呼び出し/「Press Enter to proceed」表示)は、常にエンドゲームになったため到達不能コードとして削除し、常時`TryOpenEndgameMapFromHub()`/Waystone案内表示のみに一本化。
+- `AI/DECISIONS.md`の「進行構造(Act/エンドゲーム)」を書き換え、耐性ペナルティの決定事項を削除。`AI/STRUCTURE.md`のキャンペーン/エンドゲーム説明も更新。
+- ビルド確認済み(`/t:Build`、0エラー)。マップの種類は現状「歪んだ地図」1種類のみで、本家のような多数のMapタイプ(Crypt/Foundry等)の再現は今回のスコープ外(将来の拡張候補として`AI/DECISIONS.md`に明記)。
 
 **Permanent Minion生存中にゾーンクリア判定が成立しないバグを修正**。`PoE2_仕様書.xlsx`の実装調査中に発見。`GameScene::Update`のゾーンクリア判定(`View<CharacterStatsComponent>()`のうち`PlayerTag`を持たないエンティティが1体でもいれば「敵が残っている」とみなす実装)が、`AllyTagComponent`(Permanent Minion)を除外していなかったため、自分の召喚ミニオンが生存している間は敵を全滅させてもゾーンクリアと判定されなかった。判定条件へ`!registry->HasComponent<AllyTagComponent>(entity)`を追加して修正。
 

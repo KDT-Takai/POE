@@ -202,82 +202,9 @@ CampaignManager::CampaignManager() {
 void CampaignManager::BuildActs() {
     m_acts.clear();
 
-    // Act1: 海岸の章
-    {
-        ActDefinition act;
-        act.id = "act1";
-        act.displayName = "第一幕：海岸の章";
-        act.zones.push_back(MakeTown("act1_town", "漂着の野営地"));
-        act.zones.push_back(MakeCombat("act1_z1", "潮騒の浜辺", 50, 50, 15, 1.0f, 1.0f, "漂流者", sf::Color(60, 160, 160), DamageElement::Cold));
-        act.zones.push_back(MakeCombat("act1_z2", "朽ちた桟橋", 55, 55, 20, 1.1f, 1.1f, "漂流者", sf::Color(60, 160, 160), DamageElement::Cold));
-        act.zones.push_back(MakeCombat("act1_z3", "難破船の内部", 60, 60, 22, 1.2f, 1.2f, "呪われし船員", sf::Color(40, 120, 140), DamageElement::Cold));
-        act.zones.push_back(MakeBoss("act1_boss", "波止場の番人", 45, 45, 8, 1.2f, 1.2f, "漂流者", sf::Color(60, 160, 160),
-            "溺れの巨兵ドレウォス", 9.0f, 2.5f, sf::Color(20, 90, 120), DamageElement::Cold));
-        m_acts.push_back(act);
-    }
-
-    // Act2: 砂漠の章
-    {
-        ActDefinition act;
-        act.id = "act2";
-        act.displayName = "第二幕：砂漠の章";
-        act.zones.push_back(MakeTown("act2_town", "涸れ井戸の集落"));
-        act.zones.push_back(MakeCombat("act2_z1", "灼熱の砂丘", 60, 60, 18, 1.4f, 1.3f, "砂賊", sf::Color(200, 170, 80), DamageElement::Fire));
-        act.zones.push_back(MakeCombat("act2_z2", "埋没した神殿", 60, 60, 22, 1.5f, 1.4f, "神殿の守り手", sf::Color(180, 140, 60), DamageElement::Fire));
-        act.zones.push_back(MakeCombat("act2_z3", "盗賊の隠れ家", 65, 65, 24, 1.6f, 1.5f, "砂賊", sf::Color(200, 170, 80), DamageElement::Fire));
-        act.zones.push_back(MakeBoss("act2_boss", "神殿の最奥", 50, 50, 10, 1.6f, 1.5f, "神殿の守り手", sf::Color(180, 140, 60),
-            "砂の女王ネフェリス", 10.0f, 3.0f, sf::Color(220, 190, 40), DamageElement::Fire));
-        m_acts.push_back(act);
-    }
-
-    // 幕間I: 静寂の幕間
-    {
-        ActDefinition act;
-        act.id = "interlude1";
-        act.displayName = "幕間：静寂の幕間";
-        act.zones.push_back(MakeTown("interlude1_town", "隠れ家の避難所"));
-        act.zones.push_back(MakeCombat("interlude1_trial", "試練の回廊", 55, 55, 20, 1.7f, 1.6f, "彷徨う影", sf::Color(120, 100, 160), DamageElement::Chaos));
-        m_acts.push_back(act);
-    }
-
-    // Act3: 王都の章
-    {
-        ActDefinition act;
-        act.id = "act3";
-        act.displayName = "第三幕：王都の章";
-        act.zones.push_back(MakeTown("act3_town", "灰の門前町"));
-        act.zones.push_back(MakeCombat("act3_z1", "崩れた外壁", 65, 65, 20, 1.9f, 1.8f, "王都の兵", sf::Color(150, 60, 60)));
-        act.zones.push_back(MakeCombat("act3_z2", "地下墓地", 65, 65, 24, 2.0f, 1.9f, "蘇りし死者", sf::Color(120, 120, 120)));
-        act.zones.push_back(MakeCombat("act3_z3", "王城の広間", 70, 70, 26, 2.1f, 2.0f, "王都の兵", sf::Color(150, 60, 60)));
-        act.zones.push_back(MakeBoss("act3_boss", "玉座の間", 55, 55, 12, 2.1f, 2.0f, "王都の兵", sf::Color(150, 60, 60),
-            "堕ちた王グレイヴァルト", 12.0f, 3.5f, sf::Color(90, 20, 30)));
-        m_acts.push_back(act);
-    }
-
-    // Act4: 山嶺の章
-    {
-        ActDefinition act;
-        act.id = "act4";
-        act.displayName = "第四幕：山嶺の章";
-        act.zones.push_back(MakeTown("act4_town", "山麓の砦"));
-        act.zones.push_back(MakeCombat("act4_z1", "溶岩の亀裂", 70, 70, 22, 2.4f, 2.2f, "灰塵の獣", sf::Color(220, 110, 40), DamageElement::Fire));
-        act.zones.push_back(MakeCombat("act4_z2", "灰塵の洞窟", 70, 70, 26, 2.6f, 2.4f, "灰塵の獣", sf::Color(220, 110, 40), DamageElement::Fire));
-        act.zones.push_back(MakeCombat("act4_z3", "神々の座への道", 75, 75, 28, 2.8f, 2.6f, "山嶺の守護者", sf::Color(200, 90, 30), DamageElement::Fire));
-        act.zones.push_back(MakeBoss("act4_boss", "最果ての祭壇", 60, 60, 14, 2.8f, 2.6f, "山嶺の守護者", sf::Color(200, 90, 30),
-            "終焉の守護者イグナロス", 15.0f, 4.0f, sf::Color(255, 60, 20), DamageElement::Fire));
-        m_acts.push_back(act);
-    }
-
-    // 幕間II: 終端の幕間
-    {
-        ActDefinition act;
-        act.id = "interlude2";
-        act.displayName = "幕間：終端の幕間";
-        act.zones.push_back(MakeTown("interlude2_town", "終端の祭壇"));
-        act.zones.push_back(MakeCombat("interlude2_trial", "深淵の裂け目", 65, 65, 26, 3.0f, 2.8f, "深淵の眷属", sf::Color(80, 40, 120), DamageElement::Chaos));
-        m_acts.push_back(act);
-    }
-
+    // Act1-4/幕間のストーリーキャンペーンは廃止し、Waystone→Map→クリアのPoE2エンドゲーム
+    // ループのみを再現する構成にした(2026-09-17、ユーザー指示)。プレイヤーは最初から
+    // このエンドゲームハブでスタートする。
     // Endgame: 地図の狭間 (無限ループ、ティアで強くなる)
     {
         ActDefinition act;
@@ -310,44 +237,14 @@ bool CampaignManager::OpenEndgameMap(int tier) {
 
 void CampaignManager::CompleteCurrentZoneAndAdvance() {
     const auto& act = CurrentAct();
-
-    if (act.isEndgame) {
-        // The map's tier is chosen by which Waystone the player spends at the hub's map
-        // device (see OpenEndgameMap), not by an auto-incrementing counter here.
-        m_zoneIndex = (m_zoneIndex + 1) % static_cast<int>(act.zones.size());
-        return;
-    }
-
-    m_zoneIndex++;
-    if (m_zoneIndex >= static_cast<int>(act.zones.size())) {
-        m_zoneIndex = 0;
-        m_actIndex++;
-        // PoE2本家準拠: 幕(Act)を1つクリアするごとに全属性耐性へ-10%の永続ペナルティが
-        // 課される(カオス耐性は対象外)。装備の耐性要求度を段階的に引き上げる仕様で、
-        // 本実装は非エンドゲームの幕が6つ(Act1/Act2/幕間I/Act3/Act4/幕間II)あるため
-        // 全クリアで本家同様-60%になる。EquipmentSystem::RecalculateStatsは毎回
-        // `live = equipment.baseStats`から再構築するため、baseStats側に加算しないと
-        // 次の装備変更で消えてしまう(既存のレベルアップ/パッシブ加点と同じ仕組み)。
-        m_savedEquipment.baseStats.fireRes -= 0.10f;
-        m_savedEquipment.baseStats.iceRes -= 0.10f;
-        m_savedEquipment.baseStats.lightningRes -= 0.10f;
-        m_actsClearedForResPenalty++;
-        m_pendingResPenaltyNotice = true;
-        if (m_actIndex >= static_cast<int>(m_acts.size())) {
-            m_actIndex = static_cast<int>(m_acts.size()) - 1; // Endgameに留まる
-        }
-    }
-}
-
-bool CampaignManager::ConsumePendingResPenaltyNotice(int& outTotalPenaltyPercent) {
-    if (!m_pendingResPenaltyNotice) return false;
-    m_pendingResPenaltyNotice = false;
-    outTotalPenaltyPercent = m_actsClearedForResPenalty * 10;
-    return true;
+    // The map's tier is chosen by which Waystone the player spends at the hub's map
+    // device (see OpenEndgameMap), not by an auto-incrementing counter here. Only one
+    // Act (the endgame loop) exists, so this always just toggles hub(0)<->map(1).
+    m_zoneIndex = (m_zoneIndex + 1) % static_cast<int>(act.zones.size());
 }
 
 void CampaignManager::ReturnToLastTown() {
-    m_zoneIndex = 0; // 各幕/幕間/エンドゲームの先頭は必ずタウン
+    m_zoneIndex = 0; // エンドゲームハブは常にindex0
     if (m_hasSavedPlayer) {
         m_savedStats.currentHP = m_savedStats.maxHP;
         m_savedStats.currentMP = m_savedStats.maxMP;

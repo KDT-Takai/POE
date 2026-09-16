@@ -113,12 +113,6 @@ GameScene::GameScene() {
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
-
-    int totalResPenaltyPercent = 0;
-    if (campaign.ConsumePendingResPenaltyNotice(totalResPenaltyPercent)) {
-        itemPickupSystem->lastMessage = "幕クリア: 全耐性 -10% (通算 -" + std::to_string(totalResPenaltyPercent) + "%)";
-        itemPickupSystem->messageTimer = 4.0f;
-    }
 }
 
 void GameScene::AdvanceToNextZone() {
@@ -384,12 +378,7 @@ void GameScene::Update() {
 
                 if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
                     InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
-                    if (CampaignManager::Instance().CurrentAct().isEndgame) {
-                        TryOpenEndgameMapFromHub();
-                    } else {
-                        spdlog::info("Entering next zone.");
-                        AdvanceToNextZone();
-                    }
+                    TryOpenEndgameMapFromHub();
                     return;
                 }
             }
@@ -441,11 +430,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
         if (m_playerNearPortal) {
-            if (CampaignManager::Instance().CurrentAct().isEndgame) {
-                hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
-            } else {
-                hudLine = "Press Enter to proceed";
-            }
+            hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
         }
         else if (m_playerNearVendor) hudLine = "Click the merchant to trade";
     } else {
