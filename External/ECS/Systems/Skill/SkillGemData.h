@@ -134,6 +134,30 @@ private:
         discipline.isValid = true;
         gems.push_back({ 9, discipline });
 
+        // Fire/Chaos were the only two DamageElement values with no active skill gem
+        // dealing that type (Physical/Lightning/Cold were already covered above), even
+        // though monsters and item resistances both use all 4 elements.
+        SkillData fireball;
+        fireball.name = "Fireball";
+        fireball.behaviorType = SkillBehaviorType::AreaEffect;
+        fireball.cooldownTime = 5.0f;
+        fireball.mpCost = 28;
+        fireball.damage = 100.0f; // % of atk, matches Nova's convention
+        fireball.range = 160.0f;
+        fireball.element = DamageElement::Fire;
+        fireball.isValid = true;
+        gems.push_back({ 10, fireball });
+
+        SkillData chaosBolt;
+        chaosBolt.name = "Chaos Bolt";
+        chaosBolt.behaviorType = SkillBehaviorType::Projectile;
+        chaosBolt.cooldownTime = 0.5f;
+        chaosBolt.mpCost = 6;
+        chaosBolt.damage = 130.0f; // % of atk, matches Frost Bolt's single-target convention
+        chaosBolt.element = DamageElement::Chaos;
+        chaosBolt.isValid = true;
+        gems.push_back({ 11, chaosBolt });
+
         return gems;
     }
 };
