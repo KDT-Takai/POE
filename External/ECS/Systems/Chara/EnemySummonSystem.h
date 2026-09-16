@@ -42,8 +42,16 @@ public:
             addStats.maxHP *= summoner.statScale;
             addStats.currentHP = addStats.maxHP;
             addStats.atk *= summoner.statScale;
+            // CreateEnemy defaults to Physical/red; without this every summon looks and
+            // hits the same regardless of the summoner's zone-themed element (e.g. a
+            // Chaos-zone summoner's adds would deal Physical instead of Chaos damage).
+            addStats.contactDamageType = stats.contactDamageType;
             addStats.name = "召喚された" + stats.name;
             add.AddComponent(TagComponent{ addStats.name });
+
+            if (registry.HasComponent<CircleComponent>(entity)) {
+                add.GetComponent<CircleComponent>().color = registry.GetComponent<CircleComponent>(entity).color;
+            }
 
             summoner.activeSummonIds.push_back(add.GetID());
             summoner.currentCooldown = summoner.summonInterval;
