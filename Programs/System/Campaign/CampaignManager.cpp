@@ -259,6 +259,7 @@ void CampaignManager::ResetCampaign() {
     m_hasSavedPlayer = false;
     m_savedEquipment = EquipmentComponent{};
     m_savedInventory.clear();
+    m_savedStash.clear();
     m_savedPassiveTree.clear();
     m_savedWaystones.fill(0);
 }
@@ -302,6 +303,12 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
     for (size_t i = 0; i < m_savedInventory.size(); ++i) {
         std::string prefix = "inventory.item" + std::to_string(i) + ".";
         WriteItem(out, prefix, m_savedInventory[i]);
+    }
+
+    out << "stash.count=" << m_savedStash.size() << "\n";
+    for (size_t i = 0; i < m_savedStash.size(); ++i) {
+        std::string prefix = "stash.item" + std::to_string(i) + ".";
+        WriteItem(out, prefix, m_savedStash[i]);
     }
 
     out << "passiveTree.count=" << m_savedPassiveTree.size() << "\n";
@@ -383,6 +390,15 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     for (int i = 0; i < inventoryCount; ++i) {
         std::string prefix = "inventory.item" + std::to_string(i) + ".";
         m_savedInventory.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
+    }
+
+    // Pre-stash saves have no "stash.count" key -- defaults to an empty stash, same
+    // fallback convention as the other post-launch additions above.
+    m_savedStash.clear();
+    int stashCount = GetI(kv, "stash.count", 0);
+    for (int i = 0; i < stashCount; ++i) {
+        std::string prefix = "stash.item" + std::to_string(i) + ".";
+        m_savedStash.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
     }
 
     m_savedPassiveTree.clear();

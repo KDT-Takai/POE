@@ -47,8 +47,11 @@ namespace ItemUIHelpers {
 
     // True if the WxH region at (col,row) doesn't run off the grid or overlap any
     // already-placed item (skipping ignoreIndex, e.g. the item currently being dragged).
-    inline bool BagRegionFree(const std::vector<ItemComponent>& items, int col, int row, int w, int h, int ignoreIndex = -1) {
-        if (col < 0 || row < 0 || col + w > kBagGridCols || row + h > kBagGridRows) return false;
+    // cols/rows default to the player's bag size; StashSystem passes its own (larger)
+    // grid dimensions to reuse this same placement logic for a differently-sized grid.
+    inline bool BagRegionFree(const std::vector<ItemComponent>& items, int col, int row, int w, int h, int ignoreIndex = -1,
+        int cols = kBagGridCols, int rows = kBagGridRows) {
+        if (col < 0 || row < 0 || col + w > cols || row + h > rows) return false;
         for (size_t i = 0; i < items.size(); ++i) {
             if (static_cast<int>(i) == ignoreIndex) continue;
             const ItemComponent& other = items[i];
@@ -61,12 +64,13 @@ namespace ItemUIHelpers {
         return true;
     }
 
-    // First (row-major) free spot for a w x h item. Returns false if the bag has no
+    // First (row-major) free spot for a w x h item. Returns false if the grid has no
     // room, e.g. an "inventory full" condition now depends on shape, not just count.
-    inline bool FindBagFreeSpace(const std::vector<ItemComponent>& items, int w, int h, int& outCol, int& outRow) {
-        for (int row = 0; row <= kBagGridRows - h; ++row) {
-            for (int col = 0; col <= kBagGridCols - w; ++col) {
-                if (BagRegionFree(items, col, row, w, h)) {
+    inline bool FindBagFreeSpace(const std::vector<ItemComponent>& items, int w, int h, int& outCol, int& outRow,
+        int cols = kBagGridCols, int rows = kBagGridRows) {
+        for (int row = 0; row <= rows - h; ++row) {
+            for (int col = 0; col <= cols - w; ++col) {
+                if (BagRegionFree(items, col, row, w, h, -1, cols, rows)) {
                     outCol = col;
                     outRow = row;
                     return true;
@@ -76,15 +80,15 @@ namespace ItemUIHelpers {
         return false;
     }
 
-    // Assigns bag grid positions to any item that doesn't have one yet (gridCol < 0):
+    // Assigns grid positions to any item that doesn't have one yet (gridCol < 0):
     // freshly loaded saves, or an item added by a code path that forgot to place it.
-    // Shared by InventorySystem and VendorSystem since both render the same bag.
-    inline void NormalizeBagPlacement(std::vector<ItemComponent>& items) {
+    // Shared by InventorySystem/VendorSystem (bag) and StashSystem (stash grid).
+    inline void NormalizeBagPlacement(std::vector<ItemComponent>& items, int cols = kBagGridCols, int rows = kBagGridRows) {
         for (auto& item : items) {
             if (item.gridCol >= 0 && item.gridRow >= 0) continue;
             sf::Vector2i sz = ItemGridSize(item.slot);
             int col, row;
-            if (FindBagFreeSpace(items, sz.x, sz.y, col, row)) {
+            if (FindBagFreeSpace(items, sz.x, sz.y, col, row, cols, rows)) {
                 item.gridCol = col;
                 item.gridRow = row;
             }

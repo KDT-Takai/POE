@@ -13,13 +13,13 @@
 #include "../../ECS/Components/Chara/AreaAttacker.h"
 #include "../../ECS/Components/Chara/Summoner.h"
 #include "../../ECS/Components/Chara/Charger.h"
+#include "TownNpc.h"
 
 struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
     bool hasPortal = false;
     sf::Vector2f portalPos{ 0.f, 0.f };
-    bool hasVendor = false;
-    sf::Vector2f vendorPos{ 0.f, 0.f };
+    std::vector<TownNpcSpawn> townNpcs;
 };
 
 class ZoneBuilder {
@@ -43,10 +43,10 @@ public:
             result.hasPortal = true;
             result.portalPos = goalPos;
 
-            sf::Vector2f vendorPos(static_cast<float>(map.width / 2) * map.tileSize, static_cast<float>(map.height / 2) * map.tileSize);
-            SpawnVendor(registry, vendorPos);
-            result.hasVendor = true;
-            result.vendorPos = vendorPos;
+            result.townNpcs = PlaceTownNpcs(map, startPos, goalPos);
+            for (const auto& npc : result.townNpcs) {
+                SpawnNpcMarker(registry, npc.pos, npc.kind);
+            }
 
             return result;
         }
@@ -238,10 +238,58 @@ private:
         portal.AddComponent(InteractableComponent{ InteractType::Portal, true, false, false, -1 });
     }
 
-    static void SpawnVendor(Registry& registry, sf::Vector2f pos) {
-        auto vendor = registry.CreateEntityObject();
-        vendor.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
-        vendor.AddComponent(CircleComponent{ 20.0f, sf::Color(80, 200, 255), true });
-        vendor.AddComponent(TagComponent{ "Vendor" });
+    static void SpawnNpcMarker(Registry& registry, sf::Vector2f pos, TownNpcKind kind) {
+        auto npc = registry.CreateEntityObject();
+        npc.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
+        switch (kind) {
+        case TownNpcKind::ItemVendor:
+            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(80, 200, 255), true });
+            npc.AddComponent(TagComponent{ "Vendor" });
+            break;
+        case TownNpcKind::WaystoneVendor:
+            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(200, 150, 255), true });
+            npc.AddComponent(TagComponent{ "Waystone Vendor" });
+            break;
+        case TownNpcKind::Stash:
+            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(150, 110, 60), true });
+            npc.AddComponent(TagComponent{ "Stash" });
+            break;
+        }
+    }
+
+    // Picks well-separated walkable spots for the town's NPCs (item Vendor, Waystone
+    // Vendor, Stash), avoiding the player's spawn point and the portal so nothing spawns
+    // on top of either. Falls back to the map center for any NPC that couldn't find a
+    // spread-out spot (e.g. a very small/cramped town layout).
+    static std::vector<TownNpcSpawn> PlaceTownNpcs(const MapComponent& map, sf::Vector2f avoidA, sf::Vector2f avoidB) {
+        std::vector<sf::Vector2f> candidates = MapGenerator::GetWalkablePositions(map);
+        float minAvoidDist = map.tileSize * 3.0f;
+        candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](const sf::Vector2f& p) {
+            return Distance(p, avoidA) < minAvoidDist || Distance(p, avoidB) < minAvoidDist;
+            }), candidates.end());
+
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(candidates.begin(), candidates.end(), g);
+
+        sf::Vector2f fallback(static_cast<float>(map.width / 2) * map.tileSize, static_cast<float>(map.height / 2) * map.tileSize);
+        std::vector<TownNpcKind> kinds = { TownNpcKind::ItemVendor, TownNpcKind::WaystoneVendor, TownNpcKind::Stash };
+        std::vector<TownNpcSpawn> result;
+        float minSeparation = map.tileSize * 4.0f;
+
+        for (TownNpcKind kind : kinds) {
+            sf::Vector2f chosen = fallback;
+            bool found = false;
+            for (const auto& candidate : candidates) {
+                bool farEnough = true;
+                for (const auto& placed : result) {
+                    if (Distance(candidate, placed.pos) < minSeparation) { farEnough = false; break; }
+                }
+                if (farEnough) { chosen = candidate; found = true; break; }
+            }
+            if (!found) chosen = fallback;
+            result.push_back({ kind, chosen });
+        }
+        return result;
     }
 };

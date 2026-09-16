@@ -54,6 +54,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
     std::vector<ItemComponent> m_savedInventory;
+    std::vector<ItemComponent> m_savedStash;
     std::vector<int> m_savedPassiveTree;
     std::vector<OwnedGemInstance> m_savedOwnedGems;
     std::vector<PendingUncutGem> m_savedPendingUncutGems;
@@ -95,6 +96,9 @@ public:
 
     void SaveInventory(const std::vector<ItemComponent>& items) { m_savedInventory = items; }
     const std::vector<ItemComponent>& GetSavedInventory() const { return m_savedInventory; }
+
+    void SaveStash(const std::vector<ItemComponent>& items) { m_savedStash = items; }
+    const std::vector<ItemComponent>& GetSavedStash() const { return m_savedStash; }
 
     void SavePassiveTree(const std::vector<int>& nodeIds) { m_savedPassiveTree = nodeIds; }
     const std::vector<int>& GetSavedPassiveTree() const { return m_savedPassiveTree; }

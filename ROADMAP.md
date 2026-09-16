@@ -4,6 +4,13 @@
 
 ## 済 (Done)
 
+**町(エンドゲームハブ)にNPCを複数配置し、Waystone専売NPCとStash(アイテム保管庫)を新設**。「町を豪華にしていこう。NPCを複数設置。現在のアイテムを売るタイプと、ウェイストーンだけを売るタイプ、あとスタッシュタブを用意しよう」という指示を受けて実装。
+- `ZoneBuilder::SpawnVendor`(単一位置)を`PlaceTownNpcs`へ汎用化し、`MapGenerator::GetWalkablePositions`から互いに距離を取った3箇所(アイテムVendor/Waystone Vendor/Stash)を選んで配置するように変更(`TownNpcKind`+座標、新規`Programs/Game/GameScene/Zone/TownNpc.h`)。`GameScene`側も単数の`m_hasVendor/m_vendorPos/m_playerNearVendor`等を`m_townNpcs`(vector)+`m_nearNpcIndex`へ汎用化し、近接リング表示・クリック判定・該当UIの開閉(既存の`vendorSystem`に加え`waystoneVendorSystem`/`stashSystem`)を3種共通ロジックで処理するようにした。
+- 新規`WaystoneVendorSystem`: Waystoneはアイテムではなくティア別カウント(`WaystoneInventoryComponent`)なので、既存の装備アイテム前提の`VendorSystem`とは別実装にした。全15ティアを一覧表示し、ゴールド(`20+tier*20`)のみで購入(Buyback無し、アンロック制ではなく価格でティアをゲート)。
+- 新規`StashSystem`+`StashComponent`(`External/ECS/Components/Item/Stash.h`、10x8=80マス): バッグ(`InventoryComponent`)とは別の常設ストレージ。左にStashグリッド・右にバッグを並べ、双方向ドラッグでアイテムを移動する(VendorSystemの「バッグ→左パネルへドラッグ」の見た目を踏襲)。`ItemUIHelpers::BagRegionFree/FindBagFreeSpace/NormalizeBagPlacement`はバッグの6x4グリッドに固定実装だったため、cols/rows引数(デフォルトはバッグのまま)を追加してStashの10x8グリッドでも再利用できるよう汎用化した。
+- Stashの中身は`CampaignManager`に`stash.count`/`stash.item{i}.*`として永続化(マップ移動・死亡をまたいで保持、既存の`inventory.*`と全く同じ書式)。
+- ビルド確認済み(`/t:Build`、0エラー)。起動確認(クラッシュなし)も実施。ただし実際のマウス操作によるプレイテスト(町でNPC3体に話しかけて売買/保管が正しく動くか)は本セッションの制約上未実施。
+
 **Act1-4/幕間のストーリーキャンペーンを廃止し、ウェイストーン制エンドゲームループのみのゲームへ作り直した**。ユーザーから「今回のゲームはウェイストーンを入れてマップを開く→クリアを目指す、PoE2のエンドゲームだけを再現しよう」という方針転換の指示を受け、`AskUserQuestion`でスコープを確認したところ「Actキャンペーンを廃止し、エンドゲームループだけのゲームに作り直す」ことが確定した。調査の結果、エンドゲームループの仕組み自体(拠点→ウェイストーン消費→マップ生成→クリア→拠点、`CampaignManager::OpenEndgameMap`/`CompleteCurrentZoneAndAdvance`、`ZoneBuilder`のTierスケーリング)は既存実装で完成していたため、実質的な変更は「非エンドゲームの6幕(Act1/Act2/幕間I/Act3/Act4/幕間II)を`CampaignManager::BuildActs`から削除し、エンドゲームAct1つだけを残す」という削減作業のみで済んだ。
 - `CampaignManager::BuildActs`から6幕分の`ActDefinition`ブロック(合計20超のゾーン定義)を削除し、エンドゲーム(`地図の狭間`)のみを構築するように変更。プレイヤーは`EntitySpawner`が最初から持たせるTier1ウェイストーンで即座にマップへ挑戦できる。
 - 幕(Act)クリアに紐づいていた耐性ペナルティ機能(`m_pendingResPenaltyNotice`/`m_actsClearedForResPenalty`/`ConsumePendingResPenaltyNotice`、幕クリア毎に全耐性-10%)は、Act進行自体が無くなり二度と発動しない死んだコードになるため完全に削除した。`CampaignManager::CompleteCurrentZoneAndAdvance`もハブ↔マップの単純なトグルのみに簡素化。

@@ -48,6 +48,8 @@ GameScene::GameScene() {
 	inventorySystem = std::make_shared<InventorySystem>();
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
 	vendorSystem = std::make_shared<VendorSystem>();
+	waystoneVendorSystem = std::make_shared<WaystoneVendorSystem>();
+	stashSystem = std::make_shared<StashSystem>();
 	skillGemSystem = std::make_shared<SkillGemSystem>();
 	gemIdentifySystem = std::make_shared<GemIdentifySystem>();
 	keyBindSystem = std::make_shared<KeyBindSystem>();
@@ -60,8 +62,7 @@ GameScene::GameScene() {
     ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame);
     m_hasPortal = built.hasPortal;
     m_portalPos = built.portalPos;
-    m_hasVendor = built.hasVendor;
-    m_vendorPos = built.vendorPos;
+    m_townNpcs = built.townNpcs;
 
     auto player = EntitySpawner::CreatePlayer(*registry, built.playerSpawn.x, built.playerSpawn.y);
     if (player) {
@@ -73,6 +74,7 @@ GameScene::GameScene() {
             equipment.baseStats = campaign.GetSavedEquipment().baseStats;
             EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
+            player.GetComponent<StashComponent>().items = campaign.GetSavedStash();
             player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
 
             // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
@@ -126,6 +128,9 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<InventoryComponent>(playerEntity)) {
         campaign.SaveInventory(registry->GetComponent<InventoryComponent>(playerEntity).items);
     }
+    if (registry->HasComponent<StashComponent>(playerEntity)) {
+        campaign.SaveStash(registry->GetComponent<StashComponent>(playerEntity).items);
+    }
     if (registry->HasComponent<PassiveTreeComponent>(playerEntity)) {
         campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);
     }
@@ -167,6 +172,24 @@ std::string GameScene::HeldWaystoneSummary() const {
         summary += "T" + std::to_string(t) + "x" + std::to_string(count);
     }
     return summary.empty() ? "none" : summary;
+}
+
+sf::Color GameScene::NpcRingColor(TownNpcKind kind) {
+    switch (kind) {
+    case TownNpcKind::ItemVendor: return sf::Color(80, 200, 255, 140);
+    case TownNpcKind::WaystoneVendor: return sf::Color(200, 150, 255, 140);
+    case TownNpcKind::Stash: return sf::Color(150, 110, 60, 140);
+    default: return sf::Color(200, 200, 200, 140);
+    }
+}
+
+std::string GameScene::NpcHudHint(TownNpcKind kind) {
+    switch (kind) {
+    case TownNpcKind::ItemVendor: return "Click the merchant to trade";
+    case TownNpcKind::WaystoneVendor: return "Click the Waystone vendor to buy Waystones";
+    case TownNpcKind::Stash: return "Click the stash to store items";
+    default: return "";
+    }
 }
 
 // Endgame hub's map device: spends the player's highest-tier held Waystone to open a
@@ -216,52 +239,71 @@ void GameScene::Update() {
         closeFreePanels();
         passiveTreeSystem->Close();
         vendorSystem->Close();
+        waystoneVendorSystem->Close();
+        stashSystem->Close();
         keyBindSystem->Close();
         gemIdentifySystem->Close();
     }
 
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::TogglePassiveTree))) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     // PoE2同様、NPCへの話しかけは左クリックのみ(Bキーの「話しかける」操作は廃止)。
-    // 商人本体にカーソルが乗っているかは常時判定し、Render側で当たり判定の輪を
+    // NPC本体にカーソルが乗っているかは常時判定し、Render側で当たり判定の輪を
     // 表示することでクリック可能な範囲を視覚的に分かるようにする。
-    m_hoveringVendor = false;
-    m_clickedOnVendor = false;
-    if (m_hasVendor && m_playerNearVendor && !vendorSystem->isOpen) {
-        sf::Vector2f mouseWorldForVendor = InputManager::Instance().GetMouseWorldPosition();
-        float vdx = mouseWorldForVendor.x - m_vendorPos.x;
-        float vdy = mouseWorldForVendor.y - m_vendorPos.y;
-        m_hoveringVendor = (vdx * vdx + vdy * vdy) < (kVendorClickRadius * kVendorClickRadius);
-        m_clickedOnVendor = m_hoveringVendor && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
+    m_hoveringNpc = false;
+    m_clickedOnNpc = false;
+    bool anyNpcPanelOpen = vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen;
+    if (m_nearNpcIndex >= 0 && !anyNpcPanelOpen) {
+        sf::Vector2f mouseWorldForNpc = InputManager::Instance().GetMouseWorldPosition();
+        sf::Vector2f npcPos = m_townNpcs[m_nearNpcIndex].pos;
+        float vdx = mouseWorldForNpc.x - npcPos.x;
+        float vdy = mouseWorldForNpc.y - npcPos.y;
+        m_hoveringNpc = (vdx * vdx + vdy * vdy) < (kVendorClickRadius * kVendorClickRadius);
+        m_clickedOnNpc = m_hoveringNpc && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
     }
-    if (m_clickedOnVendor) {
-        int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
-            ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
-        vendorSystem->Toggle(playerLevel);
-        if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+    if (m_clickedOnNpc) {
+        switch (m_townNpcs[m_nearNpcIndex].kind) {
+        case TownNpcKind::ItemVendor: {
+            int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
+                ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
+            vendorSystem->Toggle(playerLevel);
+            if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
+            break;
+        }
+        case TownNpcKind::WaystoneVendor:
+            waystoneVendorSystem->Toggle();
+            if (waystoneVendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); stashSystem->Close(); }
+            break;
+        case TownNpcKind::Stash:
+            stashSystem->Toggle();
+            if (stashSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); }
+            break;
+        }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::O)) {
         keyBindSystem->Toggle();
-        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); }
+        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
     }
     keyBindSystem->Update(*registry, dt);
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
+    waystoneVendorSystem->Update(*registry, dt);
+    stashSystem->Update(*registry, dt);
     skillGemSystem->Update(*registry, dt, *gemIdentifySystem);
     gemIdentifySystem->Update(*registry, dt);
 
@@ -270,7 +312,7 @@ void GameScene::Update() {
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
     // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。未鑑定ジェムの
     // 選択画面(GemIdentifySystem)も選んでいる間は戦闘が進まないようポーズ系に含める。
-    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
+    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
     // 非ポーズ系メニュー(インベントリ/キャラクターシート/スキルジェム)はゲームを
     // 止めないので、開いている間もフィールド上でのスキル発動クリックは通したい。
     // マウスが実際にそのパネルの上に重なっている時だけクリックをUI側へ譲る
@@ -298,7 +340,7 @@ void GameScene::Update() {
 
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnVendor);
+        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnNpc);
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N
@@ -360,14 +402,17 @@ void GameScene::Update() {
     }
     if (m_zoneKind == ZoneKind::Town) {
         m_playerNearPortal = false;
-        m_playerNearVendor = false;
+        m_nearNpcIndex = -1;
         if (registry->HasComponent<TransformComponent>(playerEntity)) {
             auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
 
-            if (m_hasVendor) {
-                float vdx = trans.position.x - m_vendorPos.x;
-                float vdy = trans.position.y - m_vendorPos.y;
-                m_playerNearVendor = (vdx * vdx + vdy * vdy) < (100.0f * 100.0f);
+            for (size_t i = 0; i < m_townNpcs.size(); ++i) {
+                float vdx = trans.position.x - m_townNpcs[i].pos.x;
+                float vdy = trans.position.y - m_townNpcs[i].pos.y;
+                if ((vdx * vdx + vdy * vdy) < (100.0f * 100.0f)) {
+                    m_nearNpcIndex = static_cast<int>(i);
+                    break;
+                }
             }
 
             if (m_hasPortal) {
@@ -412,15 +457,17 @@ void GameScene::Render(sf::RenderTarget& target) {
     sparkRenderSystem->Render(*registry, target);
 	healthBarRenderSystem->Render(*registry, target);
 
-    // 商人がクリック可能な範囲を視覚的に示す輪(近づいている間のみ表示、
+    // NPCがクリック可能な範囲を視覚的に示す輪(近づいている間のみ表示、
     // カーソルが範囲内なら明るく強調してクリックできることが分かるようにする)。
-    if (m_hasVendor && m_playerNearVendor && !vendorSystem->isOpen) {
+    bool anyNpcPanelOpenForRing = vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen;
+    if (m_nearNpcIndex >= 0 && !anyNpcPanelOpenForRing) {
         sf::CircleShape ring(kVendorClickRadius);
         ring.setOrigin({ kVendorClickRadius, kVendorClickRadius });
-        ring.setPosition(m_vendorPos);
+        ring.setPosition(m_townNpcs[m_nearNpcIndex].pos);
         ring.setFillColor(sf::Color::Transparent);
         ring.setOutlineThickness(2.0f);
-        ring.setOutlineColor(m_hoveringVendor ? sf::Color(255, 255, 120, 220) : sf::Color(80, 200, 255, 140));
+        sf::Color baseColor = NpcRingColor(m_townNpcs[m_nearNpcIndex].kind);
+        ring.setOutlineColor(m_hoveringNpc ? sf::Color(255, 255, 120, 220) : baseColor);
         target.draw(ring);
     }
 
@@ -432,7 +479,7 @@ void GameScene::Render(sf::RenderTarget& target) {
         if (m_playerNearPortal) {
             hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
         }
-        else if (m_playerNearVendor) hudLine = "Click the merchant to trade";
+        else if (m_nearNpcIndex >= 0) hudLine = NpcHudHint(m_townNpcs[m_nearNpcIndex].kind);
     } else {
         int aliveEnemies = 0;
         auto enemyView = registry->View<CharacterStatsComponent>();
@@ -562,6 +609,8 @@ void GameScene::Render(sf::RenderTarget& target) {
     inventorySystem->Render(*registry, target);
     passiveTreeSystem->Render(*registry, target);
     vendorSystem->Render(*registry, target);
+    waystoneVendorSystem->Render(*registry, target);
+    stashSystem->Render(*registry, target);
     skillGemSystem->Render(*registry, target);
     gemIdentifySystem->Render(*registry, target);
     keyBindSystem->Render(*registry, target);

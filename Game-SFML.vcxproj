@@ -75,6 +75,7 @@
     <ClInclude Include="External\ECS\Components\Item\Currency.h" />
     <ClInclude Include="External\ECS\Components\Item\SkillGem.h" />
     <ClInclude Include="External\ECS\Components\Item\Inventory.h" />
+    <ClInclude Include="External\ECS\Components\Item\Stash.h" />
     <ClInclude Include="External\ECS\Components\Item\Waystone.h" />
     <ClInclude Include="External\ECS\Components\Progression\PassiveTree.h" />
     <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
@@ -82,8 +83,10 @@
     <ClInclude Include="External\ECS\Systems\Item\EquipmentSystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemPickupSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\InventorySystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\StashSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\ItemUIHelpers.h" />
     <ClInclude Include="External\ECS\Systems\Item\VendorSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Item\WaystoneVendorSystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\LevelSystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeData.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeSystem.h" />
@@ -142,6 +145,7 @@
     <ClInclude Include="Programs\Game\GameScene\GameScene\GameScene.h" />
     <ClInclude Include="Programs\Game\GameScene\MapGenerator\MapGenerator.h" />
     <ClInclude Include="Programs\Game\GameScene\Zone\ZoneBuilder.h" />
+    <ClInclude Include="Programs\Game\GameScene\Zone\TownNpc.h" />
     <ClInclude Include="External\ECS\Components\Stats\SkillData\Skill.h" />
     <ClInclude Include="Programs\Game\TitleScene\TitleScene\TitleScene.h" />
     <ClInclude Include="Programs\Game\ResultScene\ResultScene\ResultScene.h" />

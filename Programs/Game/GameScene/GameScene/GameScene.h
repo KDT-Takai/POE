@@ -27,11 +27,14 @@
 #include "../../ECS/Systems/UI/InventorySystem.h"
 #include "../../ECS/Systems/Progression/PassiveTreeSystem.h"
 #include "../../ECS/Systems/Item/VendorSystem.h"
+#include "../../ECS/Systems/Item/WaystoneVendorSystem.h"
+#include "../../ECS/Systems/UI/StashSystem.h"
 #include "../../ECS/Systems/UI/SkillGemSystem.h"
 #include "../../ECS/Systems/UI/GemIdentifySystem.h"
 #include "../../ECS/Systems/UI/KeyBindSystem.h"
 #include "../../ECS/Systems/Chara/MinionSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
+#include "../Zone/TownNpc.h"
 
 class GameScene : public SceneBase {
 public:
@@ -48,6 +51,8 @@ private:
     void TryOpenEndgameMapFromHub();
     std::string HeldWaystoneSummary() const;
     void RenderGemDebugTools();
+    static sf::Color NpcRingColor(TownNpcKind kind);
+    static std::string NpcHudHint(TownNpcKind kind);
 
     Entity playerEntity = -1;
 
@@ -55,11 +60,15 @@ private:
     bool m_hasPortal = false;
     bool m_playerNearPortal = false;
     sf::Vector2f m_portalPos;
-    bool m_hasVendor = false;
-    bool m_playerNearVendor = false;
-    sf::Vector2f m_vendorPos;
-    bool m_clickedOnVendor = false; // このフレームで商人を左クリックしたか(スキル発動クリックとの競合防止用)
-    bool m_hoveringVendor = false;  // クリック可能範囲にカーソルがあるか(輪の描画に使用)
+
+    // Town NPCs (item Vendor / Waystone Vendor / Stash, see ZoneBuilder::PlaceTownNpcs).
+    // m_nearNpcIndex is the one within click range this frame (-1 = none); at most one
+    // can be "near" meaningfully since kNpcClickRadius is much smaller than their
+    // min-separation, so no ambiguity about which one a click means.
+    std::vector<TownNpcSpawn> m_townNpcs;
+    int m_nearNpcIndex = -1;
+    bool m_clickedOnNpc = false;  // このフレームでNPCを左クリックしたか(スキル発動クリックとの競合防止用)
+    bool m_hoveringNpc = false;   // クリック可能範囲にカーソルがあるか(輪の描画に使用)
     static constexpr float kVendorClickRadius = 36.0f;
 
     // Registry
@@ -92,6 +101,8 @@ private:
     std::shared_ptr<InventorySystem> inventorySystem;
     std::shared_ptr<PassiveTreeSystem> passiveTreeSystem;
     std::shared_ptr<VendorSystem> vendorSystem;
+    std::shared_ptr<WaystoneVendorSystem> waystoneVendorSystem;
+    std::shared_ptr<StashSystem> stashSystem;
     std::shared_ptr<SkillGemSystem> skillGemSystem;
     std::shared_ptr<GemIdentifySystem> gemIdentifySystem;
     std::shared_ptr<KeyBindSystem> keyBindSystem;
