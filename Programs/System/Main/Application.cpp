@@ -74,11 +74,15 @@ void Application::run() {
 }
 
 void Application::ProcessEvents() {
+	InputManager::Instance().ResetMouseWheelDelta();
 	while (auto event = window->pollEvent()) {
 		ImGui::SFML::ProcessEvent(*window, *event);
 		// Close window: exit ウィンドウを閉じる：終了
 		if (event->is<sf::Event::Closed>()) {
 			window->close();
+		}
+		if (const auto* wheel = event->getIf<sf::Event::MouseWheelScrolled>()) {
+			InputManager::Instance().AddMouseWheelDelta(wheel->delta);
 		}
 	}
 }

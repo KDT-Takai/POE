@@ -34,19 +34,40 @@ private:
     static constexpr float kNodeRadius = 10.0f;
     static constexpr float kStartNodeRadius = 12.0f;
 
+    // Pan (left-drag) and zoom (wheel) range. minZoom is well below 1.0 so the tree can
+    // shrink below its "fit whole tree" size too, not just enlarge past it.
+    static constexpr float kMinZoom = 0.5f;
+    static constexpr float kMaxZoom = 3.0f;
+    static constexpr float kZoomStep = 0.12f; // per wheel notch (delta is usually +-1)
+    static constexpr float kDragThreshold = 6.0f; // px of movement before a press counts as a drag, not a click
+
     struct PanelLayout {
         float panelX = 0.0f;
         float panelY = 0.0f;
         float panelW = 0.0f;
         float panelH = 0.0f;
-        sf::Vector2f center;
-        float scale = 1.0f; // raw tree units -> screen pixels, fit to the tree area
+        float treeAreaX = 0.0f;
+        float treeAreaY = 0.0f;
+        float treeAreaW = 0.0f;
+        float treeAreaH = 0.0f;
+        sf::Vector2f baseCenter; // center/scale with zoom=1, pan=0 (the "fit to screen" values)
+        float baseScale = 1.0f;
+        sf::Vector2f center; // baseCenter + current pan offset
+        float scale = 1.0f;  // baseScale * current zoom
         sf::FloatRect confirmBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
         sf::FloatRect cancelBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
     };
 
     std::shared_ptr<sf::Font> m_font;
     int m_selectedNodeId = 0;
+
+    sf::Vector2f m_panOffset{ 0.0f, 0.0f };
+    float m_zoom = 1.0f;
+    bool m_wasMouseDown = false;
+    bool m_dragCandidate = false;
+    bool m_isDragging = false;
+    sf::Vector2f m_dragStartMouse;
+    sf::Vector2f m_dragStartPan;
 
 public:
     bool isOpen = false;
@@ -57,7 +78,13 @@ public:
         m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     }
 
-    void Toggle() { isOpen = !isOpen; }
+    void Toggle() {
+        isOpen = !isOpen;
+        if (isOpen) {
+            m_panOffset = { 0.0f, 0.0f };
+            m_zoom = 1.0f;
+        }
+    }
     void Close() { isOpen = false; }
 
     void Update(Registry& registry, float dt) {
@@ -78,20 +105,63 @@ public:
 
         sf::RenderWindow* window = InputManager::Instance().GetWindow();
         if (!window) return;
-        PanelLayout layout = ComputeLayout(window->getSize());
 
         auto& mouseInput = InputManager::Instance().GetMouseInput();
-        if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
-            sf::Vector2f mouse = mouseInput.GetMousePointF();
+        sf::Vector2f mouse = mouseInput.GetMousePointF();
 
-            int clickedNode = HitTestNode(layout, mouse);
-            if (clickedNode != -1) {
-                m_selectedNodeId = clickedNode;
-            } else if (layout.confirmBtn.contains(mouse)) {
-                TryAllocate(tree, equipment, stats);
-            } else if (layout.cancelBtn.contains(mouse)) {
-                Close();
+        // Mouse wheel zoom, anchored on the cursor (the raw tree-space point under the
+        // cursor stays fixed on screen) rather than on the tree center, matching how
+        // real PoE's tree zoom feels.
+        float wheel = InputManager::Instance().GetMouseWheelDelta();
+        if (wheel != 0.0f) {
+            PanelLayout preZoom = ComputeLayout(window->getSize());
+            sf::Vector2f worldRaw = (mouse - preZoom.center) / preZoom.scale;
+            m_zoom = std::clamp(m_zoom + wheel * kZoomStep, kMinZoom, kMaxZoom);
+            float newScale = preZoom.baseScale * m_zoom;
+            m_panOffset = mouse - worldRaw * newScale - preZoom.baseCenter;
+        }
+
+        PanelLayout layout = ComputeLayout(window->getSize());
+
+        // Left-drag pans the tree; a press that never moves past kDragThreshold is
+        // treated as a plain click instead (select a node / press Confirm or Cancel).
+        // MouseInput has no "just released" query, so the release edge is tracked here
+        // via the previous frame's held state.
+        bool mouseDown = mouseInput.GetMouse(sf::Mouse::Button::Left);
+        bool justPressed = mouseInput.IsGetMouse(sf::Mouse::Button::Left);
+        bool justReleased = m_wasMouseDown && !mouseDown;
+        m_wasMouseDown = mouseDown;
+
+        if (justPressed) {
+            m_dragCandidate = true;
+            m_isDragging = false;
+            m_dragStartMouse = mouse;
+            m_dragStartPan = m_panOffset;
+        }
+
+        if (m_dragCandidate && mouseDown) {
+            sf::Vector2f delta = mouse - m_dragStartMouse;
+            if (!m_isDragging && (delta.x * delta.x + delta.y * delta.y) > kDragThreshold * kDragThreshold) {
+                m_isDragging = true;
             }
+            if (m_isDragging) {
+                m_panOffset = m_dragStartPan + delta;
+            }
+        }
+
+        if (justReleased) {
+            if (m_dragCandidate && !m_isDragging) {
+                int clickedNode = HitTestNode(layout, mouse);
+                if (clickedNode != -1) {
+                    m_selectedNodeId = clickedNode;
+                } else if (layout.confirmBtn.contains(mouse)) {
+                    TryAllocate(tree, equipment, stats);
+                } else if (layout.cancelBtn.contains(mouse)) {
+                    Close();
+                }
+            }
+            m_dragCandidate = false;
+            m_isDragging = false;
         }
     }
 
@@ -124,6 +194,17 @@ public:
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
             "Available Points: " + std::to_string(stats.passivePoints) +
             "   Orbs of Regret: " + std::to_string(stats.regretOrbs), 14, sf::Color(200, 200, 200));
+
+        // Panning/zooming can otherwise push nodes/lines up over the header text or down
+        // past the footer buttons, so the tree itself draws through a view whose viewport
+        // clips to the tree area (1 view unit == 1 pixel, so NodeScreenPos's absolute
+        // pixel coordinates still land in the right place; only the clipping changes).
+        sf::Vector2u winSize = target.getSize();
+        sf::View treeView(sf::FloatRect({ layout.treeAreaX, layout.treeAreaY }, { layout.treeAreaW, layout.treeAreaH }));
+        treeView.setViewport(sf::FloatRect(
+            { layout.treeAreaX / static_cast<float>(winSize.x), layout.treeAreaY / static_cast<float>(winSize.y) },
+            { layout.treeAreaW / static_cast<float>(winSize.x), layout.treeAreaH / static_cast<float>(winSize.y) }));
+        target.setView(treeView);
 
         for (const auto& node : PassiveTreeData::Nodes()) {
             for (int neighborId : node.neighbors) {
@@ -158,6 +239,8 @@ public:
             target.draw(circle);
         }
 
+        target.setView(target.getDefaultView());
+
         const PassiveNodeDef* selectedNode = PassiveTreeData::Find(m_selectedNodeId);
         if (selectedNode && m_selectedNodeId != 0) {
             bool isPercent = IsPercentStat(selectedNode->effect.stat);
@@ -189,15 +272,20 @@ private:
         layout.panelW = (std::max)(100.0f, static_cast<float>(winSize.x) - kMargin * 2.0f);
         layout.panelH = (std::max)(100.0f, static_cast<float>(winSize.y) - kMargin * 2.0f);
 
-        float treeAreaW = layout.panelW;
-        float treeAreaH = (std::max)(50.0f, layout.panelH - kHeaderH - kFooterH);
-        layout.center = { layout.panelX + treeAreaW / 2.0f, layout.panelY + kHeaderH + treeAreaH / 2.0f };
+        layout.treeAreaX = layout.panelX;
+        layout.treeAreaY = layout.panelY + kHeaderH;
+        layout.treeAreaW = layout.panelW;
+        layout.treeAreaH = (std::max)(50.0f, layout.panelH - kHeaderH - kFooterH);
+        layout.baseCenter = { layout.treeAreaX + layout.treeAreaW / 2.0f, layout.treeAreaY + layout.treeAreaH / 2.0f };
 
         // Fit the tree's full radius inside the smaller of the area's half-width/height,
         // with a little padding so outer nodes don't touch the header/footer/edges.
         float maxRadius = (std::max)(1.0f, PassiveTreeData::MaxRadius());
-        float availableHalfExtent = (std::min)(treeAreaW, treeAreaH) / 2.0f;
-        layout.scale = (availableHalfExtent * 0.92f) / maxRadius;
+        float availableHalfExtent = (std::min)(layout.treeAreaW, layout.treeAreaH) / 2.0f;
+        layout.baseScale = (availableHalfExtent * 0.92f) / maxRadius;
+
+        layout.scale = layout.baseScale * m_zoom;
+        layout.center = layout.baseCenter + m_panOffset;
 
         float totalBtnW = kButtonW * 2.0f + kButtonGap;
         float btnX = layout.panelX + (layout.panelW - totalBtnW) / 2.0f;
