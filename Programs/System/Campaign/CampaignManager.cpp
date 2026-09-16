@@ -49,6 +49,7 @@ namespace {
         out << prefix << "gold=" << s.gold << "\n";
         out << prefix << "passivePoints=" << s.passivePoints << "\n";
         out << prefix << "regretOrbs=" << s.regretOrbs << "\n";
+        out << prefix << "jewellersOrbs=" << s.jewellersOrbs << "\n";
     }
 
     float GetF(const std::unordered_map<std::string, std::string>& m, const std::string& k, float def) {
@@ -146,6 +147,7 @@ namespace {
         s.gold = GetI(m, prefix + "gold", s.gold);
         s.passivePoints = GetI(m, prefix + "passivePoints", s.passivePoints);
         s.regretOrbs = GetI(m, prefix + "regretOrbs", s.regretOrbs);
+        s.jewellersOrbs = GetI(m, prefix + "jewellersOrbs", s.jewellersOrbs);
     }
 }
 
@@ -410,9 +412,17 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         out << "passiveTree.node" << i << "=" << m_savedPassiveTree[i] << "\n";
     }
 
-    out << "unlockedGems.count=" << m_savedUnlockedGems.size() << "\n";
-    for (size_t i = 0; i < m_savedUnlockedGems.size(); ++i) {
-        out << "unlockedGems.gem" << i << "=" << m_savedUnlockedGems[i] << "\n";
+    out << "ownedGems.count=" << m_savedOwnedGems.size() << "\n";
+    for (size_t i = 0; i < m_savedOwnedGems.size(); ++i) {
+        const OwnedGemInstance& g = m_savedOwnedGems[i];
+        std::string p = "ownedGems.gem" + std::to_string(i) + ".";
+        out << p << "id=" << g.gemId << "\n";
+        out << p << "isSupport=" << (g.isSupport ? 1 : 0) << "\n";
+        out << p << "level=" << g.level << "\n";
+        out << p << "maxSockets=" << g.maxSockets << "\n";
+        for (size_t s = 0; s < g.supportGemIds.size(); ++s) {
+            out << p << "support" << s << "=" << g.supportGemIds[s] << "\n";
+        }
     }
 
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
@@ -475,10 +485,24 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
         m_savedPassiveTree.push_back(GetI(kv, "passiveTree.node" + std::to_string(i), 0));
     }
 
-    m_savedUnlockedGems.clear();
-    int unlockedGemCount = GetI(kv, "unlockedGems.count", 0);
-    for (int i = 0; i < unlockedGemCount; ++i) {
-        m_savedUnlockedGems.push_back(GetI(kv, "unlockedGems.gem" + std::to_string(i), 0));
+    // Pre-gem-overhaul saves have no "ownedGems.count" key at all (only the old flat
+    // "unlockedGems.count"/"unlockedGems.gem{i}" ids); GetI's default (0) makes this
+    // naturally resolve to an empty list for those saves, and GameScene falls back to
+    // EntitySpawner's starter loadout exactly like it already does for a totally fresh
+    // character (see the existing !GetSavedOwnedGems().empty() guard there).
+    m_savedOwnedGems.clear();
+    int ownedGemCount = GetI(kv, "ownedGems.count", 0);
+    for (int i = 0; i < ownedGemCount; ++i) {
+        std::string p = "ownedGems.gem" + std::to_string(i) + ".";
+        OwnedGemInstance g;
+        g.gemId = GetI(kv, p + "id", -1);
+        g.isSupport = GetI(kv, p + "isSupport", 0) != 0;
+        g.level = GetI(kv, p + "level", 1);
+        g.maxSockets = GetI(kv, p + "maxSockets", 2);
+        for (size_t s = 0; s < g.supportGemIds.size(); ++s) {
+            g.supportGemIds[s] = GetI(kv, p + "support" + std::to_string(s), -1);
+        }
+        if (g.gemId >= 0) m_savedOwnedGems.push_back(g);
     }
 
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {

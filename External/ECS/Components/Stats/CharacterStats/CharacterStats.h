@@ -75,4 +75,8 @@ struct CharacterStatsComponent {
     int gold = 0;
     int passivePoints = 0;
     int regretOrbs = 0;
+    // Consumed one-at-a-time from SkillGemSystem to add a support-gem socket to a chosen
+    // owned skill/spirit gem (up to 5 sockets); unlike other Currency types this can't
+    // apply itself on pickup since it needs a target, so it accumulates like regretOrbs.
+    int jewellersOrbs = 0;
 };

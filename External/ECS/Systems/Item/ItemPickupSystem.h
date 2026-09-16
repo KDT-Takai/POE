@@ -12,8 +12,8 @@
 #include "EquipmentSystem.h"
 #include "CurrencySystem.h"
 #include "ItemFactory.h"
-#include "../Skill/SkillGemData.h"
 #include "../UI/ItemUIHelpers.h"
+#include "../UI/GemIdentifySystem.h"
 #include <vector>
 #include <string>
 #include <random>
@@ -71,9 +71,8 @@ public:
             return true;
         }
         if (registry.HasComponent<SkillGemPickupComponent>(e)) {
-            int gemId = registry.GetComponent<SkillGemPickupComponent>(e).gemId;
-            const GemDefinition* def = SkillGemData::Find(gemId);
-            outName = def ? def->skill.name : "Unknown Gem";
+            const auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(e);
+            outName = "Uncut " + std::string(gemPickup.isSpirit ? "Spirit" : "Skill") + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
             outColor = sf::Color(255, 90, 220);
             return true;
         }
@@ -87,7 +86,7 @@ public:
 
     // clickedPickup: the entity a fresh left-click landed on this frame (kInvalidEntity
     // if the click didn't hit anything, or nothing was clicked at all).
-    void Update(Registry& registry, float dt, Entity clickedPickup) {
+    void Update(Registry& registry, float dt, Entity clickedPickup, GemIdentifySystem& gemIdentifySystem) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!registry.IsValid(clickedPickup)) return;
 
@@ -127,22 +126,12 @@ public:
             messageTimer = 2.5f;
             registry.DestroyEntity(clickedPickup);
         } else if (registry.HasComponent<SkillGemPickupComponent>(clickedPickup)) {
+            // Uncut gem: opens GemIdentifySystem to pick which specific gem it becomes
+            // instead of instantly unlocking one (see GemIdentifySystem for why). The
+            // pickup entity itself isn't destroyed here -- Identify() does that on
+            // success, or it's simply left on the ground if the player cancels.
             auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(clickedPickup);
-            const GemDefinition* def = SkillGemData::Find(gemPickup.gemId);
-            std::string gemName = def ? def->skill.name : "Unknown Gem";
-
-            if (registry.HasComponent<SkillGemInventoryComponent>(player)) {
-                auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
-                auto& ids = gemInventory.unlockedGemIds;
-                if (std::find(ids.begin(), ids.end(), gemPickup.gemId) == ids.end()) {
-                    ids.push_back(gemPickup.gemId);
-                    lastMessage = "Learned skill gem: " + gemName + " (press K to equip)";
-                } else {
-                    lastMessage = "Already known: " + gemName;
-                }
-                messageTimer = 2.5f;
-            }
-            registry.DestroyEntity(clickedPickup);
+            gemIdentifySystem.Open(gemPickup.level, gemPickup.isSpirit, clickedPickup);
         } else if (registry.HasComponent<WaystonePickupComponent>(clickedPickup)) {
             int tier = registry.GetComponent<WaystonePickupComponent>(clickedPickup).tier;
             if (registry.HasComponent<WaystoneInventoryComponent>(player) && tier >= 1 && tier <= WaystoneInventoryComponent::kMaxTier) {

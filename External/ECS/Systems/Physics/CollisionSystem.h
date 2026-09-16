@@ -11,7 +11,6 @@
 #include "../../Components/Item/SkillGem.h"
 #include "../../Components/Item/Waystone.h"
 #include "../../Components/Tags/Boss/Boss.h"
-#include "../Skill/SkillGemData.h"
 #include <System/Campaign/CampaignManager.h>
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
@@ -23,6 +22,7 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <cmath>
 
 class CollisionSystem {
 public:
@@ -300,14 +300,18 @@ private:
         int itemLevel = std::clamp(static_cast<int>(stats.maxHP / 15.0f), 1, 100);
 
         if (chanceRoll(rng) < 0.08f) {
-            const auto& gemList = SkillGemData::Gems();
-            std::uniform_int_distribution<int> gemPick(0, static_cast<int>(gemList.size()) - 1);
-            int gemId = gemList[gemPick(rng)].id;
+            // Uncut gem: level 1-20, cubic-skewed toward low rolls (so 19/20 are rare),
+            // nudged up slightly by monster power -- mirrors itemLevel's role for gear
+            // drops, but this doesn't pick a specific gem; see GemIdentifySystem for that.
+            int monsterLevelFactor = std::clamp(itemLevel / 5, 1, 20);
+            float skewed = std::pow(chanceRoll(rng), 3.0f);
+            int gemLevel = std::clamp(1 + static_cast<int>(19.0f * skewed) + monsterLevelFactor / 4, 1, 20);
+            bool isSpirit = chanceRoll(rng) < 0.2f;
 
             auto gemPickup = registry.CreateEntityObject();
             gemPickup.AddComponent(TransformComponent{ trans.position, {1.f, 1.f}, 0.f });
             gemPickup.AddComponent(CircleComponent{ 9.0f, sf::Color(255, 90, 220), true });
-            gemPickup.AddComponent(SkillGemPickupComponent{ gemId });
+            gemPickup.AddComponent(SkillGemPickupComponent{ gemLevel, isSpirit });
             return;
         }
 

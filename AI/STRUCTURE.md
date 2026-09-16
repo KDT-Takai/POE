@@ -38,7 +38,7 @@
 - **XP/レベリング**: `External/ECS/Systems/Progression/LevelSystem.h`
 - **パッシブツリーUI（Pキー、ノード割り振り）**: `External/ECS/Systems/Progression/PassiveTreeSystem.h`, `PassiveTreeData.h`, `External/ECS/Components/Progression/PassiveTree.h`
 - **Vendor（商人、Bキーで購入）**: `External/ECS/Systems/Item/VendorSystem.h`（NPC自体は`ZoneBuilder::SpawnVendor`でタウン中央に配置）
-- **スキルジェム（Gキー、5スロット+Spirit2スロットをマウスのクリックのみで自由付け替え）**: `External/ECS/Systems/UI/SkillGemSystem.h`、ジェムの静的定義は`External/ECS/Systems/Skill/SkillGemData.h`、ドロップ/所持は`External/ECS/Components/Item/SkillGem.h`（`SkillGemPickupComponent`/`SkillGemInventoryComponent`）
+- **スキルジェム（Gキー、5スキルスロット+5スピリットスロット=計10枠をマウスのクリックのみで自由付け替え）**: `External/ECS/Systems/UI/SkillGemSystem.h`。ジェムの静的定義は`External/ECS/Systems/Skill/SkillGemData.h`（レベル1-20要件の基礎値/必要属性STR・DEX・INT付き）、サポートジェムの静的定義は`External/ECS/Systems/Skill/SupportGemData.h`（所持不要、要件のみで自由に使える）、両者の適用・レベルスケーリングは`External/ECS/Systems/Skill/SkillGemScaling.h`(`BuildEquippedSkillData`)/`SupportGemSystem.h`。所持ジェムの個体管理(レベル/ソケット数/装着中サポート)は`External/ECS/Components/Item/SkillGem.h`の`OwnedGemInstance`（`SkillGemInventoryComponent.ownedGems`）。ドロップは未鑑定の`SkillGemPickupComponent`(レベル+スキル/スピリット種別のみ)として発生し、`External/ECS/Systems/UI/GemIdentifySystem.h`で鑑定(=どのジェムになるか選択)してから初めて所持化する。ソケット拡張はJeweller's Orb(`CurrencyType::JewellersOrb`、`CharacterStatsComponent::jewellersOrbs`)をSkillGemSystem画面上のボタンで消費。
 - **アイテムUI共通ヘルパー（スロット名/レアリティ名・色）**: `External/ECS/Systems/UI/ItemUIHelpers.h`（CharacterSheetSystem/InventorySystem/VendorSystemが共有）
 - **キャラクターシートUI（Cキー）**: `External/ECS/Systems/UI/CharacterSheetSystem.h`
 - **ボスフェーズ（HP50%でEnrage）**: `External/ECS/Systems/Chara/BossPhaseSystem.h`

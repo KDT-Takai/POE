@@ -7,6 +7,7 @@
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
 #include "Components/Item/Waystone.h"
+#include "Components/Item/SkillGem.h"
 #include "../Singleton/Singleton.h"
 
 enum class ZoneKind { Town, Combat };
@@ -61,9 +62,9 @@ class CampaignManager : public Singleton<CampaignManager> {
     EquipmentComponent m_savedEquipment;
     std::vector<ItemComponent> m_savedInventory;
     std::vector<int> m_savedPassiveTree;
-    std::vector<int> m_savedUnlockedGems;
+    std::vector<OwnedGemInstance> m_savedOwnedGems;
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
-    std::array<int, 2> m_savedAuraLoadout = { -1, -1 };
+    std::array<int, 5> m_savedAuraLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, WaystoneInventoryComponent::kMaxTier> m_savedWaystones{};
     bool m_isHardcore = false;
 
@@ -107,14 +108,14 @@ public:
     void SavePassiveTree(const std::vector<int>& nodeIds) { m_savedPassiveTree = nodeIds; }
     const std::vector<int>& GetSavedPassiveTree() const { return m_savedPassiveTree; }
 
-    void SaveUnlockedGems(const std::vector<int>& gemIds) { m_savedUnlockedGems = gemIds; }
-    const std::vector<int>& GetSavedUnlockedGems() const { return m_savedUnlockedGems; }
+    void SaveOwnedGems(const std::vector<OwnedGemInstance>& gems) { m_savedOwnedGems = gems; }
+    const std::vector<OwnedGemInstance>& GetSavedOwnedGems() const { return m_savedOwnedGems; }
 
     void SaveSkillLoadout(const std::array<int, 5>& gemIds) { m_savedSkillLoadout = gemIds; }
     const std::array<int, 5>& GetSavedSkillLoadout() const { return m_savedSkillLoadout; }
 
-    void SaveAuraLoadout(const std::array<int, 2>& gemIds) { m_savedAuraLoadout = gemIds; }
-    const std::array<int, 2>& GetSavedAuraLoadout() const { return m_savedAuraLoadout; }
+    void SaveAuraLoadout(const std::array<int, 5>& gemIds) { m_savedAuraLoadout = gemIds; }
+    const std::array<int, 5>& GetSavedAuraLoadout() const { return m_savedAuraLoadout; }
 
     void SaveWaystones(const std::array<int, WaystoneInventoryComponent::kMaxTier>& counts) { m_savedWaystones = counts; }
     const std::array<int, WaystoneInventoryComponent::kMaxTier>& GetSavedWaystones() const { return m_savedWaystones; }

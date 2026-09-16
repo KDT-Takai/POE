@@ -19,6 +19,7 @@
 #include "../ECS/Components/Progression/PassiveTree.h"
 #include "../ECS/Components/Item/SkillGem.h"
 #include "../ECS/Components/Item/Waystone.h"
+#include "../ECS/Systems/Skill/SkillGemScaling.h"
 
 class EntitySpawner {
 public:
@@ -80,59 +81,19 @@ public:
         entity.AddComponent(BoxColliderComponent{ colliderSize, colliderSize, offset, offset, false, false });
 
 		// �X�L���P�ǉ�
+        // Starting loadout is derived from the shared SkillGemData catalog (previously
+        // hand-duplicated field-for-field here, which could silently drift from the
+        // catalog -- see AI/DECISIONS.md). All start at gem level 1 / 2 sockets.
         PlayerSkill skillComp;
-
-        SkillData& spark = skillComp.skills[0];
-        spark.name = "Spark";
-        spark.level = 1;
-        spark.gemId = 0;
-        spark.behaviorType = SkillBehaviorType::Spark;
-        spark.cooldownTime = 0.3f;
-        spark.mpCost = 4.0f;
-        spark.damage = 25.0f;
-        spark.duration = 3.5f;
-        spark.element = DamageElement::Lightning;
-        spark.isValid = true;
-
-        SkillData& Slam = skillComp.skills[1];
-        Slam.name = "Thunder Slam";
-        Slam.level = 1;
-        Slam.gemId = 1;
-        Slam.behaviorType = SkillBehaviorType::GroundSlam;
-        Slam.cooldownTime = 5.0f;
-        Slam.mpCost = 35.0f;
-        Slam.damage = 120.0f;
-        Slam.element = DamageElement::Physical;
-        Slam.isValid = true;
-
-        SkillData& Warp = skillComp.skills[2];
-        Warp.name = "Lightning Warp";
-        Warp.level = 1;
-        Warp.gemId = 2;
-        Warp.behaviorType = SkillBehaviorType::LightningWarp;
-        Warp.range = 350.0f;
-        Warp.damage = 80.0f;
-        Warp.cooldownTime = 8.0f;
-        Warp.mpCost = 35;
-        Warp.element = DamageElement::Lightning;
-        Warp.isValid = true;
-
-
-        SkillData& ball = skillComp.skills[3];
-        ball.name = "Lightning ball";
-        ball.level = 1;
-        ball.gemId = 3;
-        ball.behaviorType = SkillBehaviorType::LightningBall;
-        ball.damage = 40.0f;
-        ball.cooldownTime = 12.0f;
-        ball.mpCost = 40;
-        ball.element = DamageElement::Lightning;
-        ball.isValid = true;
-
-        entity.AddComponent(skillComp);
-
+        const int starterGemIds[4] = { 0, 1, 2, 3 };
         SkillGemInventoryComponent gemInventory;
-        gemInventory.unlockedGemIds = { 0, 1, 2, 3 };
+        for (size_t i = 0; i < 4; ++i) {
+            const GemDefinition* def = SkillGemData::Find(starterGemIds[i]);
+            if (!def) continue;
+            gemInventory.ownedGems.push_back(OwnedGemInstance{ starterGemIds[i], false, 1, 2, { -1, -1, -1, -1, -1 } });
+            SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], starterGemIds[i], gemInventory);
+        }
+        entity.AddComponent(skillComp);
         entity.AddComponent(gemInventory);
         entity.AddComponent(SpiritGemLoadoutComponent{});
 

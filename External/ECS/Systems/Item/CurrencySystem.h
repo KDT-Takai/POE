@@ -17,6 +17,14 @@ public:
             return CurrencyLabel(type) + " (" + std::to_string(live.regretOrbs) + " held)";
         }
 
+        // Unlike every other currency, this needs a target the player picks (which owned
+        // skill/spirit gem gets the extra socket) rather than applying to gear on pickup,
+        // so it just accumulates like Regret; spent from SkillGemSystem.
+        if (type == CurrencyType::JewellersOrb) {
+            live.jewellersOrbs++;
+            return CurrencyLabel(type) + " (" + std::to_string(live.jewellersOrbs) + " held)";
+        }
+
         int targetIdx = FindEligibleSlot(equipment, type);
         if (targetIdx < 0) {
             return CurrencyLabel(type) + ": no eligible item, discarded";
@@ -128,6 +136,7 @@ public:
         case CurrencyType::Annulment: return "Orb of Annulment";
         case CurrencyType::Chance: return "Orb of Chance";
         case CurrencyType::Scouring: return "Orb of Scouring";
+        case CurrencyType::JewellersOrb: return "Jeweller's Orb";
         default: break;
         }
         return "Currency";

@@ -2,9 +2,17 @@
 #include "Components/Stats/SkillData/Skill.h"
 #include <vector>
 
+// Which CharacterStatsComponent attribute a gem's level-scaled requirement is checked
+// against (see SkillGemScaling::RequiredStat). Derived mechanically from behaviorType,
+// not hand-tuned per gem: Str = melee/physical-ish, Dex = mobility/single-target agility,
+// Int = spells/auras. Shared with SupportGemData.
+enum class GemAttribute { Str, Dex, Int };
+
 struct GemDefinition {
     int id;
     SkillData skill;
+    GemAttribute primaryAttribute;
+    int baseRequirement; // requirement at gem level 1; see SkillGemScaling::RequiredStat for the level curve
 };
 
 // Static catalog of every skill gem that can be found/equipped in any of the
@@ -37,7 +45,7 @@ private:
         spark.duration = 3.5f;
         spark.element = DamageElement::Lightning;
         spark.isValid = true;
-        gems.push_back({ 0, spark });
+        gems.push_back({ 0, spark, GemAttribute::Int, 8 });
 
         SkillData slam;
         slam.name = "Thunder Slam";
@@ -47,7 +55,7 @@ private:
         slam.damage = 120.0f; // % of atk
         slam.element = DamageElement::Physical;
         slam.isValid = true;
-        gems.push_back({ 1, slam });
+        gems.push_back({ 1, slam, GemAttribute::Str, 8 });
 
         SkillData warp;
         warp.name = "Lightning Warp";
@@ -58,7 +66,7 @@ private:
         warp.mpCost = 35;
         warp.element = DamageElement::Lightning;
         warp.isValid = true;
-        gems.push_back({ 2, warp });
+        gems.push_back({ 2, warp, GemAttribute::Int, 8 });
 
         SkillData ball;
         ball.name = "Lightning Ball";
@@ -68,7 +76,7 @@ private:
         ball.mpCost = 40;
         ball.element = DamageElement::Lightning;
         ball.isValid = true;
-        gems.push_back({ 3, ball });
+        gems.push_back({ 3, ball, GemAttribute::Int, 8 });
 
         SkillData warcry;
         warcry.name = "War Cry";
@@ -80,7 +88,7 @@ private:
         warcry.buffSpeed = 0.25f; // +25% move speed
         warcry.element = DamageElement::Physical;
         warcry.isValid = true;
-        gems.push_back({ 4, warcry });
+        gems.push_back({ 4, warcry, GemAttribute::Str, 8 });
 
         SkillData nova;
         nova.name = "Nova";
@@ -91,7 +99,7 @@ private:
         nova.range = 180.0f; // blast radius-ish size
         nova.element = DamageElement::Cold;
         nova.isValid = true;
-        gems.push_back({ 5, nova });
+        gems.push_back({ 5, nova, GemAttribute::Int, 8 });
 
         SkillData cleave;
         cleave.name = "Cleave";
@@ -102,7 +110,7 @@ private:
         cleave.range = 70.0f;
         cleave.element = DamageElement::Physical;
         cleave.isValid = true;
-        gems.push_back({ 6, cleave });
+        gems.push_back({ 6, cleave, GemAttribute::Str, 8 });
 
         SkillData frostBolt;
         frostBolt.name = "Frost Bolt";
@@ -112,7 +120,7 @@ private:
         frostBolt.damage = 140.0f; // % of atk, single-target so higher than AoE skills
         frostBolt.element = DamageElement::Cold;
         frostBolt.isValid = true;
-        gems.push_back({ 7, frostBolt });
+        gems.push_back({ 7, frostBolt, GemAttribute::Dex, 8 });
 
         // Aura gems: not activated skills. Equipping one in a Spirit slot (see
         // SkillGemSystem) reserves spiritCost from maxSpirit for as long as it stays
@@ -124,7 +132,7 @@ private:
         determination.spiritCost = 50.0f;
         determination.auraEffect = { AffixStat::FlatArmour, 60.0f, 1, true, "Armour" };
         determination.isValid = true;
-        gems.push_back({ 8, determination });
+        gems.push_back({ 8, determination, GemAttribute::Int, 8 });
 
         SkillData discipline;
         discipline.name = "Discipline";
@@ -132,7 +140,7 @@ private:
         discipline.spiritCost = 40.0f;
         discipline.auraEffect = { AffixStat::FlatES, 40.0f, 1, true, "Energy Shield" };
         discipline.isValid = true;
-        gems.push_back({ 9, discipline });
+        gems.push_back({ 9, discipline, GemAttribute::Int, 8 });
 
         // Fire/Chaos were the only two DamageElement values with no active skill gem
         // dealing that type (Physical/Lightning/Cold were already covered above), even
@@ -146,7 +154,7 @@ private:
         fireball.range = 160.0f;
         fireball.element = DamageElement::Fire;
         fireball.isValid = true;
-        gems.push_back({ 10, fireball });
+        gems.push_back({ 10, fireball, GemAttribute::Int, 8 });
 
         SkillData chaosBolt;
         chaosBolt.name = "Chaos Bolt";
@@ -156,7 +164,7 @@ private:
         chaosBolt.damage = 130.0f; // % of atk, matches Frost Bolt's single-target convention
         chaosBolt.element = DamageElement::Chaos;
         chaosBolt.isValid = true;
-        gems.push_back({ 11, chaosBolt });
+        gems.push_back({ 11, chaosBolt, GemAttribute::Dex, 8 });
 
         // SkillBehaviorType::Dash was already fully implemented (SkillSystem::ActivateSkill,
         // UISystem's cyan icon color) but no gem used it -- an alternate, independently-
@@ -169,7 +177,7 @@ private:
         flameDash.mpCost = 15;
         flameDash.duration = 0.3f;
         flameDash.isValid = true;
-        gems.push_back({ 12, flameDash });
+        gems.push_back({ 12, flameDash, GemAttribute::Dex, 8 });
 
         // Third defensive Aura, parallel to Determination(Armour)/Discipline(ES): rounds
         // out the trio of PoE2's classic defense-layer auras with Evasion.
@@ -179,7 +187,7 @@ private:
         grace.spiritCost = 35.0f;
         grace.auraEffect = { AffixStat::FlatEvasion, 50.0f, 1, true, "Evasion" };
         grace.isValid = true;
-        gems.push_back({ 13, grace });
+        gems.push_back({ 13, grace, GemAttribute::Int, 8 });
 
         // Second Fire/Chaos skill each, so both attribute-2 elements reach the same
         // 2-gem count Cold already has, and to add Melee/AreaEffect elemental variety
@@ -193,7 +201,7 @@ private:
         immolate.range = 65.0f;
         immolate.element = DamageElement::Fire;
         immolate.isValid = true;
-        gems.push_back({ 14, immolate });
+        gems.push_back({ 14, immolate, GemAttribute::Str, 8 });
 
         SkillData soulRend;
         soulRend.name = "Soul Rend";
@@ -204,7 +212,7 @@ private:
         soulRend.range = 170.0f;
         soulRend.element = DamageElement::Chaos;
         soulRend.isValid = true;
-        gems.push_back({ 15, soulRend });
+        gems.push_back({ 15, soulRend, GemAttribute::Int, 8 });
 
         return gems;
     }

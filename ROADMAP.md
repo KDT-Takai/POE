@@ -4,6 +4,17 @@
 
 ## 済 (Done)
 
+**スキルジェムシステムをPoE2準拠へ全面刷新(ジェムレベル/鑑定/サポートジェム/ソケット/ステータス要件)**。「スキルジェム（レベル１～２０）を敵がドロップ...」という大規模な仕様変更依頼を受け、実装前にEnterPlanModeで既存アーキテクチャ(`SkillGemData`/`SkillGemSystem`/`SpiritAuraSystem`/セーブ形式)を調査した上でユーザーに設計上の分岐点(ジェムレベルの意味/サポートジェムの内容/統合スロット数/ソケット拡張アイテムの実装方法)を確認し、承認を得てから実装した。実際のPoE2仕様([Game8: How to Increase Support Gem Slots](https://game8.co/games/Path-of-Exile-2/archives/489077)等で調査、初期2ソケット・Jeweller's Orbで最大5まで拡張)も踏まえている。
+- **ジェムの個体管理へ移行**: 従来`SkillGemInventoryComponent.unlockedGemIds`は単なる所持フラグ(`vector<int>`)だったが、`OwnedGemInstance`(`gemId`/`isSupport`/`level`/`maxSockets`/`supportGemIds[5]`)を持つ`vector<OwnedGemInstance>`(`ownedGems`)へ全面移行。1つのgemIdにつき所持インスタンスは常に1つ(同じジェムを再鑑定するとレベルが上書きされるだけで重複しない)。
+- **未鑑定ジェムのドロップ→鑑定フロー**: モンスタードロップは具体的なスキルではなく「レベル1-20+スキル/スピリット種別」だけをロールした未鑑定ジェム(`SkillGemPickupComponent`)。レベルは3乗で低レベル側に偏らせた分布(`CollisionSystem`)でロールし、19-20が稀になるようにした。拾ってクリックすると新設の`GemIdentifySystem`(`External/ECS/Systems/UI/GemIdentifySystem.h`)が開き、その種別に合う未所持(または今回の方が高レベルな)候補一覧から選んで初めて`ownedGems`に入る。「Leave on ground」でキャンセルすればピックアップ自体はその場に残る。
+- **レベルスケーリング**: `SkillGemScaling.h`に`ItemFactory`のitemLevel慣習(`1+level*係数`の乗算)を踏襲した関数群を新設。レベルが上がるほど①要件(STR/DEX/INT、`RequiredStat`)②マナ/Spirit消費(`ScaledMpCost`/`ScaledSpiritCost`)③ダメージ(`ScaledDamage`)が全て増加する(「レベルが高いほどステータス要求が高く、マナ消費が激しく、火力は出る」という要望通り)。
+- **サポートジェム(新規カテゴリ)**: `SupportGemData.h`にPoE2を参考にした8種(Added Damage/Brutality/Faster Attacks/Efficiency/Increased Area/Increased Duration/Concentrated Effect/Elemental Focus)を新設。ダメージ/クールダウン/マナ消費/範囲/持続時間への乗算のみで完結させ実装を単純化。スキルジェムはドロップ制だが、サポートジェムは要件(STR/DEX/INT)さえ満たせば誰でも自由にどのソケットへも装着できる設計にした(ドロップの仕組みを二重に作る手間を省いた簡略化)。
+- **ソケット(2〜5、Jeweller's Orbで拡張)**: スキルジェムは初期2ソケットを持ち(`OwnedGemInstance::maxSockets`)、新規`CurrencyType::JewellersOrb`(既存の`regretOrbs`と同じ「所持数として蓄積し、対象を選んでから消費する」パターン、`CharacterStatsComponent::jewellersOrbs`)を`SkillGemSystem`画面上のボタンで消費して1つずつ最大5まで拡張する。スピリット(Aura)ジェムにはソケットを持たせない(効果がフラットなステータス加算のみで、サポートの乗算効果と噛み合わないため)。
+- **`SkillGemSystem`(Gキー)の全面改修**: スキル5枠+スピリット5枠(2→5に拡張)=計10枠の統合プール。同じスキルの複数スロット重複セットを禁止。割当時にレベル・要件(STR/DEX/INT)を判定し未達成なら拒否(`SpiritAuraSystem::TryAssign`の既存の「Spirit不足で拒否」パターンを流用・拡張)。各スキル行にレベル表示+サポートジェムソケット(クリックでサポート専用ピッカーに切替)+ソケット拡張ボタンを追加。ピッカーリストでは要件未達成の候補を赤字表示。
+- **セーブ/ロード**: `CampaignManager`の`m_savedUnlockedGems`(`vector<int>`)を`m_savedOwnedGems`(`vector<OwnedGemInstance>`)へ、`m_savedAuraLoadout`を`array<int,2>`→`array<int,5>`へ変更。旧セーブ(`ownedGems.count`キー自体が存在しない)は`GetI`のデフォルト値で自然に空リストへフォールバックし、既存の「空なら`EntitySpawner`の初期装備のまま」ガードパターンでそのまま救済される。`GameScene`の復元処理はカタログの単純コピーではなく`SkillGemScaling::BuildEquippedSkillData`(レベルスケーリング+サポート適用込み)を通すよう統一し、セーブされたキャラのスキルが寸分違わず復元されるようにした。
+- **`EntitySpawner`のクリーンアップ**: 従来Spark/Thunder Slam/Lightning Warp/Lightning Ballの値を`SkillGemData.h`と完全に重複したハードコードで持っていた技術的負債を解消し、`SkillGemScaling::BuildEquippedSkillData`経由でカタログから組み立てるよう統一。
+- 実装は段階的にビルド確認しながら進め、最終的にソリューション全体の`/t:Rebuild`で0エラーを確認済み。ただし実機での対話的な操作確認(ドロップ→鑑定→装着→ソケット→戦闘でのダメージ反映、セーブ&ロード往復)は本セッションの制約(安全な自動入力手段が無い)により未実施。次回以降、実際にプレイしての確認が必要。
+
 ### 基盤
 - キーバインド設定: `KeyBindings`(シングルトン)が移動/ロール/スキル5スロット/UIパネルトグル/Vendorリロールの計16アクションのキー割り当てを保持し`keybinds.cfg`に永続化。各システムは`sf::Keyboard::Key`リテラルを直接見ず`KeyBindings::Instance().Get(GameAction::X)`経由で参照するよう統一(移動はWASD側のみ対応、矢印キーのフォールバックとメニュー内カーソル移動は従来通り固定)。Oキーで`KeyBindSystem`(リバインドUI)を開閉、Up/Downで対象選択、Enterで次に押したキーを割り当て(既に別アクションで使用中のキーやUI固定キーへの割り当ては拒否)。各パネルのヘルプテキスト(「_ to close」等)も現在のバインドを動的表示するよう変更。
 - ECSパフォーマンス改善: `ComponentPool` をスパースセット化 (O(1) Insert/Remove/Get/Has)、`Registry` の `ComponentTypeId` を typeid ハッシュ廃止で静的カウンタ化、`View<>` をdense配列イテレーションに変更。
@@ -193,7 +204,7 @@
 
 優先度順（上ほど先）:
 
-1. **実機での目視検証** — 今セッション後半 (アイテム/装備システム以降、インベントリUI・パッシブツリーUI・Vendor含む) は分離テスト・ビルド成功のみでの検証。実際にプレイしての確認が必要。
+1. **実機での目視検証** — 今セッション後半 (アイテム/装備システム以降、インベントリUI・パッシブツリーUI・Vendor含む) は分離テスト・ビルド成功のみでの検証。実際にプレイしての確認が必要。**特にスキルジェムシステム全面刷新(ジェムレベル/鑑定UI/サポートジェムソケット/セーブロード往復)は変更規模が大きいため優先的に実機確認したい。**
 2. **サウンド** — 効果音・BGMが `test.mp3` 以外未整備 (アセット不足によりブロック中)。
 3. **スキル/モンスターバリエーション拡充(継続)** — スキルジェムの自由付け替え、War Cry/Nova、モンスターの遠距離攻撃/範囲攻撃/召喚アーケタイプを実装済み(下記「済」参照)。さらにジェム種類・モンスター行動パターンを増やす余地あり。
 

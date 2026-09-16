@@ -10,22 +10,58 @@
 #include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "../Skill/SkillGemData.h"
+#include "../Skill/SupportGemData.h"
+#include "../Skill/SupportGemSystem.h"
+#include "../Skill/SkillGemScaling.h"
 #include "../Skill/SpiritAuraSystem.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 #include "System/Input/InputUtils/InputUtils.h"
 #include "System/Input/KeyBindings/KeyBindings.h"
 
-// Lets the player freely reassign any of the 5 skill slots to any activated gem they
-// have ever picked up, plus 2 Spirit slots for Aura-type gems (see SpiritAuraSystem).
-// Unlike skill slots, Spirit slots are budget-limited by CharacterStatsComponent::maxSpirit.
+// Lets the player freely reassign any of the 5 skill slots (keybound Skill1-5) or 5
+// Spirit slots (no keybind, always-on like a passive node, budget-limited by
+// CharacterStatsComponent::maxSpirit) to any gem they own (SkillGemInventoryComponent).
+// The 10 slots are the shared equip pool the gem system's design calls for: skill and
+// Spirit gems can't duplicate within their own category, and each draws from the same
+// underlying "owned gems" list (SkillGemInventoryComponent::ownedGems).
+// Skill gems additionally have 2-5 support-gem sockets (Jeweller's Orb, spent from this
+// screen, expands them); Spirit/Aura gems don't, since their effect is a flat stat bonus
+// with nothing for a support gem's damage/cooldown/mana modifiers to act on.
 class SkillGemSystem {
 private:
     static constexpr int kSkillSlotCount = 5;
-    static constexpr int kSpiritSlotCount = 2;
+    static constexpr int kSpiritSlotCount = 5;
+    static constexpr int kMaxPossibleSockets = 5;
+    static constexpr float kSocketBoxW = 82.0f;
+    static constexpr float kSocketBoxH = 16.0f;
+    static constexpr float kSocketGap = 4.0f;
+
+    // Shared row geometry, computed once so Update()'s click hit-testing and Render()'s
+    // drawing can never drift apart. Declared this early (not just before ComputeLayout)
+    // because it's also used as a parameter type by RenderGemPicker/RenderSupportPicker,
+    // and a member function's parameter types (unlike its body) aren't deferred to
+    // "complete-class context" -- the type must already be visible at that point.
+    struct Layout {
+        float skillRowY;
+        float skillRowHeight;  // full row incl. the socket sub-line below the name/stats line
+        float skillMainLineH;  // click area for just the name/stats line
+        float socketLineOffsetY; // offset within a skill row where the socket line starts
+        float spiritLabelY;
+        float spiritRowY;
+        float spiritRowHeight;
+        float pickerHeaderY;
+        float pickerRowY;
+        float pickerRowHeight;
+    };
 
     std::shared_ptr<sf::Font> m_font;
     int m_selectedSlot = 0;
+    // -1 = the bottom picker lists skill/Spirit gems for m_selectedSlot (normal mode).
+    // 0-4 = the bottom picker instead lists owned support gems for that socket index of
+    // the skill currently equipped in m_selectedSlot (only meaningful when m_selectedSlot
+    // is a skill slot).
+    int m_selectedSocket = -1;
 
 public:
     bool isOpen = false;
@@ -70,21 +106,50 @@ public:
         Layout L = ComputeLayout();
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
-            sf::FloatRect rect({ kPanelX + 12.0f, L.rowY + static_cast<float>(i) * L.rowHeight }, { kPanelW - 24.0f, L.rowHeight });
-            if (rect.contains(mouse)) { m_selectedSlot = i; return; }
-        }
-        for (int i = 0; i < kSpiritSlotCount; ++i) {
-            sf::FloatRect rect({ kPanelX + 12.0f, L.spiritRowY + static_cast<float>(i) * L.rowHeight }, { kPanelW - 24.0f, L.rowHeight });
-            if (rect.contains(mouse)) { m_selectedSlot = kSkillSlotCount + i; return; }
+            sf::FloatRect mainRect({ kPanelX + 12.0f, SkillRowY(L, i) }, { kPanelW - 24.0f, L.skillMainLineH });
+            if (mainRect.contains(mouse)) { m_selectedSlot = i; m_selectedSocket = -1; return; }
+
+            if (skillComp.skills[i].isValid) {
+                OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skillComp.skills[i].gemId, false);
+                if (inst) {
+                    for (int s = 0; s < inst->maxSockets && s < kMaxPossibleSockets; ++s) {
+                        if (SocketRect(L, i, s).contains(mouse)) { m_selectedSlot = i; m_selectedSocket = s; return; }
+                    }
+                    if (inst->maxSockets < kMaxPossibleSockets && stats.jewellersOrbs > 0
+                        && SocketRect(L, i, inst->maxSockets).contains(mouse)) {
+                        inst->maxSockets++;
+                        stats.jewellersOrbs--;
+                        lastActionMessage = "Socket added (" + std::to_string(inst->maxSockets) + "/5)";
+                        messageTimer = 2.0f;
+                        return;
+                    }
+                }
+            }
         }
 
-        bool spiritSlot = IsSpiritSlot();
-        std::vector<int> opts = Options(gemInventory, spiritSlot);
-        for (size_t i = 0; i < opts.size(); ++i) {
-            sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
-            if (rect.contains(mouse)) {
-                AssignSelected(skillComp, loadout, equipment, stats, opts[i]);
-                return;
+        for (int i = 0; i < kSpiritSlotCount; ++i) {
+            sf::FloatRect rect({ kPanelX + 12.0f, SpiritRowY(L, i) }, { kPanelW - 24.0f, L.spiritRowHeight });
+            if (rect.contains(mouse)) { m_selectedSlot = kSkillSlotCount + i; m_selectedSocket = -1; return; }
+        }
+
+        if (m_selectedSocket >= 0) {
+            std::vector<int> opts = SupportOptions();
+            for (size_t i = 0; i < opts.size(); ++i) {
+                sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
+                if (rect.contains(mouse)) {
+                    AssignSupport(skillComp, gemInventory, stats, opts[i]);
+                    return;
+                }
+            }
+        } else {
+            bool spiritSlot = IsSpiritSlot();
+            std::vector<int> opts = Options(gemInventory, spiritSlot);
+            for (size_t i = 0; i < opts.size(); ++i) {
+                sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
+                if (rect.contains(mouse)) {
+                    AssignSelected(skillComp, loadout, gemInventory, equipment, stats, opts[i]);
+                    return;
+                }
             }
         }
     }
@@ -118,8 +183,8 @@ public:
 
         auto& binds = KeyBindings::Instance();
         std::string closeKey = KeyToString(binds.Get(GameAction::ToggleSkillGems));
-        DrawText(target, panelX + 12.0f, panelY + 8.0f,
-            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then click a gem", contentWidth, 13), 13, sf::Color(255, 220, 120));
+        DrawText(target, panelX + 12.0f, panelY + 6.0f,
+            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem", contentWidth, 12), 12, sf::Color(255, 220, 120));
 
         const std::string kSlotKeys[kSkillSlotCount] = {
             KeyToString(binds.Get(GameAction::Skill1)),
@@ -132,10 +197,10 @@ public:
         Layout L = ComputeLayout();
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
-            float y = L.rowY + static_cast<float>(i) * L.rowHeight;
+            float y = SkillRowY(L, i);
             bool selected = (i == m_selectedSlot);
 
-            sf::RectangleShape highlight({ panelW - 24.0f, L.rowHeight });
+            sf::RectangleShape highlight({ panelW - 24.0f, L.skillRowHeight - 2.0f });
             highlight.setPosition({ panelX + 12.0f, y });
             highlight.setFillColor(selected ? sf::Color(60, 60, 90, 180) : sf::Color(35, 35, 40, 140));
             highlight.setOutlineColor(sf::Color(90, 90, 100));
@@ -145,26 +210,41 @@ public:
             const SkillData& skill = skillComp.skills[i];
             std::string line = "[" + kSlotKeys[i] + "] " + (skill.isValid ? skill.name : "-- Empty --");
             if (skill.isValid) {
-                line += "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp";
+                line += " Lv" + std::to_string(skill.level) + "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp";
                 if (DealsElementalDamage(skill.behaviorType)) line += ", " + ElementName(skill.element);
                 line += ")";
             }
 
-            DrawText(target, panelX + 16.0f, y + L.rowHeight / 2.0f - 7.0f, Truncate(line, contentWidth, 12), 12,
+            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth, 12), 12,
                 skill.isValid ? sf::Color(220, 220, 220) : sf::Color(120, 120, 120));
+
+            if (skill.isValid) {
+                OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skill.gemId, false);
+                if (inst) {
+                    for (int s = 0; s < inst->maxSockets && s < kMaxPossibleSockets; ++s) {
+                        bool socketSelected = selected && (s == m_selectedSocket);
+                        DrawSocketBox(target, SocketRect(L, i, s), inst->supportGemIds[s], socketSelected);
+                    }
+                    if (inst->maxSockets < kMaxPossibleSockets) {
+                        bool canAfford = stats.jewellersOrbs > 0;
+                        sf::FloatRect btn = SocketRect(L, i, inst->maxSockets);
+                        DrawButtonSmall(target, btn, "+Jeweller(" + std::to_string(stats.jewellersOrbs) + ")",
+                            canAfford ? sf::Color(70, 90, 70) : sf::Color(50, 50, 55));
+                    }
+                }
+            }
         }
 
-        // Spirit slots, directly below the 5 skill slots.
         DrawText(target, panelX + 12.0f, L.spiritLabelY,
             "Spirit: " + FormatFloat(stats.currentSpirit) + " / " + FormatFloat(stats.maxSpirit) + " reserved",
             12, sf::Color(160, 220, 255));
 
         for (int i = 0; i < kSpiritSlotCount; ++i) {
             int slotIndex = kSkillSlotCount + i;
-            float y = L.spiritRowY + static_cast<float>(i) * L.rowHeight;
+            float y = SpiritRowY(L, i);
             bool selected = (slotIndex == m_selectedSlot);
 
-            sf::RectangleShape highlight({ panelW - 24.0f, L.rowHeight });
+            sf::RectangleShape highlight({ panelW - 24.0f, L.spiritRowHeight - 2.0f });
             highlight.setPosition({ panelX + 12.0f, y });
             highlight.setFillColor(selected ? sf::Color(60, 90, 90, 180) : sf::Color(35, 40, 40, 140));
             highlight.setOutlineColor(sf::Color(90, 100, 100));
@@ -175,17 +255,31 @@ public:
             const GemDefinition* def = gemId >= 0 ? SkillGemData::Find(gemId) : nullptr;
             std::string line = "[Spirit " + std::to_string(i + 1) + "] " + (def ? def->skill.name : "-- Empty --");
             if (def) {
-                line += "  (" + FormatFloat(def->skill.spiritCost) + " spirit)";
+                int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
+                line += " Lv" + std::to_string(level) + "  (" + FormatFloat(SpiritAuraSystem::SpiritCostOf(gemId, gemInventory)) + " spirit)";
             }
 
-            DrawText(target, panelX + 16.0f, y + L.rowHeight / 2.0f - 7.0f, Truncate(line, contentWidth, 12), 12,
+            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth, 12), 12,
                 def ? sf::Color(180, 230, 230) : sf::Color(120, 120, 120));
         }
 
-        // Gem picker: every unlocked gem matching the selected slot's category (plus
-        // "Empty"), one clickable row each. Clicking a row sockets that gem (see Update).
-        bool spiritSlot = IsSpiritSlot();
-        std::vector<int> opts = Options(gemInventory, spiritSlot);
+        if (m_selectedSocket >= 0) {
+            std::vector<int> opts = SupportOptions();
+            RenderSupportPicker(target, L, panelX, contentWidth, opts, skillComp, gemInventory, stats);
+        } else {
+            bool spiritSlot = IsSpiritSlot();
+            std::vector<int> opts = Options(gemInventory, spiritSlot);
+            RenderGemPicker(target, L, panelX, contentWidth, opts, spiritSlot, skillComp, loadout, gemInventory, stats);
+        }
+
+        target.setView(oldView);
+    }
+
+private:
+    void RenderGemPicker(sf::RenderTarget& target, const Layout& L, float panelX, float contentWidth,
+        const std::vector<int>& opts, bool spiritSlot, const PlayerSkill& skillComp,
+        const SpiritGemLoadoutComponent& loadout, const SkillGemInventoryComponent& gemInventory,
+        const CharacterStatsComponent& stats) {
         int currentId = spiritSlot
             ? loadout.auraGemIds[m_selectedSlot - kSkillSlotCount]
             : (skillComp.skills[m_selectedSlot].isValid ? skillComp.skills[m_selectedSlot].gemId : -1);
@@ -199,7 +293,7 @@ public:
             float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight;
             bool current = (gemId == currentId);
 
-            sf::RectangleShape highlight({ panelW - 24.0f, L.pickerRowHeight });
+            sf::RectangleShape highlight({ kPanelW - 24.0f, L.pickerRowHeight });
             highlight.setPosition({ panelX + 12.0f, y });
             highlight.setFillColor(current ? sf::Color(70, 100, 70, 180) : sf::Color(30, 30, 34, 120));
             target.draw(highlight);
@@ -211,11 +305,16 @@ public:
             } else {
                 const GemDefinition* def = SkillGemData::Find(gemId);
                 if (!def) continue;
-                label = def->skill.name;
+                int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
+                label = def->skill.name + " Lv" + std::to_string(level);
                 if (DealsElementalDamage(def->skill.behaviorType)) {
                     label += " (" + ElementName(def->skill.element) + ")";
                 }
-                color = sf::Color(220, 220, 255);
+
+                int required = SkillGemScaling::RequiredStat(def->baseRequirement, level);
+                int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
+                label += "  [" + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute) + "]";
+                color = (have < required) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
             }
             DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
         }
@@ -224,33 +323,74 @@ public:
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
             DrawText(target, panelX + 12.0f, messageY, Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
         }
-
-        target.setView(oldView);
     }
 
-private:
-    // Shared row geometry, computed once so Update()'s click hit-testing and Render()'s
-    // drawing can never drift apart.
-    struct Layout {
-        float rowY;
-        float rowHeight;
-        float spiritLabelY;
-        float spiritRowY;
-        float pickerHeaderY;
-        float pickerRowY;
-        float pickerRowHeight;
-    };
+    void RenderSupportPicker(sf::RenderTarget& target, const Layout& L, float panelX, float contentWidth,
+        const std::vector<int>& opts, const PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory,
+        const CharacterStatsComponent& stats) {
+        int hostGemId = (m_selectedSlot < kSkillSlotCount && skillComp.skills[m_selectedSlot].isValid)
+            ? skillComp.skills[m_selectedSlot].gemId : -1;
+        const OwnedGemInstance* inst = hostGemId >= 0 ? FindOwnedConst(gemInventory, hostGemId, false) : nullptr;
+        int currentId = (inst && m_selectedSocket >= 0 && m_selectedSocket < kMaxPossibleSockets)
+            ? inst->supportGemIds[m_selectedSocket] : -1;
+
+        DrawText(target, panelX + 12.0f, L.pickerHeaderY,
+            "Support gems for socket " + std::to_string(m_selectedSocket + 1) + " (click to socket):",
+            13, sf::Color(200, 200, 200));
+
+        for (size_t i = 0; i < opts.size(); ++i) {
+            int gemId = opts[i];
+            float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight;
+            bool current = (gemId == currentId);
+
+            sf::RectangleShape highlight({ kPanelW - 24.0f, L.pickerRowHeight });
+            highlight.setPosition({ panelX + 12.0f, y });
+            highlight.setFillColor(current ? sf::Color(70, 100, 70, 180) : sf::Color(30, 30, 34, 120));
+            target.draw(highlight);
+
+            std::string label;
+            sf::Color color = sf::Color(200, 200, 200);
+            if (gemId < 0) {
+                label = "-- Empty --";
+            } else {
+                const SupportGemDefinition* def = SupportGemData::Find(gemId);
+                if (!def) continue;
+                label = def->name;
+                int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
+                label += "  [" + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute) + "]";
+                color = (have < def->requirement) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
+            }
+            DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
+        }
+
+        float messageY = L.pickerRowY + static_cast<float>(opts.size()) * L.pickerRowHeight + 14.0f;
+        if (messageTimer > 0.0f && !lastActionMessage.empty()) {
+            DrawText(target, panelX + 12.0f, messageY, Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
+        }
+    }
 
     Layout ComputeLayout() const {
         Layout L;
-        L.rowY = kPanelY + 40.0f;
-        L.rowHeight = 26.0f;
-        L.spiritLabelY = L.rowY + static_cast<float>(kSkillSlotCount) * L.rowHeight + 10.0f;
-        L.spiritRowY = L.spiritLabelY + 18.0f;
-        L.pickerHeaderY = L.spiritRowY + static_cast<float>(kSpiritSlotCount) * L.rowHeight + 20.0f;
-        L.pickerRowY = L.pickerHeaderY + 22.0f;
-        L.pickerRowHeight = 22.0f;
+        L.skillRowY = kPanelY + 26.0f;
+        L.skillRowHeight = 40.0f;
+        L.skillMainLineH = 20.0f;
+        L.socketLineOffsetY = 20.0f;
+        L.spiritLabelY = L.skillRowY + static_cast<float>(kSkillSlotCount) * L.skillRowHeight + 6.0f;
+        L.spiritRowY = L.spiritLabelY + 16.0f;
+        L.spiritRowHeight = 22.0f;
+        L.pickerHeaderY = L.spiritRowY + static_cast<float>(kSpiritSlotCount) * L.spiritRowHeight + 16.0f;
+        L.pickerRowY = L.pickerHeaderY + 20.0f;
+        L.pickerRowHeight = 20.0f;
         return L;
+    }
+
+    float SkillRowY(const Layout& L, int index) const { return L.skillRowY + static_cast<float>(index) * L.skillRowHeight; }
+    float SpiritRowY(const Layout& L, int index) const { return L.spiritRowY + static_cast<float>(index) * L.spiritRowHeight; }
+
+    sf::FloatRect SocketRect(const Layout& L, int rowIndex, int socketIndex) const {
+        float x = kPanelX + 16.0f + static_cast<float>(socketIndex) * (kSocketBoxW + kSocketGap);
+        float y = SkillRowY(L, rowIndex) + L.socketLineOffsetY;
+        return sf::FloatRect({ x, y }, { kSocketBoxW, kSocketBoxH });
     }
 
     // Shared with CharacterSheetSystem's identical constants: the two panels are
@@ -263,48 +403,124 @@ private:
 
     bool IsSpiritSlot() const { return m_selectedSlot >= kSkillSlotCount; }
 
-    // Option list for the selected slot: -1 = Empty, followed by every unlocked gem
+    const OwnedGemInstance* FindOwnedConst(const SkillGemInventoryComponent& inv, int gemId, bool isSupport) const {
+        return SkillGemScaling::FindOwnedGem(inv, gemId, isSupport);
+    }
+
+    OwnedGemInstance* FindOwnedMutable(SkillGemInventoryComponent& inv, int gemId, bool isSupport) const {
+        for (auto& owned : inv.ownedGems) {
+            if (owned.isSupport == isSupport && owned.gemId == gemId) return &owned;
+        }
+        return nullptr;
+    }
+
+    // Option list for the selected slot: -1 = Empty, followed by every owned gem
     // matching the slot's category (activated skills for skill slots, Aura gems for
     // Spirit slots).
     std::vector<int> Options(const SkillGemInventoryComponent& gemInventory, bool auraOnly) const {
         std::vector<int> opts = { -1 };
-        for (int id : gemInventory.unlockedGemIds) {
-            const GemDefinition* def = SkillGemData::Find(id);
+        for (const auto& owned : gemInventory.ownedGems) {
+            if (owned.isSupport) continue;
+            const GemDefinition* def = SkillGemData::Find(owned.gemId);
             if (!def) continue;
             bool isAura = (def->skill.behaviorType == SkillBehaviorType::Aura);
-            if (isAura == auraOnly) opts.push_back(id);
+            if (isAura == auraOnly) opts.push_back(owned.gemId);
         }
         return opts;
     }
 
-    void AssignSelected(PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout,
+    // Unlike skill/Spirit gems, support gems aren't found as world drops in this
+    // simplified design -- every support in the catalog is always available to socket,
+    // gated only by its Str/Dex/Int requirement (see AssignSupport).
+    std::vector<int> SupportOptions() const {
+        std::vector<int> opts = { -1 };
+        for (const auto& def : SupportGemData::Gems()) opts.push_back(def.id);
+        return opts;
+    }
+
+    void AssignSelected(PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, SkillGemInventoryComponent& gemInventory,
         EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
         if (IsSpiritSlot()) {
             std::string message;
-            SpiritAuraSystem::TryAssign(loadout, m_selectedSlot - kSkillSlotCount, gemId, equipment, stats, message);
+            SpiritAuraSystem::TryAssign(loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
             lastActionMessage = message;
             messageTimer = 2.0f;
         } else {
-            AssignGem(skillComp, gemId);
+            AssignGem(skillComp, gemInventory, stats, gemId);
         }
     }
 
-    void AssignGem(PlayerSkill& skillComp, int gemId) {
-        SkillData& slot = skillComp.skills[m_selectedSlot];
-
+    void AssignGem(PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory, CharacterStatsComponent& stats, int gemId) {
         if (gemId < 0) {
-            slot = SkillData{};
+            skillComp.skills[m_selectedSlot] = SkillData{};
             lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": Empty";
-        } else {
-            const GemDefinition* def = SkillGemData::Find(gemId);
-            if (!def) return;
-            slot = def->skill;
-            slot.gemId = gemId;
-            slot.isValid = true;
-            slot.currentCooldown = 0.0f;
-            lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": " + slot.name;
+            messageTimer = 2.0f;
+            return;
         }
+
+        for (int i = 0; i < kSkillSlotCount; ++i) {
+            if (i != m_selectedSlot && skillComp.skills[i].isValid && skillComp.skills[i].gemId == gemId) {
+                lastActionMessage = "Already equipped in another skill slot";
+                messageTimer = 2.0f;
+                return;
+            }
+        }
+
+        const GemDefinition* def = SkillGemData::Find(gemId);
+        if (!def) return;
+        int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
+        int required = SkillGemScaling::RequiredStat(def->baseRequirement, level);
+        int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
+        if (have < required) {
+            lastActionMessage = "Requires " + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
+                + " (have " + std::to_string(have) + ")";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        BuildSkillData(skillComp.skills[m_selectedSlot], gemId, gemInventory);
+        lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": " + skillComp.skills[m_selectedSlot].name;
         messageTimer = 2.0f;
+    }
+
+    void AssignSupport(PlayerSkill& skillComp, SkillGemInventoryComponent& gemInventory, CharacterStatsComponent& stats, int supportGemId) {
+        if (m_selectedSlot >= kSkillSlotCount || !skillComp.skills[m_selectedSlot].isValid) return;
+        int hostGemId = skillComp.skills[m_selectedSlot].gemId;
+        OwnedGemInstance* inst = FindOwnedMutable(gemInventory, hostGemId, false);
+        if (!inst || m_selectedSocket < 0 || m_selectedSocket >= inst->maxSockets) return;
+
+        if (supportGemId >= 0) {
+            const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
+            if (!def) return;
+            int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
+            if (have < def->requirement) {
+                lastActionMessage = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
+                    + " (have " + std::to_string(have) + ")";
+                messageTimer = 2.0f;
+                return;
+            }
+            for (int s = 0; s < kMaxPossibleSockets; ++s) {
+                if (s != m_selectedSocket && inst->supportGemIds[s] == supportGemId) {
+                    lastActionMessage = "Already socketed in this skill";
+                    messageTimer = 2.0f;
+                    return;
+                }
+            }
+        }
+
+        inst->supportGemIds[m_selectedSocket] = supportGemId;
+        BuildSkillData(skillComp.skills[m_selectedSlot], hostGemId, gemInventory);
+
+        const SupportGemDefinition* assigned = supportGemId >= 0 ? SupportGemData::Find(supportGemId) : nullptr;
+        lastActionMessage = "Socket " + std::to_string(m_selectedSocket + 1) + ": " + (assigned ? assigned->name : "Empty");
+        messageTimer = 2.0f;
+    }
+
+    // Called on initial assignment and again whenever a socket on this same gem changes
+    // while it's equipped. See SkillGemScaling::BuildEquippedSkillData (shared with
+    // GameScene's save-load restore path, so both derive identical live stats).
+    void BuildSkillData(SkillData& out, int gemId, const SkillGemInventoryComponent& gemInventory) const {
+        SkillGemScaling::BuildEquippedSkillData(out, gemId, gemInventory);
     }
 
     std::string FormatFloat(float value) const {
@@ -366,5 +582,32 @@ private:
         text.setOutlineThickness(1.0f);
         text.setPosition({ x, y });
         target.draw(text);
+    }
+
+    void DrawSocketBox(sf::RenderTarget& target, sf::FloatRect rect, int supportGemId, bool selected) {
+        sf::RectangleShape box(rect.size);
+        box.setPosition(rect.position);
+        box.setFillColor(supportGemId >= 0 ? sf::Color(45, 55, 70) : sf::Color(30, 30, 34));
+        box.setOutlineColor(selected ? sf::Color::Yellow : sf::Color(90, 90, 100));
+        box.setOutlineThickness(selected ? 2.0f : 1.0f);
+        target.draw(box);
+
+        std::string label = "+ Empty";
+        if (supportGemId >= 0) {
+            const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
+            label = def ? def->name : "?";
+        }
+        DrawText(target, rect.position.x + 3.0f, rect.position.y + 1.0f, Truncate(label, rect.size.x - 6.0f, 9), 9,
+            supportGemId >= 0 ? sf::Color(200, 220, 255) : sf::Color(140, 140, 140));
+    }
+
+    void DrawButtonSmall(sf::RenderTarget& target, sf::FloatRect rect, const std::string& label, sf::Color fillColor) {
+        sf::RectangleShape box(rect.size);
+        box.setPosition(rect.position);
+        box.setFillColor(fillColor);
+        box.setOutlineColor(sf::Color(200, 200, 200));
+        box.setOutlineThickness(1.0f);
+        target.draw(box);
+        DrawText(target, rect.position.x + 3.0f, rect.position.y + 1.0f, Truncate(label, rect.size.x - 6.0f, 9), 9, sf::Color(220, 220, 220));
     }
 };

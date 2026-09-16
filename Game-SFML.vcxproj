@@ -120,11 +120,15 @@
     <ClInclude Include="External\ECS\Systems\RenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillGemData.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SkillGemScaling.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SupportGemData.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SupportGemSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SpiritAuraSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SparkRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SparkVisualSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\HealthBarRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\SkillGemSystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\GemIdentifySystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\KeyBindSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />

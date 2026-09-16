@@ -49,6 +49,7 @@ GameScene::GameScene() {
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
 	vendorSystem = std::make_shared<VendorSystem>();
 	skillGemSystem = std::make_shared<SkillGemSystem>();
+	gemIdentifySystem = std::make_shared<GemIdentifySystem>();
 	keyBindSystem = std::make_shared<KeyBindSystem>();
 
     auto& campaign = CampaignManager::Instance();
@@ -73,10 +74,11 @@ GameScene::GameScene() {
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
             player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
 
-            // Older saves (pre-skill-gem feature) have no unlocked-gem data; keep the
+            // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
             // EntitySpawner-seeded starter loadout in that case instead of blanking it out.
-            if (!campaign.GetSavedUnlockedGems().empty()) {
-                player.GetComponent<SkillGemInventoryComponent>().unlockedGemIds = campaign.GetSavedUnlockedGems();
+            if (!campaign.GetSavedOwnedGems().empty()) {
+                auto& gemInventory = player.GetComponent<SkillGemInventoryComponent>();
+                gemInventory.ownedGems = campaign.GetSavedOwnedGems();
 
                 auto& skillComp = player.GetComponent<PlayerSkill>();
                 const auto& loadout = campaign.GetSavedSkillLoadout();
@@ -86,11 +88,10 @@ GameScene::GameScene() {
                         skillComp.skills[i] = SkillData{};
                         continue;
                     }
-                    const GemDefinition* def = SkillGemData::Find(gemId);
-                    if (!def) continue;
-                    skillComp.skills[i] = def->skill;
-                    skillComp.skills[i].gemId = gemId;
-                    skillComp.skills[i].isValid = true;
+                    // Rebuilds level scaling + socketed supports from gemInventory, not
+                    // just a raw catalog copy -- matches SkillGemSystem::AssignGem so a
+                    // saved character's skills come back exactly as they were.
+                    SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], gemId, gemInventory);
                 }
             }
 
@@ -124,7 +125,7 @@ void GameScene::AdvanceToNextZone() {
         campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);
     }
     if (registry->HasComponent<SkillGemInventoryComponent>(playerEntity)) {
-        campaign.SaveUnlockedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).unlockedGemIds);
+        campaign.SaveOwnedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).ownedGems);
     }
     if (registry->HasComponent<PlayerSkill>(playerEntity)) {
         auto& skillComp = registry->GetComponent<PlayerSkill>(playerEntity);
@@ -208,23 +209,24 @@ void GameScene::Update() {
         passiveTreeSystem->Close();
         vendorSystem->Close();
         keyBindSystem->Close();
+        gemIdentifySystem->Close();
     }
 
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::TogglePassiveTree))) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); }
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     // PoE2同様、NPCへの話しかけは左クリックのみ(Bキーの「話しかける」操作は廃止)。
     // 商人本体にカーソルが乗っているかは常時判定し、Render側で当たり判定の輪を
@@ -242,23 +244,25 @@ void GameScene::Update() {
         int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
             ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
         vendorSystem->Toggle(playerLevel);
-        if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); }
+        if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::O)) {
         keyBindSystem->Toggle();
-        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); }
+        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); }
     }
     keyBindSystem->Update(*registry, dt);
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
     skillGemSystem->Update(*registry, dt);
+    gemIdentifySystem->Update(*registry, dt);
 
     // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
     // ワールドシミュレーションを止める。ただしインベントリ(アイテム)/キャラクター
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
-    // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。
-    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen;
+    // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。未鑑定ジェムの
+    // 選択画面(GemIdentifySystem)も選んでいる間は戦闘が進まないようポーズ系に含める。
+    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
     // 非ポーズ系メニュー(インベントリ/キャラクターシート/スキルジェム)はゲームを
     // 止めないので、開いている間もフィールド上でのスキル発動クリックは通したい。
     // マウスが実際にそのパネルの上に重なっている時だけクリックをUI側へ譲る
@@ -319,7 +323,7 @@ void GameScene::Update() {
         physicsSystem->Update(*registry, dt);
         // �Փˏ���
         collisionSystem->Update(*registry, dt);
-        itemPickupSystem->Update(*registry, dt, clickedPickup);
+        itemPickupSystem->Update(*registry, dt, clickedPickup, *gemIdentifySystem);
         bossPhaseSystem->Update(*registry, dt);
     }
 
@@ -546,6 +550,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     passiveTreeSystem->Render(*registry, target);
     vendorSystem->Render(*registry, target);
     skillGemSystem->Render(*registry, target);
+    gemIdentifySystem->Render(*registry, target);
     keyBindSystem->Render(*registry, target);
 
     target.setView(target.getDefaultView());
