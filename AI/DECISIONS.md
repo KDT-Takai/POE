@@ -30,6 +30,7 @@ AIは同じ提案を繰り返さないこと。詳しい経緯・議論の記録
 - **一時バフの実装方式**: 自己バフ系スキル(War Cry等)は`live`のCharacterStatsComponentを直接乗算で変更し、持続時間経過時は逆算除算ではなく`EquipmentSystem::RecalculateStats`の再実行で装備/パッシブ基準へ戻す。バフ中に他要因(レベルアップ等)でRecalculateStatsが走ってもステータスが恒久的に壊れないようにするため。
 - **Vendorの在庫リロール**: 同じ訪問中でもTキー + ゴールド消費で在庫6点を再生成できる（`VendorSystem::TryReroll`）。Rキーはプレイヤーのスキルスロット入力と衝突するため使わない。価格はプレイヤーレベルに応じて増加し、無限リロールでの経済破壊を抑える。
 - **文字エンコーディング**: 新規の日本語コンテンツを含むファイルはUTF-8 BOM付きで保存する。`/utf-8`は`Game-SFML.vcxproj`の全4構成(Debug/Release×Win32/x64)の`<ClCompile>`に既定オプションとして設定済み(プロジェクト全体で有効。個別ファイルへの追加指定は不要、既存の重複指定は無害なので残置)。ヘッダオンリーのinline関数(`ItemUIHelpers`等)に日本語リテラルを書く場合、それを include する.cppが複数あり得る(例: `GameScene.h`は`GameScene.cpp`/`ResultScene.cpp`/`TitleScene.cpp`から include される)ため、1ファイルだけ`/utf-8`を付けても他の翻訳単位でODR違反的な文字化けが起きうる——これがプロジェクト全体設定にした理由。Writeツールでファイルを丸ごと書き直すとUTF-8 BOMが失われる既知の挙動があるため、BOM付きファイルをWriteで更新した後は必ずBOMを確認/復元すること。新規システム（Item/Currency/UI等）のテキストは原則英語表記とし、文字化けリスクを避ける（BOM無し純ASCIIファイルに日本語を書くとコードページ932での誤読が起きるため）。
+- **クラッシュ診断**: `Programs/System/Main/Main.cpp`でspdlogのデフォルトロガーを`game.log`ファイル出力(warning以上は即flush)に変更済み。C++例外は`main()`の`try/catch`で`what()`をログしてから再送出、SEH例外(アクセス違反等)は`SetUnhandledExceptionFilter`で捕捉し例外コード/アドレスをログ+`crash.dmp`(ミニダンプ)を書き出す。落ちた際はまず`game.log`/`crash.dmp`を確認する(ユーザーにダイアログの文字を手打ちしてもらう必要はない)。両ファイルは`.gitignore`済み(実行時生成物のため)。
 - **コメント方針**: コメントは極力書かない（詳細は `Shared/CONVENTIONS.md`）。
 - **プロジェクトファイル管理**: 新規ヘッダを追加したら `Game-SFML.vcxproj` の `ClInclude` にも追記する（IDE表示のため。`.filters` は同期が崩れている状態が既に存在するため追随しなくてよい）。
 - **命名**: `Shared/NAMING.md` に従う（個別に相談しない）。

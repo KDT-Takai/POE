@@ -4,6 +4,12 @@
 
 ## 済 (Done)
 
+**クラッシュ診断機構を新規追加(`game.log`/`crash.dmp`)**。ユーザーから「町から次のゾーンへ移動したタイミングでエラーダイアログが出て落ちた」と報告を受けたが、間欠的で再現しないことがあり、かつ原因コードを`SkillGemSystem`/`GemIdentifySystem`/`CollisionSystem`のジェムドロップ処理/`ZoneBuilder`の突進アーケタイプ/`CampaignManager`のセーブ復元処理など広範囲にわたって精査したが確実な原因を特定できなかった。そのため`Programs/System/Main/Main.cpp`に恒久的な診断機構を追加:
+- `spdlog`のデフォルトロガーをコンソールのみから`game.log`ファイル出力へ変更(warning以上は即flush、クラッシュでコンソールが消えてもログが残る)。
+- `main()`を`try/catch`で囲み、C++例外(`EntityObject::GetComponent<T>()`がスローする`std::runtime_error("Component not found")`等)が捕捉されずに落ちる場合、その`what()`を`game.log`に記録してから再送出する。
+- `SetUnhandledExceptionFilter`でWindows SEH例外(アクセス違反等、`/EHsc`のC++ try/catchでは捕捉できない種類のクラッシュ)も捕捉し、例外コード/発生アドレスを記録した上で`crash.dmp`(Visual Studio/WinDbgで開いて正確なクラッシュ箇所を特定可能なミニダンプ)を書き出す。
+- これにより次回同じエラーで落ちた際、ダイアログの文字を手打ちで共有してもらう必要がなくなり、`game.log`と`crash.dmp`を見れば原因箇所を直接特定できる。
+
 **スキルジェムシステムをPoE2準拠へ全面刷新(ジェムレベル/鑑定/サポートジェム/ソケット/ステータス要件)**。「スキルジェム（レベル１～２０）を敵がドロップ...」という大規模な仕様変更依頼を受け、実装前にEnterPlanModeで既存アーキテクチャ(`SkillGemData`/`SkillGemSystem`/`SpiritAuraSystem`/セーブ形式)を調査した上でユーザーに設計上の分岐点(ジェムレベルの意味/サポートジェムの内容/統合スロット数/ソケット拡張アイテムの実装方法)を確認し、承認を得てから実装した。実際のPoE2仕様([Game8: How to Increase Support Gem Slots](https://game8.co/games/Path-of-Exile-2/archives/489077)等で調査、初期2ソケット・Jeweller's Orbで最大5まで拡張)も踏まえている。
 - **ジェムの個体管理へ移行**: 従来`SkillGemInventoryComponent.unlockedGemIds`は単なる所持フラグ(`vector<int>`)だったが、`OwnedGemInstance`(`gemId`/`isSupport`/`level`/`maxSockets`/`supportGemIds[5]`)を持つ`vector<OwnedGemInstance>`(`ownedGems`)へ全面移行。1つのgemIdにつき所持インスタンスは常に1つ(同じジェムを再鑑定するとレベルが上書きされるだけで重複しない)。
 - **未鑑定ジェムのドロップ→鑑定フロー**: モンスタードロップは具体的なスキルではなく「レベル1-20+スキル/スピリット種別」だけをロールした未鑑定ジェム(`SkillGemPickupComponent`)。レベルは3乗で低レベル側に偏らせた分布(`CollisionSystem`)でロールし、19-20が稀になるようにした。拾ってクリックすると新設の`GemIdentifySystem`(`External/ECS/Systems/UI/GemIdentifySystem.h`)が開き、その種別に合う未所持(または今回の方が高レベルな)候補一覧から選んで初めて`ownedGems`に入る。「Leave on ground」でキャンセルすればピックアップ自体はその場に残る。
