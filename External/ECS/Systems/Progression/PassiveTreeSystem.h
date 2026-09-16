@@ -32,10 +32,10 @@ private:
     // (see NodeRadiusPx) so node spacing and node size shrink/grow together -- a fixed
     // screen-pixel radius would make nodes overlap once zoomed out past their spacing.
     // Clamped to a min/max pixel range so they never vanish or balloon at the extremes.
-    static constexpr float kNodeRadius = 10.0f;
-    static constexpr float kStartNodeRadius = 12.0f;
-    static constexpr float kMinNodeRadiusPx = 4.0f;
-    static constexpr float kMaxNodeRadiusPx = 22.0f;
+    static constexpr float kNodeRadius = 7.0f;
+    static constexpr float kStartNodeRadius = 9.0f;
+    static constexpr float kMinNodeRadiusPx = 3.0f;
+    static constexpr float kMaxNodeRadiusPx = 16.0f;
 
     // Pan (left-drag) and zoom (wheel) range. minZoom is well below 1.0 so the tree can
     // shrink below its "fit whole tree" size too, not just enlarge past it.
