@@ -495,7 +495,8 @@ private:
 
         for (const auto& affix : item.affixes) {
             std::ostringstream ss;
-            ss << std::fixed << std::setprecision(1) << (affix.value >= 0.0f ? "+" : "") << affix.value << " " << affix.label;
+            ss << std::fixed << std::setprecision(1) << (affix.value >= 0.0f ? "+" : "") << affix.value
+                << (ItemUIHelpers::IsPercentAffix(affix.stat) ? "% " : " ") << affix.label;
             lines.push_back({ ss.str(), sf::Color(150, 200, 255) });
         }
 

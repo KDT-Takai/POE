@@ -129,24 +129,24 @@ private:
 
     static std::vector<ItemAffix> PrefixPool() {
         return {
-            { AffixStat::IncreasedAttackDamage, 15.0f, 1, true, "Increased Attack Damage" },
-            { AffixStat::FlatArmour, 10.0f, 1, true, "Armour" },
-            { AffixStat::FlatEvasion, 10.0f, 1, true, "Evasion" },
-            { AffixStat::FlatES, 8.0f, 1, true, "Energy Shield" },
+            { AffixStat::IncreasedAttackDamage, 15.0f, 1, true, "攻撃ダメージ増加" },
+            { AffixStat::FlatArmour, 10.0f, 1, true, "アーマー" },
+            { AffixStat::FlatEvasion, 10.0f, 1, true, "回避力" },
+            { AffixStat::FlatES, 8.0f, 1, true, "エナジーシールド" },
         };
     }
 
     static std::vector<ItemAffix> SuffixPool() {
         return {
-            { AffixStat::FireRes, 12.0f, 1, false, "Fire Resistance" },
-            { AffixStat::ColdRes, 12.0f, 1, false, "Cold Resistance" },
-            { AffixStat::LightningRes, 12.0f, 1, false, "Lightning Resistance" },
-            { AffixStat::ChaosRes, 6.0f, 1, false, "Chaos Resistance" },
-            { AffixStat::FlatLife, 15.0f, 1, false, "Life" },
-            { AffixStat::FlatMana, 15.0f, 1, false, "Mana" },
-            { AffixStat::CritChance, 2.0f, 1, false, "Critical Chance" },
-            { AffixStat::MoveSpeed, 5.0f, 1, false, "Movement Speed" },
-            { AffixStat::FlatAccuracy, 20.0f, 1, false, "Accuracy" },
+            { AffixStat::FireRes, 12.0f, 1, false, "火耐性" },
+            { AffixStat::ColdRes, 12.0f, 1, false, "冷気耐性" },
+            { AffixStat::LightningRes, 12.0f, 1, false, "電気耐性" },
+            { AffixStat::ChaosRes, 6.0f, 1, false, "カオス耐性" },
+            { AffixStat::FlatLife, 15.0f, 1, false, "生命力" },
+            { AffixStat::FlatMana, 15.0f, 1, false, "マナ" },
+            { AffixStat::CritChance, 2.0f, 1, false, "クリティカル率" },
+            { AffixStat::MoveSpeed, 5.0f, 1, false, "移動速度" },
+            { AffixStat::FlatAccuracy, 20.0f, 1, false, "命中率" },
         };
     }
 };

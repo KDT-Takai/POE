@@ -133,6 +133,24 @@ namespace ItemUIHelpers {
         }
     }
 
+    // Whether an affix's value is a percentage (show "%") vs. a flat number (show plain).
+    // Matches EquipmentSystem::ApplyAffix's handling of each AffixStat 1:1.
+    inline bool IsPercentAffix(AffixStat stat) {
+        switch (stat) {
+        case AffixStat::IncreasedAttackDamage:
+        case AffixStat::FireRes:
+        case AffixStat::ColdRes:
+        case AffixStat::LightningRes:
+        case AffixStat::ChaosRes:
+        case AffixStat::CritChance:
+        case AffixStat::CritMultiplier:
+        case AffixStat::MoveSpeed:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     inline sf::Color RarityColor(ItemRarity rarity) {
         switch (rarity) {
         case ItemRarity::Normal: return sf::Color(220, 220, 220);
