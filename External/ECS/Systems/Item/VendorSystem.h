@@ -419,6 +419,12 @@ private:
         std::vector<sf::Vector2i> positions = ActiveTabPositions();
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
 
+        // Track the hovered cell during the pass but draw its tooltip only after every
+        // cell has been painted, so later cells in the grid can't be drawn on top of
+        // (and hide part of) the tooltip belonging to an earlier one.
+        const ItemComponent* hoveredItem = nullptr;
+        int hoveredPrice = 0;
+
         for (int i = 0; i < count; ++i) {
             const ItemComponent& item = (m_activeTab == VendorTab::Buy) ? m_stock[i] : m_buyback[i].item;
             int price = (m_activeTab == VendorTab::Buy) ? BuyPrice(item) : m_buyback[i].price;
@@ -440,8 +446,13 @@ private:
             DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
 
             if (hovered) {
-                DrawShopTooltip(target, mouse, item, price);
+                hoveredItem = &item;
+                hoveredPrice = price;
             }
+        }
+
+        if (hoveredItem) {
+            DrawShopTooltip(target, mouse, *hoveredItem, hoveredPrice);
         }
     }
 
