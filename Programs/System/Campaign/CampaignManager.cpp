@@ -425,6 +425,14 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         }
     }
 
+    out << "pendingUncutGems.count=" << m_savedPendingUncutGems.size() << "\n";
+    for (size_t i = 0; i < m_savedPendingUncutGems.size(); ++i) {
+        const PendingUncutGem& g = m_savedPendingUncutGems[i];
+        std::string p = "pendingUncutGems.gem" + std::to_string(i) + ".";
+        out << p << "level=" << g.level << "\n";
+        out << p << "kind=" << static_cast<int>(g.kind) << "\n";
+    }
+
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
         out << "skillLoadout.slot" << i << "=" << m_savedSkillLoadout[i] << "\n";
     }
@@ -504,6 +512,18 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
             g.supportGemIds[s] = GetI(kv, p + "support" + std::to_string(s), -1);
         }
         if (g.gemId >= 0) m_savedOwnedGems.push_back(g);
+    }
+
+    // Pre-inventory-flow saves have no "pendingUncutGems.count" key -- defaults to an
+    // empty list, same fallback convention as m_savedOwnedGems above.
+    m_savedPendingUncutGems.clear();
+    int pendingUncutCount = GetI(kv, "pendingUncutGems.count", 0);
+    for (int i = 0; i < pendingUncutCount; ++i) {
+        std::string p = "pendingUncutGems.gem" + std::to_string(i) + ".";
+        PendingUncutGem g;
+        g.level = GetI(kv, p + "level", 1);
+        g.kind = static_cast<GemPickupKind>(GetI(kv, p + "kind", 0));
+        m_savedPendingUncutGems.push_back(g);
     }
 
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {

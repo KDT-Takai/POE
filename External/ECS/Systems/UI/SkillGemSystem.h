@@ -15,6 +15,7 @@
 #include "../Skill/SkillGemScaling.h"
 #include "../Skill/SkillTags.h"
 #include "../Skill/SpiritAuraSystem.h"
+#include "GemIdentifySystem.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 #include "System/Input/InputUtils/InputUtils.h"
@@ -46,6 +47,7 @@ private:
     // and a member function's parameter types (unlike its body) aren't deferred to
     // "complete-class context" -- the type must already be visible at that point.
     struct Layout {
+        float uncutGemsRowY;
         float skillRowY;
         float skillRowHeight;  // full row incl. the socket sub-line below the name/stats line
         float skillMainLineH;  // click area for just the name/stats line
@@ -89,7 +91,7 @@ public:
     // then click a gem in the list below to socket it. The old Up/Down/Left/Right keyboard
     // navigation was removed because this menu doesn't pause the world, so those arrow
     // keys were simultaneously moving the player (see InputSystem's movement handling).
-    void Update(Registry& registry, float dt) {
+    void Update(Registry& registry, float dt, GemIdentifySystem& gemIdentifySystem) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
 
@@ -107,6 +109,14 @@ public:
         sf::Vector2f mouse = mouseInput.GetMousePointF();
 
         Layout L = ComputeLayout();
+
+        for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
+            if (UncutGemRect(L, static_cast<int>(i)).contains(mouse)) {
+                const PendingUncutGem& pending = gemInventory.pendingUncutGems[i];
+                gemIdentifySystem.Open(static_cast<int>(i), pending.level, pending.kind);
+                return;
+            }
+        }
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             sf::FloatRect mainRect({ kPanelX + 12.0f, SkillRowY(L, i) }, { kPanelW - 24.0f, L.skillMainLineH });
@@ -143,7 +153,7 @@ public:
         }
 
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp));
+            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), gemInventory);
             for (size_t i = 0; i < opts.size(); ++i) {
                 sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
@@ -205,6 +215,15 @@ public:
         };
 
         Layout L = ComputeLayout();
+
+        for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
+            const PendingUncutGem& pending = gemInventory.pendingUncutGems[i];
+            sf::FloatRect rect = UncutGemRect(L, static_cast<int>(i));
+            DrawButtonSmall(target, rect, KindAbbrev(pending.kind) + std::to_string(pending.level), sf::Color(90, 60, 90));
+        }
+        if (gemInventory.pendingUncutGems.empty()) {
+            DrawText(target, panelX + 12.0f, L.uncutGemsRowY + 2.0f, "Uncut Gems: none", 11, sf::Color(120, 120, 120));
+        }
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             float y = SkillRowY(L, i);
@@ -281,7 +300,7 @@ public:
         }
 
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp));
+            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), gemInventory);
             RenderSupportPicker(target, L, panelX, contentWidth, opts, skillComp, gemInventory, stats);
         } else {
             bool spiritSlot = IsSpiritSlot();
@@ -388,7 +407,8 @@ private:
 
     Layout ComputeLayout() const {
         Layout L;
-        L.skillRowY = kPanelY + 26.0f;
+        L.uncutGemsRowY = kPanelY + 22.0f;
+        L.skillRowY = L.uncutGemsRowY + 24.0f;
         L.skillRowHeight = 40.0f;
         L.skillMainLineH = 20.0f;
         L.socketLineOffsetY = 20.0f;
@@ -399,6 +419,15 @@ private:
         L.pickerRowY = L.pickerHeaderY + 20.0f;
         L.pickerRowHeight = 20.0f;
         return L;
+    }
+
+    static constexpr float kUncutChipW = 48.0f;
+    static constexpr float kUncutChipH = 18.0f;
+    static constexpr float kUncutChipGap = 3.0f;
+
+    sf::FloatRect UncutGemRect(const Layout& L, int index) const {
+        float x = kPanelX + 12.0f + static_cast<float>(index) * (kUncutChipW + kUncutChipGap);
+        return sf::FloatRect({ x, L.uncutGemsRowY }, { kUncutChipW, kUncutChipH });
     }
 
     float SkillRowY(const Layout& L, int index) const { return L.skillRowY + static_cast<float>(index) * L.skillRowHeight; }
@@ -454,16 +483,25 @@ private:
         return opts;
     }
 
-    // Unlike skill/Spirit gems, support gems aren't found as world drops in this
-    // simplified design -- every support in the catalog is available to socket, gated by
-    // its Str/Dex/Int requirement (see AssignSupport) AND by whether the host skill has
-    // the support's required SkillTag (spec 29.2: only show compatible supports).
-    std::vector<int> SupportOptions(unsigned int hostSkillTags) const {
+    // Support gems are Uncut-Gem drops like Skill/Spirit gems (see GemIdentifySystem) --
+    // only ones the player has already cut are offered here, gated by whether the host
+    // skill has the support's required SkillTag (spec: only show compatible supports).
+    std::vector<int> SupportOptions(unsigned int hostSkillTags, const SkillGemInventoryComponent& gemInventory) const {
         std::vector<int> opts = { -1 };
-        for (const auto& def : SupportGemData::Gems()) {
-            if (SkillTags::IsCompatible(hostSkillTags, def.requiredTag)) opts.push_back(def.id);
+        for (const auto& owned : gemInventory.ownedGems) {
+            if (!owned.isSupport) continue;
+            const SupportGemDefinition* def = SupportGemData::Find(owned.gemId);
+            if (def && SkillTags::IsCompatible(hostSkillTags, def->requiredTag)) opts.push_back(def->id);
         }
         return opts;
+    }
+
+    static std::string KindAbbrev(GemPickupKind kind) {
+        switch (kind) {
+        case GemPickupKind::Support: return "Su";
+        case GemPickupKind::Spirit: return "Sp";
+        default: return "Sk";
+        }
     }
 
     unsigned int HostSkillTags(const PlayerSkill& skillComp) const {

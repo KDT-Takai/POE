@@ -6,23 +6,26 @@
 #include "../../Components/Item/SkillGem.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "../Skill/SkillGemData.h"
+#include "../Skill/SupportGemData.h"
 #include "../Skill/SkillGemScaling.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 
-// Uncut gems (SkillGemPickupComponent) drop with only a rolled level and Skill/Spirit
-// category, not a specific skill -- matches PoE2's "identify by choosing" gem drops
-// instead of PoE1's "drops already named". Clicking one on the ground (see
-// ItemPickupSystem) opens this panel instead of instantly unlocking anything; picking a
-// candidate here either adds a new SkillGemInventoryComponent::OwnedGemInstance or, if
-// already owned, raises that instance's level (never lowers it). A "Cancel" option
-// leaves the pickup on the ground so the player can decide later.
+// Gem Cutting screen. Uncut gems (Skill/Support/Spirit, see GemPickupKind) drop with only
+// a rolled level and kind, not a specific gem -- matches the spec's "拾う -> インベントリ
+// -> 使用 -> Gem Cutting -> 生成" flow. Held pickups sit in
+// SkillGemInventoryComponent::pendingUncutGems (a lightweight stand-in for an inventory
+// slot) until the player explicitly "uses" one from SkillGemSystem's Uncut Gems row,
+// which calls Open() here with that entry's queue index. Picking a candidate either adds
+// a new OwnedGemInstance or, for Skill/Spirit, raises an already-owned instance's level
+// (never lowers it) -- Support gems have no level, so an already-owned Support is simply
+// excluded from the candidate list. A "Cancel" option leaves the entry in the queue.
 class GemIdentifySystem {
 private:
     std::shared_ptr<sf::Font> m_font;
+    int m_pendingIndex = -1;
     int m_pendingLevel = 1;
-    bool m_pendingIsSpirit = false;
-    Entity m_pendingPickupEntity = static_cast<Entity>(-1);
+    GemPickupKind m_pendingKind = GemPickupKind::Skill;
 
 public:
     bool isOpen = false;
@@ -33,11 +36,11 @@ public:
         m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     }
 
-    void Open(int level, bool isSpirit, Entity pickupEntity) {
+    void Open(int pendingIndex, int level, GemPickupKind kind) {
         isOpen = true;
+        m_pendingIndex = pendingIndex;
         m_pendingLevel = level;
-        m_pendingIsSpirit = isSpirit;
-        m_pendingPickupEntity = pickupEntity;
+        m_pendingKind = kind;
     }
     void Close() { isOpen = false; }
 
@@ -54,6 +57,7 @@ public:
         if (players.empty()) return;
         Entity player = players[0];
         auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
+        if (!PendingEntryStillValid(gemInventory)) { isOpen = false; return; }
 
         auto& mouseInput = InputManager::Instance().GetMouseInput();
         if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
@@ -64,13 +68,13 @@ public:
         for (size_t i = 0; i < opts.size(); ++i) {
             sf::FloatRect rect({ kPanelX + 12.0f, L.rowY + static_cast<float>(i) * L.rowHeight }, { kPanelW - 24.0f, L.rowHeight });
             if (rect.contains(mouse)) {
-                Identify(registry, gemInventory, opts[i]);
+                Identify(gemInventory, opts[i]);
                 return;
             }
         }
 
         if (L.CancelRect().contains(mouse)) {
-            Close(); // pickup entity is left alone -- still sitting on the ground
+            Close(); // entry stays in the pending queue -- player can cut it later
         }
     }
 
@@ -81,6 +85,7 @@ public:
         if (players.empty()) return;
         Entity player = players[0];
         auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
+        if (!PendingEntryStillValid(gemInventory)) return;
 
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
@@ -92,9 +97,9 @@ public:
         bg.setOutlineThickness(2.0f);
         target.draw(bg);
 
-        std::string kindLabel = m_pendingIsSpirit ? "Spirit Gem" : "Skill Gem";
         DrawText(target, kPanelX + 12.0f, kPanelY + 8.0f,
-            "Uncut " + kindLabel + ", Level " + std::to_string(m_pendingLevel) + " - choose which gem:", 13, sf::Color(255, 220, 120));
+            "Gem Cutting - Uncut " + std::string(KindLabel(m_pendingKind)) + " Gem, Level " + std::to_string(m_pendingLevel) + " - choose:",
+            13, sf::Color(255, 220, 120));
 
         Layout L = ComputeLayout();
         std::vector<int> opts = Options(gemInventory);
@@ -110,12 +115,18 @@ public:
             highlight.setOutlineThickness(1.0f);
             target.draw(highlight);
 
-            const GemDefinition* def = SkillGemData::Find(gemId);
-            if (!def) continue;
-
-            const OwnedGemInstance* existing = FindOwned(gemInventory, gemId);
-            std::string label = def->skill.name;
-            if (existing) label += " (upgrade Lv" + std::to_string(existing->level) + " -> " + std::to_string(m_pendingLevel) + ")";
+            std::string label;
+            if (m_pendingKind == GemPickupKind::Support) {
+                const SupportGemDefinition* def = SupportGemData::Find(gemId);
+                if (!def) continue;
+                label = def->name;
+            } else {
+                const GemDefinition* def = SkillGemData::Find(gemId);
+                if (!def) continue;
+                const OwnedGemInstance* existing = FindOwned(gemInventory, gemId);
+                label = def->skill.name;
+                if (existing) label += " (upgrade Lv" + std::to_string(existing->level) + " -> " + std::to_string(m_pendingLevel) + ")";
+            }
 
             DrawText(target, kPanelX + 16.0f, y + 4.0f, label, 13, sf::Color(220, 220, 255));
         }
@@ -127,7 +138,7 @@ public:
         cancelBox.setOutlineColor(sf::Color(200, 200, 200));
         cancelBox.setOutlineThickness(1.5f);
         target.draw(cancelBox);
-        DrawText(target, cancelRect.position.x + 10.0f, cancelRect.position.y + 8.0f, "Leave on ground", 13, sf::Color::White);
+        DrawText(target, cancelRect.position.x + 10.0f, cancelRect.position.y + 8.0f, "Cancel", 13, sf::Color::White);
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
             DrawText(target, kPanelX + 12.0f, cancelRect.position.y + 40.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
@@ -157,17 +168,42 @@ private:
     static constexpr float kPanelX = 240.0f;
     static constexpr float kPanelY = 140.0f;
 
+    static const char* KindLabel(GemPickupKind kind) {
+        switch (kind) {
+        case GemPickupKind::Support: return "Support";
+        case GemPickupKind::Spirit: return "Spirit";
+        default: return "Skill";
+        }
+    }
+
+    // The pending queue can shrink from under this panel (e.g. save/load) -- guard every
+    // access instead of assuming m_pendingIndex is still in range.
+    bool PendingEntryStillValid(const SkillGemInventoryComponent& inv) const {
+        return m_pendingIndex >= 0 && static_cast<size_t>(m_pendingIndex) < inv.pendingUncutGems.size();
+    }
+
     const OwnedGemInstance* FindOwned(const SkillGemInventoryComponent& inv, int gemId) const {
         return SkillGemScaling::FindOwnedGem(inv, gemId, false);
     }
 
-    // Every gem of the rolled category (Skill vs Spirit) that isn't already owned at
-    // this level or higher -- picking an already-superior gem would be a no-op.
+    // Candidates for the rolled kind: Skill/Spirit list SkillGemData entries (split by
+    // Aura behaviorType, matching the old isSpirit convention) not already owned at this
+    // level or higher; Support lists not-yet-owned SupportGemData entries (support gems
+    // have no level, so an owned one has nothing left to upgrade).
     std::vector<int> Options(const SkillGemInventoryComponent& gemInventory) const {
         std::vector<int> opts;
+        if (m_pendingKind == GemPickupKind::Support) {
+            for (const auto& def : SupportGemData::Gems()) {
+                if (SkillGemScaling::FindOwnedGem(gemInventory, def.id, true)) continue;
+                opts.push_back(def.id);
+            }
+            return opts;
+        }
+
+        bool wantAura = (m_pendingKind == GemPickupKind::Spirit);
         for (const auto& def : SkillGemData::Gems()) {
             bool isAura = (def.skill.behaviorType == SkillBehaviorType::Aura);
-            if (isAura != m_pendingIsSpirit) continue;
+            if (isAura != wantAura) continue;
 
             const OwnedGemInstance* existing = FindOwned(gemInventory, def.id);
             if (existing && existing->level >= m_pendingLevel) continue;
@@ -177,26 +213,35 @@ private:
         return opts;
     }
 
-    void Identify(Registry& registry, SkillGemInventoryComponent& gemInventory, int gemId) {
-        const GemDefinition* def = SkillGemData::Find(gemId);
-        if (!def) return;
-
-        OwnedGemInstance* existing = nullptr;
-        for (auto& owned : gemInventory.ownedGems) {
-            if (!owned.isSupport && owned.gemId == gemId) { existing = &owned; break; }
-        }
-
-        if (existing) {
-            existing->level = m_pendingLevel;
-            lastActionMessage = "Upgraded: " + def->skill.name + " to Lv" + std::to_string(m_pendingLevel);
+    void Identify(SkillGemInventoryComponent& gemInventory, int gemId) {
+        if (m_pendingKind == GemPickupKind::Support) {
+            const SupportGemDefinition* def = SupportGemData::Find(gemId);
+            if (!def) return;
+            if (!SkillGemScaling::FindOwnedGem(gemInventory, gemId, true)) {
+                gemInventory.ownedGems.push_back(OwnedGemInstance{ gemId, true, 1, 2, { -1, -1, -1, -1, -1 } });
+            }
+            lastActionMessage = "Cut: " + def->name;
         } else {
-            gemInventory.ownedGems.push_back(OwnedGemInstance{ gemId, false, m_pendingLevel, 2, { -1, -1, -1, -1, -1 } });
-            lastActionMessage = "Learned: " + def->skill.name + " Lv" + std::to_string(m_pendingLevel);
+            const GemDefinition* def = SkillGemData::Find(gemId);
+            if (!def) return;
+
+            OwnedGemInstance* existing = nullptr;
+            for (auto& owned : gemInventory.ownedGems) {
+                if (!owned.isSupport && owned.gemId == gemId) { existing = &owned; break; }
+            }
+
+            if (existing) {
+                existing->level = m_pendingLevel;
+                lastActionMessage = "Upgraded: " + def->skill.name + " to Lv" + std::to_string(m_pendingLevel);
+            } else {
+                gemInventory.ownedGems.push_back(OwnedGemInstance{ gemId, false, m_pendingLevel, 2, { -1, -1, -1, -1, -1 } });
+                lastActionMessage = "Learned: " + def->skill.name + " Lv" + std::to_string(m_pendingLevel);
+            }
         }
         messageTimer = 2.5f;
 
-        if (registry.IsValid(m_pendingPickupEntity)) {
-            registry.DestroyEntity(m_pendingPickupEntity);
+        if (PendingEntryStillValid(gemInventory)) {
+            gemInventory.pendingUncutGems.erase(gemInventory.pendingUncutGems.begin() + m_pendingIndex);
         }
         isOpen = false;
     }

@@ -13,7 +13,6 @@
 #include "CurrencySystem.h"
 #include "ItemFactory.h"
 #include "../UI/ItemUIHelpers.h"
-#include "../UI/GemIdentifySystem.h"
 #include <vector>
 #include <string>
 #include <random>
@@ -31,6 +30,14 @@ public:
 
     std::string lastMessage;
     float messageTimer = 0.0f;
+
+    static const char* KindLabel(GemPickupKind kind) {
+        switch (kind) {
+        case GemPickupKind::Support: return "Support";
+        case GemPickupKind::Spirit: return "Spirit";
+        default: return "Skill";
+        }
+    }
 
     // Closest ground pickup within radius of worldPos, or kInvalidEntity if none.
     static Entity FindNearestPickup(Registry& registry, sf::Vector2f worldPos, float radius) {
@@ -72,7 +79,7 @@ public:
         }
         if (registry.HasComponent<SkillGemPickupComponent>(e)) {
             const auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(e);
-            outName = "Uncut " + std::string(gemPickup.isSpirit ? "Spirit" : "Skill") + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
+            outName = "Uncut " + std::string(KindLabel(gemPickup.kind)) + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
             outColor = sf::Color(255, 90, 220);
             return true;
         }
@@ -86,7 +93,7 @@ public:
 
     // clickedPickup: the entity a fresh left-click landed on this frame (kInvalidEntity
     // if the click didn't hit anything, or nothing was clicked at all).
-    void Update(Registry& registry, float dt, Entity clickedPickup, GemIdentifySystem& gemIdentifySystem) {
+    void Update(Registry& registry, float dt, Entity clickedPickup) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!registry.IsValid(clickedPickup)) return;
 
@@ -126,12 +133,22 @@ public:
             messageTimer = 2.5f;
             registry.DestroyEntity(clickedPickup);
         } else if (registry.HasComponent<SkillGemPickupComponent>(clickedPickup)) {
-            // Uncut gem: opens GemIdentifySystem to pick which specific gem it becomes
-            // instead of instantly unlocking one (see GemIdentifySystem for why). The
-            // pickup entity itself isn't destroyed here -- Identify() does that on
-            // success, or it's simply left on the ground if the player cancels.
+            // Uncut gem: goes into the pending-uncut-gem queue (a lightweight stand-in
+            // for a real inventory slot) instead of resolving instantly -- the player
+            // later opens Gem Cutting (GemIdentifySystem) from SkillGemSystem's "Uncut
+            // Gems" row to actually pick which gem it becomes.
+            if (!registry.HasComponent<SkillGemInventoryComponent>(player)) return;
+            auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
             auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(clickedPickup);
-            gemIdentifySystem.Open(gemPickup.level, gemPickup.isSpirit, clickedPickup);
+            if (gemInventory.pendingUncutGems.size() >= SkillGemInventoryComponent::kPendingCapacity) {
+                lastMessage = "Uncut gem storage full";
+                messageTimer = 2.5f;
+                return;
+            }
+            gemInventory.pendingUncutGems.push_back(PendingUncutGem{ gemPickup.level, gemPickup.kind });
+            lastMessage = "Picked up: Uncut " + std::string(KindLabel(gemPickup.kind)) + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
+            messageTimer = 2.5f;
+            registry.DestroyEntity(clickedPickup);
         } else if (registry.HasComponent<WaystonePickupComponent>(clickedPickup)) {
             int tier = registry.GetComponent<WaystonePickupComponent>(clickedPickup).tier;
             if (registry.HasComponent<WaystoneInventoryComponent>(player) && tier >= 1 && tier <= WaystoneInventoryComponent::kMaxTier) {

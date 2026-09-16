@@ -20,16 +20,29 @@ struct OwnedGemInstance {
     std::array<int, 5> supportGemIds = { -1, -1, -1, -1, -1 };
 };
 
+// Which catalog an Uncut Gem draws its candidates from once identified (Gem Cutting).
+enum class GemPickupKind { Skill, Support, Spirit };
+
 // A dropped, not-yet-identified gem (see GemIdentifySystem): only its rolled level and
-// whether it's a Skill/Support or Spirit(Aura) gem are known until the player picks
-// which specific gem it becomes.
+// kind are known until the player picks which specific gem it becomes.
 struct SkillGemPickupComponent {
     int level = 1;
-    bool isSpirit = false;
+    GemPickupKind kind = GemPickupKind::Skill;
+};
+
+// Held but not-yet-identified (spec: Uncut Gems go into the inventory as items, not
+// resolved instantly on pickup -- picking one up just queues it here, capacity-limited
+// like a real inventory; the player explicitly opens Gem Cutting (GemIdentifySystem)
+// from SkillGemSystem's "Uncut Gems" row when ready).
+struct PendingUncutGem {
+    int level = 1;
+    GemPickupKind kind = GemPickupKind::Skill;
 };
 
 struct SkillGemInventoryComponent {
+    static constexpr size_t kPendingCapacity = 8;
     std::vector<OwnedGemInstance> ownedGems;
+    std::vector<PendingUncutGem> pendingUncutGems;
 };
 
 // 5 Spirit slots (expanded from a fixed 2), separate from the 5 activated skill slots in

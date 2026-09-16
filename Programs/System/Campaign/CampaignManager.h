@@ -63,6 +63,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::vector<ItemComponent> m_savedInventory;
     std::vector<int> m_savedPassiveTree;
     std::vector<OwnedGemInstance> m_savedOwnedGems;
+    std::vector<PendingUncutGem> m_savedPendingUncutGems;
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, 5> m_savedAuraLoadout = { -1, -1, -1, -1, -1 };
     std::array<bool, 5> m_savedAuraActive = { false, false, false, false, false };
@@ -111,6 +112,9 @@ public:
 
     void SaveOwnedGems(const std::vector<OwnedGemInstance>& gems) { m_savedOwnedGems = gems; }
     const std::vector<OwnedGemInstance>& GetSavedOwnedGems() const { return m_savedOwnedGems; }
+
+    void SavePendingUncutGems(const std::vector<PendingUncutGem>& gems) { m_savedPendingUncutGems = gems; }
+    const std::vector<PendingUncutGem>& GetSavedPendingUncutGems() const { return m_savedPendingUncutGems; }
 
     void SaveSkillLoadout(const std::array<int, 5>& gemIds) { m_savedSkillLoadout = gemIds; }
     const std::array<int, 5>& GetSavedSkillLoadout() const { return m_savedSkillLoadout; }

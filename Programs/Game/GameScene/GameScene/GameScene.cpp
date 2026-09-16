@@ -76,6 +76,11 @@ GameScene::GameScene() {
 
             // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
             // EntitySpawner-seeded starter loadout in that case instead of blanking it out.
+            // pendingUncutGems restores independently of ownedGems -- a player who saves
+            // right after picking up their very first uncut gem (before identifying
+            // anything) would otherwise lose it on reload.
+            player.GetComponent<SkillGemInventoryComponent>().pendingUncutGems = campaign.GetSavedPendingUncutGems();
+
             if (!campaign.GetSavedOwnedGems().empty()) {
                 auto& gemInventory = player.GetComponent<SkillGemInventoryComponent>();
                 gemInventory.ownedGems = campaign.GetSavedOwnedGems();
@@ -131,6 +136,7 @@ void GameScene::AdvanceToNextZone() {
     }
     if (registry->HasComponent<SkillGemInventoryComponent>(playerEntity)) {
         campaign.SaveOwnedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).ownedGems);
+        campaign.SavePendingUncutGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).pendingUncutGems);
     }
     if (registry->HasComponent<PlayerSkill>(playerEntity)) {
         auto& skillComp = registry->GetComponent<PlayerSkill>(playerEntity);
@@ -261,7 +267,7 @@ void GameScene::Update() {
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
     vendorSystem->Update(*registry, dt);
-    skillGemSystem->Update(*registry, dt);
+    skillGemSystem->Update(*registry, dt, *gemIdentifySystem);
     gemIdentifySystem->Update(*registry, dt);
 
     // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
@@ -330,7 +336,7 @@ void GameScene::Update() {
         physicsSystem->Update(*registry, dt);
         // �Փˏ���
         collisionSystem->Update(*registry, dt);
-        itemPickupSystem->Update(*registry, dt, clickedPickup, *gemIdentifySystem);
+        itemPickupSystem->Update(*registry, dt, clickedPickup);
         bossPhaseSystem->Update(*registry, dt);
     }
 

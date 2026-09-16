@@ -306,12 +306,17 @@ private:
             int monsterLevelFactor = std::clamp(itemLevel / 5, 1, 20);
             float skewed = std::pow(chanceRoll(rng), 3.0f);
             int gemLevel = std::clamp(1 + static_cast<int>(19.0f * skewed) + monsterLevelFactor / 4, 1, 20);
-            bool isSpirit = chanceRoll(rng) < 0.2f;
+            // 60% Skill / 20% Support / 20% Spirit -- Skill gems stay the common case since
+            // they're the only kind that directly expands the 5 active skill slots.
+            float kindRoll = chanceRoll(rng);
+            GemPickupKind kind = kindRoll < 0.6f ? GemPickupKind::Skill
+                : kindRoll < 0.8f ? GemPickupKind::Support
+                : GemPickupKind::Spirit;
 
             auto gemPickup = registry.CreateEntityObject();
             gemPickup.AddComponent(TransformComponent{ trans.position, {1.f, 1.f}, 0.f });
             gemPickup.AddComponent(CircleComponent{ 9.0f, sf::Color(255, 90, 220), true });
-            gemPickup.AddComponent(SkillGemPickupComponent{ gemLevel, isSpirit });
+            gemPickup.AddComponent(SkillGemPickupComponent{ gemLevel, kind });
             return;
         }
 
