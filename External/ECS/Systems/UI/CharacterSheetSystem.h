@@ -3,14 +3,17 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 #include "../../Registry/Registry.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
+#include "System/Input/InputManager.h"
 #include "System/Input/InputUtils/InputUtils.h"
 #include "System/Input/KeyBindings/KeyBindings.h"
 #include "ItemUIHelpers.h"
+#include "../Item/ItemFactory.h"
 
 class CharacterSheetSystem {
 private:
@@ -96,22 +99,35 @@ public:
         DrawText(target, panelX + 16.0f, equipY, "Equipment", 15, sf::Color(255, 220, 120));
         equipY += 20.0f;
 
+        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+        const ItemComponent* hoveredItem = nullptr;
+
         for (size_t i = 0; i < equipment.slots.size(); ++i) {
             std::string slotLabel = ItemUIHelpers::SlotName(static_cast<EquipSlot>(i));
             std::string line;
             sf::Color color = sf::Color(150, 150, 150);
+            float rowY = equipY + static_cast<float>(i) * 18.0f;
 
             if (equipment.slots[i].has_value()) {
                 const ItemComponent& item = *equipment.slots[i];
                 line = slotLabel + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", " +
                     std::to_string(item.affixes.size()) + " mods)";
                 color = ItemUIHelpers::RarityColor(item.rarity);
+
+                sf::FloatRect rowRect({ panelX + 16.0f, rowY }, { contentWidth, 17.0f });
+                if (rowRect.contains(mouse)) hoveredItem = &item;
             } else {
                 line = slotLabel + ": (empty)";
             }
 
             line = Truncate(line, contentWidth, 13);
-            DrawText(target, panelX + 16.0f, equipY + static_cast<float>(i) * 18.0f, line, 13, color);
+            DrawText(target, panelX + 16.0f, rowY, line, 13, color);
+        }
+
+        // カーソルを乗せた装備の詳細(モッド一覧)。後続の行に描き潰されないよう、
+        // 装備欄を全部描き終えたあとにまとめて描く。
+        if (hoveredItem) {
+            DrawItemTooltip(target, mouse, *hoveredItem, target.getSize());
         }
 
         target.setView(oldView);
@@ -140,6 +156,61 @@ private:
             if (probe2.getLocalBounds().size.x <= maxWidth) return candidate;
         }
         return "...";
+    }
+
+    // 名前/レアリティ/スロット/レベル/ソケット/モッド一覧/売却額を表示する詳細ツールチップ。
+    // InventorySystem/VendorSystemと同じ内容・体裁に揃えている。
+    void DrawItemTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item, sf::Vector2u winSize) {
+        struct Line { std::string text; sf::Color color; };
+        std::vector<Line> lines;
+
+        lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
+            " - Lv" + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
+            sf::Color(190, 190, 190) });
+
+        int sockets = ItemUIHelpers::SocketCount(item);
+        if (sockets > 0) {
+            lines.push_back({ "ソケット: " + std::to_string(sockets), sf::Color(210, 210, 220) });
+        }
+
+        for (const auto& affix : item.affixes) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1) << (affix.value >= 0.0f ? "+" : "") << affix.value
+                << (ItemUIHelpers::IsPercentAffix(affix.stat) ? "% " : " ") << affix.label;
+            lines.push_back({ ss.str(), sf::Color(150, 200, 255) });
+        }
+
+        std::ostringstream sellSs;
+        sellSs << "売却額: " << ItemFactory::SellValue(item) << " ゴールド";
+        lines.push_back({ sellSs.str(), sf::Color(200, 180, 120) });
+
+        float lineH = 18.0f;
+        float maxWidth = 0.0f;
+        for (const auto& line : lines) {
+            sf::Text probe(*m_font, sf::String::fromUtf8(line.text.begin(), line.text.end()), 13);
+            maxWidth = (std::max)(maxWidth, probe.getLocalBounds().size.x);
+        }
+
+        float boxW = maxWidth + 24.0f;
+        float boxH = static_cast<float>(lines.size()) * lineH + 16.0f;
+
+        float x = mouse.x + 18.0f;
+        float y = mouse.y + 10.0f;
+        if (x + boxW > static_cast<float>(winSize.x) - 4.0f) x = mouse.x - boxW - 18.0f;
+        if (y + boxH > static_cast<float>(winSize.y) - 4.0f) y = static_cast<float>(winSize.y) - boxH - 4.0f;
+
+        sf::RectangleShape box({ boxW, boxH });
+        box.setPosition({ x, y });
+        box.setFillColor(sf::Color(10, 10, 14, 235));
+        box.setOutlineColor(sf::Color(150, 150, 160));
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
+
+        for (size_t i = 0; i < lines.size(); ++i) {
+            DrawText(target, x + 12.0f, y + 8.0f + static_cast<float>(i) * lineH, lines[i].text, 13, lines[i].color);
+        }
     }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {
