@@ -117,6 +117,12 @@
 - `equipment.baseStats`に加算する方式を選んだのは、`EquipmentSystem::RecalculateStats`が毎回`live = equipment.baseStats`から再構築するため(既存のレベルアップ/パッシブツリー加点と同じパターン、`AI/DECISIONS.md`参照)。セーブ/ロードの`WriteStats`/`ReadStats`は既存の`fireRes`等のフィールドをそのまま使うため追加シリアライズは不要。
 - ペナルティは装備の耐性ロールで打ち消す設計(本家と同じ「幕を進めるほど耐性持ちの装備が必要になる」体験)のため、上限クランプ等は設けていない。
 
+**フォローアップ: ブロック率を実データとして機能させる**。「他に進める作業ある?」に対しユーザーが選択した項目。これまで`CharacterStatsComponent::blockChance`は表示欄だけあって常に0%で終わる張りぼてだったため、実際に機能する経路を追加した。
+- `AffixStat::BlockChance`を新設し、`ItemFactory::SuffixPool`にサフィックスとして追加(本家PoE2はブロック率は盾専用だが、本実装には盾スロット自体が存在せず、CritChance/MoveSpeed等も既に「どの装備にも乗る汎用サフィックス」として実装済みのため、既存の設計方針に合わせた)。
+- `EquipmentSystem::ApplyAffix`/`RemoveAffix`にBlockChanceのケースを追加(耐性と同じく上限75%)。
+- `CombatMath::ApplyDamage`の先頭で`RollBlock(target.blockChance)`をロールし、成功時はそのヒットのダメージを丸ごと無効化(PoE2本家同様、部分軽減ではなく完全回避)。命中判定(`RollHit`)の後・軽減計算の前という順序も本家に合わせた。呼び出し側(`CollisionSystem`)は`dealt > 0.0f`で被弾演出/出血等のailment発生可否を判定する既存ロジックのままで、ブロック時は自然に「ダメージ0」として扱われるため変更不要だった。
+- **副次的に発見した実バグを修正**: `EquipmentSystem::RemoveAffix`の耐性4種が`(std::max)(0.0f, live.xxxRes - affix.value/100)`と0未満にならないようクランプしていたが、今回追加した幕クリア耐性ペナルティ(基礎値がマイナスになりうる)と組み合わさると、パッシブ再割り振り(respec)やオーラ解除で耐性付与効果を除去する際に**マイナスのベースライン耐性ごと0へ戻ってしまう**(本来のペナルティが消える)回帰バグになるところだった。0クランプを撤去し単純な減算に変更して修正。
+
 **フォローアップ: 耐性ペナルティ発生時のHUD通知を追加**。「他に進める作業ある?」に対しユーザーが選択した項目。それまでは幕クリアで耐性が-10%されても画面上に何も表示されず気付きにくかったため、`CampaignManager`に`ConsumePendingResPenaltyNotice(int&)`を新設(ペナルティ適用時に立てる`m_pendingResPenaltyNotice`フラグを1回だけ消費し、通算ペナルティ%を返す)。`GameScene`のプレイヤー生成直後(`CompleteCurrentZoneAndAdvance`でシーンが張り替わった後の新ゾーン読み込み時)でこれを呼び、trueが返れば`itemPickupSystem->lastMessage`に「幕クリア: 全耐性 -10% (通算 -X%)」を4秒間(通常のアイテム取得トースト2.5秒より長め、重要な情報のため)表示する。このフラグはディスクへ永続化しない(同一セッション内、幕クリア直後の1回だけ意味を持つ一時通知のため)。
 
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。

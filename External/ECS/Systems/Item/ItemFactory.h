@@ -147,6 +147,7 @@ private:
             { AffixStat::CritChance, 2.0f, 1, false, "クリティカル率" },
             { AffixStat::MoveSpeed, 5.0f, 1, false, "移動速度" },
             { AffixStat::FlatAccuracy, 20.0f, 1, false, "命中率" },
+            { AffixStat::BlockChance, 4.0f, 1, false, "ブロック率" },
         };
     }
 };

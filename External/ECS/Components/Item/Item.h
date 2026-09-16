@@ -7,7 +7,8 @@ enum class AffixStat {
     IncreasedAttackDamage,
     FireRes, ColdRes, LightningRes, ChaosRes,
     FlatArmour, FlatEvasion, FlatAccuracy,
-    CritChance, CritMultiplier, MoveSpeed
+    CritChance, CritMultiplier, MoveSpeed,
+    BlockChance
 };
 
 struct ItemAffix {

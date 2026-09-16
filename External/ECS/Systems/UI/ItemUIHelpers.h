@@ -146,6 +146,7 @@ namespace ItemUIHelpers {
         case AffixStat::CritChance:
         case AffixStat::CritMultiplier:
         case AffixStat::MoveSpeed:
+        case AffixStat::BlockChance:
             return true;
         default:
             return false;
@@ -173,6 +174,7 @@ namespace ItemUIHelpers {
         case AffixStat::CritChance: return "クリティカル率";
         case AffixStat::CritMultiplier: return "クリティカルダメージ";
         case AffixStat::MoveSpeed: return "移動速度";
+        case AffixStat::BlockChance: return "ブロック率";
         default: return "?";
         }
     }

@@ -82,6 +82,7 @@ public:
         case AffixStat::CritChance: live.critRate += affix.value / 100.0f; break;
         case AffixStat::CritMultiplier: live.critDamage += affix.value / 100.0f; break;
         case AffixStat::MoveSpeed: live.increasedMoveSpeed += affix.value; break;
+        case AffixStat::BlockChance: live.blockChance = (std::min)(0.75f, live.blockChance + affix.value / 100.0f); break;
         }
     }
 
@@ -92,16 +93,20 @@ public:
         case AffixStat::FlatMana: live.maxMP -= affix.value; break;
         case AffixStat::FlatES: live.maxES -= affix.value; break;
         case AffixStat::IncreasedAttackDamage: live.increasedAttackDamage -= affix.value; break;
-        case AffixStat::FireRes: live.fireRes = (std::max)(0.0f, live.fireRes - affix.value / 100.0f); break;
-        case AffixStat::ColdRes: live.iceRes = (std::max)(0.0f, live.iceRes - affix.value / 100.0f); break;
-        case AffixStat::LightningRes: live.lightningRes = (std::max)(0.0f, live.lightningRes - affix.value / 100.0f); break;
-        case AffixStat::ChaosRes: live.chaosRes = (std::max)(0.0f, live.chaosRes - affix.value / 100.0f); break;
+        // No floor at 0 here: baseline resistance can legitimately be negative (see the
+        // per-act campaign penalty in CampaignManager), and flooring would silently wipe
+        // that penalty out whenever a resistance-granting passive/aura is removed.
+        case AffixStat::FireRes: live.fireRes -= affix.value / 100.0f; break;
+        case AffixStat::ColdRes: live.iceRes -= affix.value / 100.0f; break;
+        case AffixStat::LightningRes: live.lightningRes -= affix.value / 100.0f; break;
+        case AffixStat::ChaosRes: live.chaosRes -= affix.value / 100.0f; break;
         case AffixStat::FlatArmour: live.armour -= affix.value; break;
         case AffixStat::FlatEvasion: live.evasion -= affix.value; break;
         case AffixStat::FlatAccuracy: live.accuracy -= affix.value; break;
         case AffixStat::CritChance: live.critRate -= affix.value / 100.0f; break;
         case AffixStat::CritMultiplier: live.critDamage -= affix.value / 100.0f; break;
         case AffixStat::MoveSpeed: live.increasedMoveSpeed -= affix.value; break;
+        case AffixStat::BlockChance: live.blockChance -= affix.value / 100.0f; break;
         }
     }
 };

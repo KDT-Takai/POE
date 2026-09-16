@@ -59,8 +59,9 @@ struct CharacterStatsComponent {
     float evasion = 0.0f;
     float armour = 0.0f;
     float accuracy = 100.0f;
-    // No shield/block-granting equipment slot exists yet, so this stays 0 until one is
-    // added -- kept as a real stat (not hardcoded in the UI) so it's ready to wire up.
+    // No dedicated shield slot exists, so Block Chance rolls as a universal suffix affix
+    // (ItemFactory::SuffixPool) on any equipment piece instead of being shield-only like
+    // real PoE2. CombatMath::ApplyDamage rolls it and fully negates the hit on success.
     float blockChance = 0.0f;
 
     // Leech

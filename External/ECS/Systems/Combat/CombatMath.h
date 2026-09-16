@@ -21,6 +21,14 @@ namespace CombatMath {
         return (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) < critChance;
     }
 
+    // PoE2本家同様、ブロックは命中判定(RollHit)後に別枠でロールし、成功時はそのヒットの
+    // ダメージを丸ごと無効化する(部分軽減ではない)。耐性と同じ75%上限。
+    inline bool RollBlock(float blockChance) {
+        if (blockChance <= 0.0f) return false;
+        float chance = std::clamp(blockChance, 0.0f, 0.75f);
+        return (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) < chance;
+    }
+
     inline float CalcArmourMitigation(float armour, float incomingPhysicalDamage) {
         if (armour <= 0.0f || incomingPhysicalDamage <= 0.0f) return 0.0f;
         float mitigation = armour / (armour + 10.0f * incomingPhysicalDamage);
@@ -43,6 +51,8 @@ namespace CombatMath {
     inline float ApplyDamage(CharacterStatsComponent& target, float rawDamage, DamageElement type) {
         float dmg = rawDamage;
         if (dmg <= 0.0f) return 0.0f;
+
+        if (RollBlock(target.blockChance)) return 0.0f;
 
         if (type == DamageElement::Physical) {
             dmg *= (1.0f - CalcArmourMitigation(target.armour, dmg));
