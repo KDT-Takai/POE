@@ -104,8 +104,13 @@ public:
 
         if (registry.HasComponent<ItemPickupComponent>(clickedPickup)) {
             auto& pickup = registry.GetComponent<ItemPickupComponent>(clickedPickup);
-            if (inventory.items.size() < InventoryComponent::kCapacity) {
-                inventory.items.push_back(pickup.item);
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(pickup.item.slot);
+            int col, row;
+            if (ItemUIHelpers::FindBagFreeSpace(inventory.items, sz.x, sz.y, col, row)) {
+                ItemComponent placed = pickup.item;
+                placed.gridCol = col;
+                placed.gridRow = row;
+                inventory.items.push_back(placed);
                 lastMessage = "Picked up: " + pickup.item.baseName;
             } else {
                 int goldValue = ItemFactory::SellValue(pickup.item);

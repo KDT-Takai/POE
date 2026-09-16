@@ -30,6 +30,13 @@ struct ItemComponent {
     float baseValue = 0.0f; // weapon: flat attack; armour pieces: flat armour
     std::vector<ItemAffix> affixes;
 
+    // Top-left cell this item occupies in the owning InventoryComponent's grid
+    // (see ItemUIHelpers::ItemGridSize for the WxH footprint by slot). -1 means
+    // "not currently placed in a bag" (equipped, or a vendor's transient stock/
+    // buyback list, neither of which persist a grid position).
+    int gridCol = -1;
+    int gridRow = -1;
+
     float PowerScore() const {
         float score = baseValue;
         for (const auto& a : affixes) score += a.value;

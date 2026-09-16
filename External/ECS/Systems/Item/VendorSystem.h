@@ -106,6 +106,7 @@ public:
         Entity player = players[0];
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
         auto& inventory = registry.GetComponent<InventoryComponent>(player);
+        ItemUIHelpers::NormalizeBagPlacement(inventory.items);
 
         auto& keyInput = InputManager::Instance().GetKeyInput();
         auto& mouseInput = InputManager::Instance().GetMouseInput();
@@ -129,8 +130,8 @@ public:
             return;
         }
 
-        int bagHover = HitTestBagCell(layout, mouse);
-        bool bagHoverHasItem = bagHover >= 0 && bagHover < static_cast<int>(inventory.items.size());
+        int bagHover = HitTestBagItem(layout, mouse, inventory.items);
+        bool bagHoverHasItem = bagHover >= 0;
         bool ctrlHeld = keyInput.GetKey(sf::Keyboard::Key::LControl) || keyInput.GetKey(sf::Keyboard::Key::RControl);
 
         if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
@@ -150,9 +151,9 @@ public:
             if (layout.buyTabRect.contains(mouse)) { m_activeTab = VendorTab::Buy; m_selectedIndex = 0; return; }
             if (layout.buybackTabRect.contains(mouse)) { m_activeTab = VendorTab::Buyback; m_selectedIndex = 0; return; }
 
-            int row = HitTestListRow(layout, mouse);
-            if (row >= 0) {
-                m_selectedIndex = row;
+            int hit = HitTestShopItem(layout, mouse);
+            if (hit >= 0) {
+                m_selectedIndex = hit;
                 if (m_activeTab == VendorTab::Buy) TryBuy(inventory, stats);
                 else TryBuyback(inventory, stats);
             }
@@ -245,37 +246,47 @@ public:
             "Buyback (" + std::to_string(m_buyback.size()) + ")", 13, sf::Color::White);
 
         if (buyActive) {
-            DrawBuyList(target, layout, "(sold out - press " + rerollKeyName + " to reroll)");
+            DrawShopGrid(target, layout, "(sold out - press " + rerollKeyName + " to reroll)");
         } else {
-            DrawBuybackList(target, layout, "(nothing sold yet)");
+            DrawShopGrid(target, layout, "(nothing sold yet)");
         }
 
-        // --- Right box: player's bag ---
+        // --- Right box: player's bag (same size-aware grid as the field InventorySystem) ---
         DrawText(target, layout.rightBox.position.x + 20.0f, panelY + 62.0f, "Your Bag", 14, sf::Color(220, 220, 220));
-        for (int i = 0; i < kBagCols * kBagRows; ++i) {
-            sf::FloatRect rect = BagCellRect(layout, i);
-            bool hasItem = i < static_cast<int>(inventory.items.size());
-            bool draggingAway = m_dragging && i == m_dragBagIndex;
-            bool hovered = rect.contains(InputManager::Instance().GetMouseInput().GetMousePointF());
+
+        for (int row = 0; row < kBagRows; ++row) {
+            for (int col = 0; col < kBagCols; ++col) {
+                sf::FloatRect rect = BagCellRect(layout, col, row);
+                sf::RectangleShape box(rect.size);
+                box.setPosition(rect.position);
+                box.setFillColor(sf::Color(25, 25, 30));
+                box.setOutlineColor(sf::Color(70, 70, 78));
+                box.setOutlineThickness(1.0f);
+                target.draw(box);
+            }
+        }
+
+        sf::Vector2f bagMouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+        for (size_t i = 0; i < inventory.items.size(); ++i) {
+            const ItemComponent& item = inventory.items[i];
+            if (item.gridCol < 0 || item.gridRow < 0) continue;
+            bool draggingAway = m_dragging && static_cast<int>(i) == m_dragBagIndex;
+            if (draggingAway) continue;
+
+            sf::FloatRect rect = BagItemRect(layout, item);
+            bool hovered = rect.contains(bagMouse);
+            sf::Color rc = ItemUIHelpers::RarityColor(item.rarity);
+            sf::Color fill(rc.r / 4, rc.g / 4, rc.b / 4);
 
             sf::RectangleShape box(rect.size);
             box.setPosition(rect.position);
-            sf::Color fill = sf::Color(25, 25, 30);
-            if (hasItem) {
-                sf::Color rc = ItemUIHelpers::RarityColor(inventory.items[i].rarity);
-                fill = sf::Color(rc.r / 4, rc.g / 4, rc.b / 4);
-            }
-            if (draggingAway) fill = sf::Color(20, 20, 24);
-            box.setFillColor(hovered && hasItem ? sf::Color((std::min)(255, fill.r + 25), (std::min)(255, fill.g + 25), (std::min)(255, fill.b + 25)) : fill);
-            box.setOutlineColor(hovered && hasItem ? sf::Color::Yellow : sf::Color(90, 90, 100));
-            box.setOutlineThickness(hovered && hasItem ? 2.0f : 1.0f);
+            box.setFillColor(hovered ? sf::Color((std::min)(255, fill.r + 25), (std::min)(255, fill.g + 25), (std::min)(255, fill.b + 25)) : fill);
+            box.setOutlineColor(hovered ? sf::Color::Yellow : rc);
+            box.setOutlineThickness(hovered ? 2.0f : 1.5f);
             target.draw(box);
 
-            if (hasItem && !draggingAway) {
-                const ItemComponent& item = inventory.items[i];
-                DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, ItemUIHelpers::SlotName(item.slot).substr(0, 2), 10, ItemUIHelpers::RarityColor(item.rarity));
-                DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
-            }
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, ItemUIHelpers::SlotName(item.slot).substr(0, 2), 10, rc);
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
@@ -312,7 +323,6 @@ private:
         sf::FloatRect buybackTabRect;
         sf::FloatRect closeBtnRect;
         float listY = 0.0f;
-        float lineHeight = 20.0f;
     };
 
     Layout ComputeLayout(sf::Vector2u winSize) const {
@@ -325,73 +335,134 @@ private:
         layout.buybackTabRect = sf::FloatRect({ layout.leftBox.position.x + 118.0f, layout.panelY + 56.0f }, { 140.0f, 24.0f });
         layout.closeBtnRect = sf::FloatRect({ layout.rightBox.position.x + kRightW - 90.0f, layout.panelY + 10.0f }, { 70.0f, 24.0f });
         layout.listY = layout.panelY + 90.0f;
-        layout.lineHeight = 20.0f;
         return layout;
     }
 
-    sf::FloatRect BagCellRect(const Layout& layout, int index) const {
-        int col = index % kBagCols;
-        int row = index / kBagCols;
+    // --- Player's bag (right box): same size-aware grid rendering as the field
+    // InventorySystem, since both read/write the same InventoryComponent.
+
+    sf::FloatRect BagCellRect(const Layout& layout, int col, int row) const {
         float x = layout.rightBox.position.x + 20.0f + static_cast<float>(col) * (kCellSize + kCellGap);
         float y = layout.panelY + 90.0f + static_cast<float>(row) * (kCellSize + kCellGap);
         return sf::FloatRect({ x, y }, { kCellSize, kCellSize });
     }
 
-    int HitTestBagCell(const Layout& layout, sf::Vector2f mouse) const {
-        for (int i = 0; i < kBagCols * kBagRows; ++i) {
-            if (BagCellRect(layout, i).contains(mouse)) return i;
+    sf::FloatRect BagItemRect(const Layout& layout, const ItemComponent& item) const {
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::FloatRect topLeft = BagCellRect(layout, item.gridCol, item.gridRow);
+        float w = static_cast<float>(sz.x) * kCellSize + static_cast<float>(sz.x - 1) * kCellGap;
+        float h = static_cast<float>(sz.y) * kCellSize + static_cast<float>(sz.y - 1) * kCellGap;
+        return sf::FloatRect(topLeft.position, { w, h });
+    }
+
+    int HitTestBagItem(const Layout& layout, sf::Vector2f mouse, const std::vector<ItemComponent>& items) const {
+        for (size_t i = 0; i < items.size(); ++i) {
+            if (items[i].gridCol < 0 || items[i].gridRow < 0) continue;
+            if (BagItemRect(layout, items[i]).contains(mouse)) return static_cast<int>(i);
         }
         return -1;
     }
 
-    int HitTestListRow(const Layout& layout, sf::Vector2f mouse) const {
-        int count = (m_activeTab == VendorTab::Buy) ? static_cast<int>(m_stock.size()) : static_cast<int>(m_buyback.size());
+    // --- Vendor's own panel (left box): Buy stock / Buyback list, rendered as an icon
+    // grid matching the bag's visual language (per user request: "make it look like the
+    // item screen"). Neither list has a persisted layout, so it's shelf-packed fresh
+    // each call from the current list order.
+    static constexpr int kShopGridCols = 6;
+
+    sf::FloatRect ShopCellRect(const Layout& layout, int col, int row) const {
+        float x = layout.leftBox.position.x + 20.0f + static_cast<float>(col) * (kCellSize + kCellGap);
+        float y = layout.listY + static_cast<float>(row) * (kCellSize + kCellGap);
+        return sf::FloatRect({ x, y }, { kCellSize, kCellSize });
+    }
+
+    sf::FloatRect ShopItemRect(const Layout& layout, sf::Vector2i pos, sf::Vector2i sz) const {
+        sf::FloatRect topLeft = ShopCellRect(layout, pos.x, pos.y);
+        float w = static_cast<float>(sz.x) * kCellSize + static_cast<float>(sz.x - 1) * kCellGap;
+        float h = static_cast<float>(sz.y) * kCellSize + static_cast<float>(sz.y - 1) * kCellGap;
+        return sf::FloatRect(topLeft.position, { w, h });
+    }
+
+    // Slot + size for the i-th entry of whichever tab is active, so packing/hit-testing/
+    // drawing all agree on the same shape without duplicating the Buy-vs-Buyback branch.
+    EquipSlot ActiveTabSlot(int index) const {
+        return (m_activeTab == VendorTab::Buy) ? m_stock[index].slot : m_buyback[index].item.slot;
+    }
+
+    int ActiveTabCount() const {
+        return (m_activeTab == VendorTab::Buy) ? static_cast<int>(m_stock.size()) : static_cast<int>(m_buyback.size());
+    }
+
+    std::vector<sf::Vector2i> ActiveTabPositions() const {
+        int count = ActiveTabCount();
+        std::vector<sf::Vector2i> sizes(count);
+        for (int i = 0; i < count; ++i) sizes[i] = ItemUIHelpers::ItemGridSize(ActiveTabSlot(i));
+        return ItemUIHelpers::ShelfPack(sizes, kShopGridCols);
+    }
+
+    int HitTestShopItem(const Layout& layout, sf::Vector2f mouse) const {
+        int count = ActiveTabCount();
+        std::vector<sf::Vector2i> positions = ActiveTabPositions();
         for (int i = 0; i < count; ++i) {
-            float y = layout.listY + static_cast<float>(i) * layout.lineHeight;
-            sf::FloatRect rowRect({ layout.leftBox.position.x + 20.0f, y }, { kLeftW - 40.0f, layout.lineHeight });
-            if (rowRect.contains(mouse)) return i;
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(ActiveTabSlot(i));
+            if (ShopItemRect(layout, positions[i], sz).contains(mouse)) return i;
         }
         return -1;
     }
 
-    void DrawBuyList(sf::RenderTarget& target, const Layout& layout, const std::string& emptyMessage) {
-        if (m_stock.empty()) {
+    void DrawShopGrid(sf::RenderTarget& target, const Layout& layout, const std::string& emptyMessage) {
+        int count = ActiveTabCount();
+        if (count == 0) {
             DrawText(target, layout.leftBox.position.x + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
             return;
         }
-        for (size_t i = 0; i < m_stock.size(); ++i) {
-            const ItemComponent& item = m_stock[i];
-            float y = layout.listY + static_cast<float>(i) * layout.lineHeight;
-            DrawListRow(target, layout, y, static_cast<int>(i), item, BuyPrice(item));
+
+        std::vector<sf::Vector2i> positions = ActiveTabPositions();
+        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+
+        for (int i = 0; i < count; ++i) {
+            const ItemComponent& item = (m_activeTab == VendorTab::Buy) ? m_stock[i] : m_buyback[i].item;
+            int price = (m_activeTab == VendorTab::Buy) ? BuyPrice(item) : m_buyback[i].price;
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::FloatRect rect = ShopItemRect(layout, positions[i], sz);
+            bool selected = (i == m_selectedIndex);
+            bool hovered = rect.contains(mouse);
+            sf::Color rc = ItemUIHelpers::RarityColor(item.rarity);
+            sf::Color fill(rc.r / 4, rc.g / 4, rc.b / 4);
+
+            sf::RectangleShape box(rect.size);
+            box.setPosition(rect.position);
+            box.setFillColor((hovered || selected) ? sf::Color((std::min)(255, fill.r + 25), (std::min)(255, fill.g + 25), (std::min)(255, fill.b + 25)) : fill);
+            box.setOutlineColor(selected ? sf::Color::Yellow : rc);
+            box.setOutlineThickness(selected ? 2.5f : 1.5f);
+            target.draw(box);
+
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::SlotName(item.slot).substr(0, 2), 11, rc);
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+
+            if (hovered) {
+                DrawShopTooltip(target, mouse, item, price);
+            }
         }
     }
 
-    void DrawBuybackList(sf::RenderTarget& target, const Layout& layout, const std::string& emptyMessage) {
-        if (m_buyback.empty()) {
-            DrawText(target, layout.leftBox.position.x + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
-            return;
-        }
-        for (size_t i = 0; i < m_buyback.size(); ++i) {
-            const BuybackEntry& entry = m_buyback[i];
-            float y = layout.listY + static_cast<float>(i) * layout.lineHeight;
-            DrawListRow(target, layout, y, static_cast<int>(i), entry.item, entry.price);
-        }
-    }
+    void DrawShopTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item, int price) {
+        std::string line1 = item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ")";
+        std::string line2 = ItemUIHelpers::SlotName(item.slot) + " - " + std::to_string(item.affixes.size()) + " mods - " + std::to_string(price) + "g";
 
-    void DrawListRow(sf::RenderTarget& target, const Layout& layout, float y, int index, const ItemComponent& item, int price) {
-        bool selected = (index == m_selectedIndex);
-        if (selected) {
-            sf::RectangleShape highlight({ kLeftW - 40.0f, layout.lineHeight });
-            highlight.setPosition({ layout.leftBox.position.x + 20.0f, y });
-            highlight.setFillColor(sf::Color(60, 60, 90, 180));
-            target.draw(highlight);
-        }
+        sf::Text probe1(*m_font, sf::String::fromUtf8(line1.begin(), line1.end()), 13);
+        sf::Text probe2(*m_font, sf::String::fromUtf8(line2.begin(), line2.end()), 12);
+        float w = (std::max)(probe1.getLocalBounds().size.x, probe2.getLocalBounds().size.x) + 20.0f;
+        float h = 44.0f;
 
-        std::string line = ItemUIHelpers::SlotName(item.slot) + ": " + item.baseName + " (" +
-            ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ", " +
-            std::to_string(item.affixes.size()) + " mods) - " + std::to_string(price) + "g";
+        sf::RectangleShape box({ w, h });
+        box.setPosition({ mouse.x + 16.0f, mouse.y + 8.0f });
+        box.setFillColor(sf::Color(10, 10, 14, 235));
+        box.setOutlineColor(sf::Color(150, 150, 160));
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
 
-        DrawText(target, layout.leftBox.position.x + 24.0f, y + 2.0f, line, 12, ItemUIHelpers::RarityColor(item.rarity));
+        DrawText(target, mouse.x + 26.0f, mouse.y + 14.0f, line1, 13, ItemUIHelpers::RarityColor(item.rarity));
+        DrawText(target, mouse.x + 26.0f, mouse.y + 32.0f, line2, 12, sf::Color(200, 200, 200));
     }
 
     void GenerateStock(int playerLevel) {
@@ -419,14 +490,19 @@ private:
             messageTimer = 2.0f;
             return;
         }
-        if (inventory.items.size() >= InventoryComponent::kCapacity) {
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        int col, row;
+        if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, sz.x, sz.y, col, row)) {
             lastActionMessage = "Inventory full";
             messageTimer = 2.0f;
             return;
         }
 
         stats.gold -= price;
-        inventory.items.push_back(item);
+        ItemComponent placed = item;
+        placed.gridCol = col;
+        placed.gridRow = row;
+        inventory.items.push_back(placed);
         lastActionMessage = "Bought: " + item.baseName;
         messageTimer = 2.0f;
 
@@ -463,14 +539,19 @@ private:
             messageTimer = 2.0f;
             return;
         }
-        if (inventory.items.size() >= InventoryComponent::kCapacity) {
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(entry.item.slot);
+        int col, row;
+        if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, sz.x, sz.y, col, row)) {
             lastActionMessage = "Inventory full";
             messageTimer = 2.0f;
             return;
         }
 
         stats.gold -= entry.price;
-        inventory.items.push_back(entry.item);
+        ItemComponent placed = entry.item;
+        placed.gridCol = col;
+        placed.gridRow = row;
+        inventory.items.push_back(placed);
         lastActionMessage = "Bought back: " + entry.item.baseName;
         messageTimer = 2.0f;
 
