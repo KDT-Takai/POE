@@ -112,6 +112,11 @@
 - 耐性4種(火/冷気/電気/カオス)に本家準拠の元素配色(火=オレンジ/冷気=水色/電気=黄/カオス=マゼンタ)を適用し、各行の下に`DrawBar()`(新設ヘルパー)で75%上限に対する充填率バーを描画。
 - 見出し(概要/属性/主要ステータス/詳細な防御/その他)を金色テキスト+区切り線で表示し、本家の区分けされたパネル構造に近づけた。
 
+**フォローアップ: 耐性表示をバーから数値に戻し、幕クリアによる耐性ペナルティを新規実装**。「耐性の表示は数値でいい」との指摘を受け、前回追加した75%上限バー(`DrawBar`)を撤去し元の数値表示(色分けは維持)に戻した。加えて「マップのレベル(アクトが進むと)耐性が強制的に下がり装備の要求度が上がる」との要望を受け、PoE2本家の実際の仕様([PoE 2 Guide: Resistances Explained](https://mobalytics.gg/poe-2/guides/resistances)等で確認: 幕を1つクリアするごとに全属性耐性(カオス耐性は対象外)へ-10%の永続ペナルティが課され、全6幕クリアで最大-60%になる)をそのまま実装した。
+- `CampaignManager::CompleteCurrentZoneAndAdvance`の`m_actIndex++`(=幕クリア)のタイミングで`m_savedEquipment.baseStats`の`fireRes`/`iceRes`/`lightningRes`を-10%する処理を追加。本実装は非エンドゲームの幕が丁度6つ(Act1/Act2/幕間I/Act3/Act4/幕間II)あるため、本家と同じく全クリアで-60%になる。
+- `equipment.baseStats`に加算する方式を選んだのは、`EquipmentSystem::RecalculateStats`が毎回`live = equipment.baseStats`から再構築するため(既存のレベルアップ/パッシブツリー加点と同じパターン、`AI/DECISIONS.md`参照)。セーブ/ロードの`WriteStats`/`ReadStats`は既存の`fireRes`等のフィールドをそのまま使うため追加シリアライズは不要。
+- ペナルティは装備の耐性ロールで打ち消す設計(本家と同じ「幕を進めるほど耐性持ちの装備が必要になる」体験)のため、上限クランプ等は設けていない。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

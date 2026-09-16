@@ -320,6 +320,15 @@ void CampaignManager::CompleteCurrentZoneAndAdvance() {
     if (m_zoneIndex >= static_cast<int>(act.zones.size())) {
         m_zoneIndex = 0;
         m_actIndex++;
+        // PoE2本家準拠: 幕(Act)を1つクリアするごとに全属性耐性へ-10%の永続ペナルティが
+        // 課される(カオス耐性は対象外)。装備の耐性要求度を段階的に引き上げる仕様で、
+        // 本実装は非エンドゲームの幕が6つ(Act1/Act2/幕間I/Act3/Act4/幕間II)あるため
+        // 全クリアで本家同様-60%になる。EquipmentSystem::RecalculateStatsは毎回
+        // `live = equipment.baseStats`から再構築するため、baseStats側に加算しないと
+        // 次の装備変更で消えてしまう(既存のレベルアップ/パッシブ加点と同じ仕組み)。
+        m_savedEquipment.baseStats.fireRes -= 0.10f;
+        m_savedEquipment.baseStats.iceRes -= 0.10f;
+        m_savedEquipment.baseStats.lightningRes -= 0.10f;
         if (m_actIndex >= static_cast<int>(m_acts.size())) {
             m_actIndex = static_cast<int>(m_acts.size()) - 1; // Endgameに留まる
         }

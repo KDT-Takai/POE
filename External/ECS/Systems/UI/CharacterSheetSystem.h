@@ -3,7 +3,6 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <algorithm>
 #include "../../Registry/Registry.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/Tags/Player/Player.h"
@@ -122,11 +121,9 @@ public:
         line(fmt([&] { ss << "スピリット " << stats.currentSpirit << "/" << stats.maxSpirit; }), kWhite);
         gap(4.0f);
 
-        // 耐性 -- 元素ごとに色分けしたバーで75%上限に対する充填率を表示(本家準拠)。
+        // 耐性 -- 元素ごとに色分けした数値のみ表示(バー表示は不要とのフィードバックを受け廃止)。
         auto resistLine = [&](const std::string& label, float value, sf::Color color) {
             line(fmt([&] { ss << label << " " << (value * 100.0f) << "% / " << static_cast<int>(kResCap) << "%"; }), color);
-            DrawBar(target, indent, cursorY - 4.0f, contentW, 5.0f, (value * 100.0f) / kResCap, color);
-            gap(8.0f);
         };
         resistLine("火耐性", stats.fireRes, kFireColor);
         resistLine("冷気耐性", stats.iceRes, kColdColor);
@@ -167,23 +164,6 @@ private:
         text.setOutlineThickness(1.0f);
         text.setPosition({ x, y });
         target.draw(text);
-    }
-
-    void DrawBar(sf::RenderTarget& target, float x, float y, float width, float height, float fraction, sf::Color fillColor) {
-        fraction = std::clamp(fraction, 0.0f, 1.0f);
-        sf::RectangleShape back({ width, height });
-        back.setPosition({ x, y });
-        back.setFillColor(sf::Color(40, 40, 45));
-        back.setOutlineColor(sf::Color(90, 90, 100));
-        back.setOutlineThickness(1.0f);
-        target.draw(back);
-
-        if (fraction > 0.0f) {
-            sf::RectangleShape fill({ width * fraction, height });
-            fill.setPosition({ x, y });
-            fill.setFillColor(fillColor);
-            target.draw(fill);
-        }
     }
 
 };
