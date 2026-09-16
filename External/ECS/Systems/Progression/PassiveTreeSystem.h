@@ -241,6 +241,8 @@ public:
 
         target.setView(target.getDefaultView());
 
+        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+
         const PassiveNodeDef* selectedNode = PassiveTreeData::Find(m_selectedNodeId);
         if (selectedNode && m_selectedNodeId != 0) {
             bool isPercent = IsPercentStat(selectedNode->effect.stat);
@@ -254,12 +256,20 @@ public:
             DrawText(target, panelX + 20.0f, panelY + layout.panelH - kFooterH + 22.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
         }
 
-        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
-
         bool canConfirm = m_selectedNodeId != 0 && !IsAllocated(tree, m_selectedNodeId);
         DrawButton(target, layout.confirmBtn, "Confirm", layout.confirmBtn.contains(mouse),
             canConfirm ? sf::Color(60, 130, 70) : sf::Color(60, 60, 65));
         DrawButton(target, layout.cancelBtn, "Cancel", layout.cancelBtn.contains(mouse), sf::Color(130, 60, 60));
+
+        // Hover tooltip so browsing the tree doesn't require clicking every node first;
+        // skipped while actively dragging (panning) so it doesn't flicker under the cursor.
+        if (!m_isDragging) {
+            int hoveredId = HitTestNode(layout, mouse);
+            const PassiveNodeDef* hovered = (hoveredId != -1) ? PassiveTreeData::Find(hoveredId) : nullptr;
+            if (hovered) {
+                DrawNodeTooltip(target, mouse, tree, *hovered);
+            }
+        }
 
         target.setView(oldView);
     }
@@ -307,6 +317,51 @@ private:
             if (d.x * d.x + d.y * d.y <= radius * radius) return node.id;
         }
         return -1;
+    }
+
+    void DrawNodeTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const PassiveTreeComponent& tree, const PassiveNodeDef& node) {
+        std::string body;
+        if (node.id == 0) {
+            body = "Start";
+        } else {
+            bool isPercent = IsPercentStat(node.effect.stat);
+            body = node.effect.label + ": +" + std::to_string(static_cast<int>(node.effect.value)) + (isPercent ? "%" : "");
+            if (IsAllocated(tree, node.id)) {
+                body += "\n(Allocated)";
+            } else {
+                bool adjacentAllocated = false;
+                for (int neighborId : node.neighbors) {
+                    if (IsAllocated(tree, neighborId)) { adjacentAllocated = true; break; }
+                }
+                body += adjacentAllocated ? "\nClick to allocate" : "\n(Not reachable yet)";
+            }
+        }
+
+        sf::Text text(*m_font, sf::String::fromUtf8(body.begin(), body.end()), 14);
+        text.setFillColor(sf::Color::White);
+        text.setOutlineColor(sf::Color::Black);
+        text.setOutlineThickness(1.0f);
+
+        sf::FloatRect bounds = text.getLocalBounds();
+        const float padding = 8.0f;
+        float boxW = bounds.size.x + padding * 2.0f;
+        float boxH = bounds.size.y + bounds.position.y + padding * 2.0f;
+
+        sf::Vector2f pos = mouse + sf::Vector2f(18.0f, -10.0f);
+        sf::Vector2u winSize = target.getSize();
+        if (pos.x + boxW > static_cast<float>(winSize.x)) pos.x = mouse.x - boxW - 18.0f;
+        if (pos.y + boxH > static_cast<float>(winSize.y)) pos.y = static_cast<float>(winSize.y) - boxH - 4.0f;
+        if (pos.y < 0.0f) pos.y = 4.0f;
+
+        sf::RectangleShape box({ boxW, boxH });
+        box.setPosition(pos);
+        box.setFillColor(sf::Color(15, 15, 20, 235));
+        box.setOutlineColor(sf::Color(150, 150, 160));
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
+
+        text.setPosition({ pos.x + padding - bounds.position.x, pos.y + padding - bounds.position.y });
+        target.draw(text);
     }
 
     void DrawButton(sf::RenderTarget& target, const sf::FloatRect& rect, const std::string& label, bool hovered, sf::Color fillColor) {
