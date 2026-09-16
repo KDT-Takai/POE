@@ -86,6 +86,12 @@
 
 **重大バグ修正: モッドの効果名が丸ごと表示されない(空欄になる)問題**。実機のスクリーンショットで「+8」「+12」「+16%」のように**数値だけで効果名が一切表示されていない**のを発見。原因は`CampaignManager::WriteItem`/`ReadItem`(セーブ/ロード)が`ItemAffix`の`stat`/`value`/`tier`/`isPrefix`はシリアライズしていたが**`label`フィールドだけシリアライズし忘れていた**こと。そのため、一度でもゾーン遷移(`AdvanceToNextZone`)でセーブ&ロードを経由したアイテム(装備中/バッグ内問わずほぼ全アイテム)は`label`が空文字列に戻ってしまい、表示は「 +8」(先頭に見えないスペースのみ)になっていた。直前の「効果名 先→値」修正がまさにこの空の`label`を先頭に出す実装だったため、バグが露見した。**根本対応として、表示側が`ItemAffix::label`(保存されない/信頼できない)を一切参照せず、`ItemUIHelpers::AffixLabel(AffixStat)`という新設の変換関数で`stat`(こちらは正しく保存・復元される)から効果名を都度導出するよう変更**。セーブ形式自体は変更していないため、この修正は新規アイテムだけでなく**既存のセーブデータ内の(既に空labelになってしまった)アイテムも次回読み込み時から正しく表示される**。
 
+**フォローアップ(横断監査+継続作業): 「作業を進めて」の指示を受け、今回発見したバグと同系統の問題が他に残っていないか監査**。
+- `.substr(0, N)`によるバイト単位切り詰めがコードベース全体に他に無いか`grep`で確認。残っていた2箇所(`CampaignManager.cpp`/`KeyBindings.cpp`の`kv[line.substr(0, eq)]`)は`=`区切りのconfigパース用でASCIIキー名にしか使われておらず問題なし。
+- `CharacterStatsComponent`の全フィールドを`WriteStats`/`ReadStats`と突き合わせ、`label`と同様の保存漏れが無いか確認。未保存だったのは`esRegenDelay`/`hitInvincibilityTimer`/`rollCooldownTimer`/`pendingLeech`の4つだが、いずれも戦闘中の一時的なタイマー/蓄積値でありゾーン遷移(=セーブのタイミング)をまたいで保持すべきでない設計上正しい未保存(`increasedAttackDamage`等の恒久ボーナスとは性質が異なる)と判断し、対応不要と結論。
+- `InventorySystem`のドラッグ&ドロップ(`TryMoveBagItem`/`HandleDrop`)をコードレビューし、複数マスアイテムの移動・同サイズ入れ替え・範囲外拒否のロジックに不整合が無いことを確認(実機での対話的検証は、本ROADMAP末尾の「既知の制約」に記載の自動入力に関する制約により未実施)。
+- セッション全体を通じて段階的に日本語化してきた流れに合わせ、`CharacterSheetSystem`のステータス欄(Lv/XP/Gold/Str/Dex/Int/Atk/Crit/MoveSpd/Evasion/Armour/Accuracy/Res/Leech等)と見出し("Character Sheet"→「キャラクターシート」、"Equipment"→「装備」、"(empty)"→「(未装備)」)を日本語化。インベントリ/商人画面は既に日本語化済みだったため、これで主要3画面の言語が統一された。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

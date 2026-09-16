@@ -61,26 +61,26 @@ public:
         target.draw(bg);
 
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleCharacterSheet));
-        DrawText(target, panelX + 16.0f, panelY + 10.0f, "Character Sheet (" + closeKey + " to close)", 16, sf::Color(255, 220, 120));
+        DrawText(target, panelX + 16.0f, panelY + 10.0f, "キャラクターシート (" + closeKey + " で閉じる)", 16, sf::Color(255, 220, 120));
 
         float contentWidth = panelW - 32.0f;
 
         std::ostringstream statText;
         statText << std::fixed << std::setprecision(1);
-        statText << "Lv " << stats.level << "  XP " << stats.currentXP << "/" << stats.xpToNextLevel << "  Gold " << stats.gold << "\n";
+        statText << "Lv " << stats.level << "  経験値 " << stats.currentXP << "/" << stats.xpToNextLevel << "  ゴールド " << stats.gold << "\n";
         if (stats.passivePoints > 0) {
-            statText << "Passive Points: " << stats.passivePoints << " (P to spend)\n";
+            statText << "パッシブポイント: " << stats.passivePoints << " (Pキーで割り振り)\n";
         }
         statText << "HP " << stats.currentHP << "/" << stats.maxHP << "  MP " << stats.currentMP << "/" << stats.maxMP << "\n";
         statText << "ES " << stats.currentES << "/" << stats.maxES << "\n";
-        statText << "Str " << stats.str << "  Dex " << stats.dex << "  Int " << stats.intelligence << "\n";
-        statText << "Atk " << stats.atk << "  Crit " << (stats.critRate * 100.0f) << "%  CritMulti " << (stats.critDamage * 100.0f) << "%\n";
-        statText << "MoveSpd " << stats.moveSpeed << "  Evasion " << stats.evasion << "  Armour " << stats.armour << "\n";
-        statText << "Accuracy " << stats.accuracy << "\n";
-        statText << "Res: Fire " << (stats.fireRes * 100.0f) << "% Cold " << (stats.iceRes * 100.0f)
-            << "% Light " << (stats.lightningRes * 100.0f) << "% Chaos " << (stats.chaosRes * 100.0f) << "%\n";
+        statText << "STR " << stats.str << "  DEX " << stats.dex << "  INT " << stats.intelligence << "\n";
+        statText << "攻撃力 " << stats.atk << "  クリティカル率 " << (stats.critRate * 100.0f) << "%  クリティカルダメージ " << (stats.critDamage * 100.0f) << "%\n";
+        statText << "移動速度 " << stats.moveSpeed << "  回避力 " << stats.evasion << "  アーマー " << stats.armour << "\n";
+        statText << "命中率 " << stats.accuracy << "\n";
+        statText << "耐性: 火 " << (stats.fireRes * 100.0f) << "% 冷気 " << (stats.iceRes * 100.0f)
+            << "% 電気 " << (stats.lightningRes * 100.0f) << "% カオス " << (stats.chaosRes * 100.0f) << "%\n";
         if (stats.leechPercent > 0.0f) {
-            statText << "Leech: " << (stats.leechPercent * 100.0f) << "%\n";
+            statText << "ライフリーチ: " << (stats.leechPercent * 100.0f) << "%\n";
         }
 
         std::string statStr = statText.str();
@@ -96,7 +96,7 @@ public:
         // a hand-picked pixel guess and caused the two sections to overlap.
         float equipY = statTextObj.getGlobalBounds().position.y + statTextObj.getGlobalBounds().size.y + 14.0f;
 
-        DrawText(target, panelX + 16.0f, equipY, "Equipment", 15, sf::Color(255, 220, 120));
+        DrawText(target, panelX + 16.0f, equipY, "装備", 15, sf::Color(255, 220, 120));
         equipY += 20.0f;
 
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
@@ -111,13 +111,13 @@ public:
             if (equipment.slots[i].has_value()) {
                 const ItemComponent& item = *equipment.slots[i];
                 line = slotLabel + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", " +
-                    std::to_string(item.affixes.size()) + " mods)";
+                    "Mod" + std::to_string(item.affixes.size()) + "個)";
                 color = ItemUIHelpers::RarityColor(item.rarity);
 
                 sf::FloatRect rowRect({ panelX + 16.0f, rowY }, { contentWidth, 17.0f });
                 if (rowRect.contains(mouse)) hoveredItem = &item;
             } else {
-                line = slotLabel + ": (empty)";
+                line = slotLabel + ": (未装備)";
             }
 
             line = Truncate(line, contentWidth, 13);
