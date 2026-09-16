@@ -3,18 +3,17 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <vector>
 #include "../../Registry/Registry.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
-#include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
-#include "System/Input/InputManager.h"
-#include "System/Input/InputUtils/InputUtils.h"
 #include "System/Input/KeyBindings/KeyBindings.h"
-#include "ItemUIHelpers.h"
-#include "../Item/ItemFactory.h"
 
+// PoE2本家のキャラクターシート(Cキー)の構成に合わせている: 概要(Lv/経験値)→属性
+// (STR/DEX/INT)→主要ステータス(Life/Mana/Spirit/耐性)→詳細な防御(Energy Shield/
+// Armour/Evasion)→その他(移動速度等)。本家同様、装備欄は無し(Iキーのインベントリで
+// 確認可能)、攻撃力/クリティカル等の攻撃系ステータスも無し(本家はスキルごとに個別の
+// 攻撃力パネルを持つ設計のため、キャラクターシート自体には攻撃ステータスを表示しない)。
 class CharacterSheetSystem {
 private:
     std::shared_ptr<sf::Font> m_font;
@@ -38,12 +37,11 @@ public:
     void Render(Registry& registry, sf::RenderTarget& target) {
         if (!isOpen || !m_font) return;
 
-        auto players = registry.View<PlayerTag, CharacterStatsComponent, EquipmentComponent>();
+        auto players = registry.View<PlayerTag, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity playerEntity = players[0];
 
         auto& stats = registry.GetComponent<CharacterStatsComponent>(playerEntity);
-        auto& equipment = registry.GetComponent<EquipmentComponent>(playerEntity);
 
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
@@ -63,72 +61,45 @@ public:
         std::string closeKey = KeyToString(KeyBindings::Instance().Get(GameAction::ToggleCharacterSheet));
         DrawText(target, panelX + 16.0f, panelY + 10.0f, "キャラクターシート (" + closeKey + " で閉じる)", 16, sf::Color(255, 220, 120));
 
-        float contentWidth = panelW - 32.0f;
-
         std::ostringstream statText;
         statText << std::fixed << std::setprecision(1);
-        statText << "Lv " << stats.level << "  経験値 " << stats.currentXP << "/" << stats.xpToNextLevel << "  ゴールド " << stats.gold << "\n";
+
+        // 概要
+        statText << "Lv " << stats.level << "  経験値 " << stats.currentXP << "/" << stats.xpToNextLevel << "\n";
         if (stats.passivePoints > 0) {
             statText << "パッシブポイント: " << stats.passivePoints << " (Pキーで割り振り)\n";
         }
-        statText << "HP " << stats.currentHP << "/" << stats.maxHP << "  MP " << stats.currentMP << "/" << stats.maxMP << "\n";
-        statText << "ES " << stats.currentES << "/" << stats.maxES << "\n";
-        statText << "STR " << stats.str << "  DEX " << stats.dex << "  INT " << stats.intelligence << "\n";
-        statText << "攻撃力 " << stats.atk << "  クリティカル率 " << (stats.critRate * 100.0f) << "%  クリティカルダメージ " << (stats.critDamage * 100.0f) << "%\n";
-        statText << "移動速度 " << stats.moveSpeed << "  回避力 " << stats.evasion << "  アーマー " << stats.armour << "\n";
-        statText << "命中率 " << stats.accuracy << "\n";
+        statText << "\n";
+
+        // 属性
+        statText << "STR " << stats.str << "  DEX " << stats.dex << "  INT " << stats.intelligence << "\n\n";
+
+        // 主要ステータス(Life/Mana/Spirit/耐性)
+        statText << "生命力 " << stats.currentHP << "/" << stats.maxHP << "\n";
+        statText << "マナ " << stats.currentMP << "/" << stats.maxMP << "\n";
+        statText << "スピリット " << stats.currentSpirit << "/" << stats.maxSpirit << "\n";
         statText << "耐性: 火 " << (stats.fireRes * 100.0f) << "% 冷気 " << (stats.iceRes * 100.0f)
-            << "% 電気 " << (stats.lightningRes * 100.0f) << "% カオス " << (stats.chaosRes * 100.0f) << "%\n";
+            << "% 電気 " << (stats.lightningRes * 100.0f) << "% カオス " << (stats.chaosRes * 100.0f) << "%\n\n";
+
+        // 詳細な防御(Energy Shield/Armour/Evasion)
+        statText << "エナジーシールド " << stats.currentES << "/" << stats.maxES << "\n";
+        statText << "アーマー " << stats.armour << "\n";
+        statText << "回避力 " << stats.evasion << "\n\n";
+
+        // その他
+        statText << "移動速度 " << stats.moveSpeed << "\n";
+        statText << "命中率 " << stats.accuracy << "\n";
         if (stats.leechPercent > 0.0f) {
             statText << "ライフリーチ: " << (stats.leechPercent * 100.0f) << "%\n";
         }
 
         std::string statStr = statText.str();
-        sf::Text statTextObj(*m_font, sf::String::fromUtf8(statStr.begin(), statStr.end()), 13);
+        sf::Text statTextObj(*m_font, sf::String::fromUtf8(statStr.begin(), statStr.end()), 14);
         statTextObj.setFillColor(sf::Color::White);
         statTextObj.setOutlineColor(sf::Color::Black);
         statTextObj.setOutlineThickness(1.0f);
-        statTextObj.setPosition({ panelX + 16.0f, panelY + 34.0f });
+        statTextObj.setPosition({ panelX + 16.0f, panelY + 40.0f });
         target.draw(statTextObj);
-
-        // Position the equipment section below the stat block using its *measured* height
-        // rather than an assumed line-height, since actual font line spacing doesn't match
-        // a hand-picked pixel guess and caused the two sections to overlap.
-        float equipY = statTextObj.getGlobalBounds().position.y + statTextObj.getGlobalBounds().size.y + 14.0f;
-
-        DrawText(target, panelX + 16.0f, equipY, "装備", 15, sf::Color(255, 220, 120));
-        equipY += 20.0f;
-
-        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
-        const ItemComponent* hoveredItem = nullptr;
-
-        for (size_t i = 0; i < equipment.slots.size(); ++i) {
-            std::string slotLabel = ItemUIHelpers::SlotName(static_cast<EquipSlot>(i));
-            std::string line;
-            sf::Color color = sf::Color(150, 150, 150);
-            float rowY = equipY + static_cast<float>(i) * 18.0f;
-
-            if (equipment.slots[i].has_value()) {
-                const ItemComponent& item = *equipment.slots[i];
-                line = slotLabel + ": " + item.baseName + " (" + ItemUIHelpers::RarityName(item.rarity) + ", " +
-                    "Mod" + std::to_string(item.affixes.size()) + "個)";
-                color = ItemUIHelpers::RarityColor(item.rarity);
-
-                sf::FloatRect rowRect({ panelX + 16.0f, rowY }, { contentWidth, 17.0f });
-                if (rowRect.contains(mouse)) hoveredItem = &item;
-            } else {
-                line = slotLabel + ": (未装備)";
-            }
-
-            line = Truncate(line, contentWidth, 13);
-            DrawText(target, panelX + 16.0f, rowY, line, 13, color);
-        }
-
-        // カーソルを乗せた装備の詳細(モッド一覧)。後続の行に描き潰されないよう、
-        // 装備欄を全部描き終えたあとにまとめて描く。
-        if (hoveredItem) {
-            DrawItemTooltip(target, mouse, *hoveredItem, target.getSize());
-        }
 
         target.setView(oldView);
     }
@@ -140,75 +111,6 @@ private:
     static constexpr float kPanelH = 680.0f;
     static constexpr float kPanelX = 20.0f;
     static constexpr float kPanelY = 20.0f;
-
-    // Clips str to fit within maxWidth pixels at the given font size, appending "...".
-    // Item names are procedurally generated and can be arbitrarily long, so line width
-    // can't be bounded just by tuning the layout constants above.
-    std::string Truncate(const std::string& str, float maxWidth, unsigned int size) const {
-        sf::Text probe(*m_font, sf::String::fromUtf8(str.begin(), str.end()), size);
-        if (probe.getLocalBounds().size.x <= maxWidth) return str;
-
-        std::string result = str;
-        while (!result.empty()) {
-            result.pop_back();
-            std::string candidate = result + "...";
-            sf::Text probe2(*m_font, sf::String::fromUtf8(candidate.begin(), candidate.end()), size);
-            if (probe2.getLocalBounds().size.x <= maxWidth) return candidate;
-        }
-        return "...";
-    }
-
-    // 名前/レアリティ/スロット/レベル/ソケット/モッド一覧/売却額を表示する詳細ツールチップ。
-    // InventorySystem/VendorSystemと同じ内容・体裁に揃えている。
-    void DrawItemTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const ItemComponent& item, sf::Vector2u winSize) {
-        struct Line { std::string text; sf::Color color; };
-        std::vector<Line> lines;
-
-        lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
-        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
-            " - Lv" + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
-            sf::Color(190, 190, 190) });
-
-        int sockets = ItemUIHelpers::SocketCount(item);
-        if (sockets > 0) {
-            lines.push_back({ "ソケット: " + std::to_string(sockets), sf::Color(210, 210, 220) });
-        }
-
-        for (const auto& affix : item.affixes) {
-            lines.push_back({ ItemUIHelpers::FormatAffixLine(affix), sf::Color(150, 200, 255) });
-        }
-
-        std::ostringstream sellSs;
-        sellSs << "売却額: " << ItemFactory::SellValue(item) << " ゴールド";
-        lines.push_back({ sellSs.str(), sf::Color(200, 180, 120) });
-
-        float lineH = 18.0f;
-        float maxWidth = 0.0f;
-        for (const auto& line : lines) {
-            sf::Text probe(*m_font, sf::String::fromUtf8(line.text.begin(), line.text.end()), 13);
-            maxWidth = (std::max)(maxWidth, probe.getLocalBounds().size.x);
-        }
-
-        float boxW = maxWidth + 24.0f;
-        float boxH = static_cast<float>(lines.size()) * lineH + 16.0f;
-
-        float x = mouse.x + 18.0f;
-        float y = mouse.y + 10.0f;
-        if (x + boxW > static_cast<float>(winSize.x) - 4.0f) x = mouse.x - boxW - 18.0f;
-        if (y + boxH > static_cast<float>(winSize.y) - 4.0f) y = static_cast<float>(winSize.y) - boxH - 4.0f;
-
-        sf::RectangleShape box({ boxW, boxH });
-        box.setPosition({ x, y });
-        box.setFillColor(sf::Color(10, 10, 14, 235));
-        box.setOutlineColor(sf::Color(150, 150, 160));
-        box.setOutlineThickness(1.5f);
-        target.draw(box);
-
-        for (size_t i = 0; i < lines.size(); ++i) {
-            DrawText(target, x + 12.0f, y + 8.0f + static_cast<float>(i) * lineH, lines[i].text, 13, lines[i].color);
-        }
-    }
 
     void DrawText(sf::RenderTarget& target, float x, float y, const std::string& str, unsigned int size, sf::Color color) {
         // std::string -> sf::Text's implicit sf::String ctor is ANSI/locale, not UTF-8.

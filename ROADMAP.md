@@ -92,6 +92,14 @@
 - `InventorySystem`のドラッグ&ドロップ(`TryMoveBagItem`/`HandleDrop`)をコードレビューし、複数マスアイテムの移動・同サイズ入れ替え・範囲外拒否のロジックに不整合が無いことを確認(実機での対話的検証は、本ROADMAP末尾の「既知の制約」に記載の自動入力に関する制約により未実施)。
 - セッション全体を通じて段階的に日本語化してきた流れに合わせ、`CharacterSheetSystem`のステータス欄(Lv/XP/Gold/Str/Dex/Int/Atk/Crit/MoveSpd/Evasion/Armour/Accuracy/Res/Leech等)と見出し("Character Sheet"→「キャラクターシート」、"Equipment"→「装備」、"(empty)"→「(未装備)」)を日本語化。インベントリ/商人画面は既に日本語化済みだったため、これで主要3画面の言語が統一された。
 
+**キャラクターシートをPoE2本家の実際の構成に合わせて全面刷新**: 「ステータスの表示に装備はいらない(Iキーで見れる)、ステータス表示自体も本家PoE2と違う、調べて全く同じにして」との指摘を受け、本家の構成を調査([PoE 2 Guide: Character Sheet Explained](https://mobalytics.gg/poe-2/guides/character-sheet)、[Stats & Attributes | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Stats+&+Attributes)等)。本家の実際の構成は「概要(Lv/クラス/場所)→属性(STR/DEX/INT、アバター右側)→主要ステータス(Life/Mana/Spirit/耐性)→詳細な防御内訳(Energy Shield/Armour/Evasion/Block等)→その他(移動速度等)」で、**装備欄は無く**(インベントリ側で確認する設計)、**攻撃力/クリティカル等の攻撃系ステータスも一切表示されない**(本家はスキルジェムごとに個別の攻撃力パネルを持つ設計のため、キャラクターシート自体はビルドの土台となる防御・リソース系ステータスに特化している)ことが判明。これに合わせて全面書き換え:
+- **装備欄を完全削除**(該当のホバー処理/ツールチップ描画関数も含め未使用コードを削除)。
+- **Atk/Crit Chance/Crit Multiplierを削除**(本家同様キャラクターシートには攻撃系ステータスを置かない方針に変更)。
+- **表示順を本家の区分(概要→属性→主要ステータス→詳細防御→その他)に合わせて並び替え**。
+- 本家の7大ステータス(Life/Mana/Spirit/Energy Shield/Armour/Evasion/Block)のうち**Spiritが従来まったく表示されていなかった**(データ自体は`CharacterStatsComponent::maxSpirit`/`currentSpirit`として既に存在)ため新規に追加。
+- Gold(ゴールド)は本家のキャラクターシートには存在しない情報のため削除(Vendor画面で確認可能)。
+- 本家に存在するBlock(ブロック率)・Charges(チャージ)・ダメージ回避/変換の内訳セクションは、対応するゲームシステム自体が本実装に無いため今回は追加していない(将来実装する場合の拡張余地として`ROADMAP`に記録)。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。
