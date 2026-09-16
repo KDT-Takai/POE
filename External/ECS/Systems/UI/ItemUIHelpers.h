@@ -23,6 +23,24 @@ namespace ItemUIHelpers {
         }
     }
 
+    // Short label for a cramped grid cell. A whole short word, not a substr() of
+    // SlotName()/RarityName() -- those are UTF-8 multibyte strings, so byte-slicing
+    // them (e.g. .substr(0, 2)) cuts a character in half and renders as tofu boxes.
+    inline std::string ShortSlotCode(EquipSlot slot) {
+        switch (slot) {
+        case EquipSlot::Weapon: return "武器";
+        case EquipSlot::BodyArmour: return "胴";
+        case EquipSlot::Helmet: return "兜";
+        case EquipSlot::Gloves: return "手袋";
+        case EquipSlot::Boots: return "靴";
+        case EquipSlot::Ring1:
+        case EquipSlot::Ring2: return "指輪";
+        case EquipSlot::Amulet: return "首飾";
+        case EquipSlot::Belt: return "帯";
+        default: return "?";
+        }
+    }
+
     constexpr int kBagGridCols = 6;
     constexpr int kBagGridRows = 4;
 

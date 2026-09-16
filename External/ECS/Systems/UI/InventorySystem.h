@@ -273,7 +273,7 @@ public:
             box.setOutlineThickness(hovered ? 2.5f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ShortSlotCode(item.slot), 11, rc);
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::ShortSlotCode(item.slot), 11, rc);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
 
             if (hovered && !m_dragging) {
@@ -482,21 +482,6 @@ private:
 
         lastActionMessage = "地面に捨てた: " + dropped.baseName;
         messageTimer = 2.5f;
-    }
-
-    std::string ShortSlotCode(EquipSlot slot) const {
-        switch (slot) {
-        case EquipSlot::Weapon: return "武器";
-        case EquipSlot::BodyArmour: return "胴";
-        case EquipSlot::Helmet: return "兜";
-        case EquipSlot::Gloves: return "手袋";
-        case EquipSlot::Boots: return "靴";
-        case EquipSlot::Ring1:
-        case EquipSlot::Ring2: return "指輪";
-        case EquipSlot::Amulet: return "首飾";
-        case EquipSlot::Belt: return "帯";
-        default: return "?";
-        }
     }
 
     std::string Truncate(const std::string& s, size_t maxLen) const {

@@ -285,7 +285,7 @@ public:
             box.setOutlineThickness(hovered ? 2.0f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, ItemUIHelpers::SlotName(item.slot).substr(0, 2), 10, rc);
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, ItemUIHelpers::ShortSlotCode(item.slot), 10, rc);
             DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
         }
 
@@ -436,7 +436,7 @@ private:
             box.setOutlineThickness(selected ? 2.5f : 1.5f);
             target.draw(box);
 
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::SlotName(item.slot).substr(0, 2), 11, rc);
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, ItemUIHelpers::ShortSlotCode(item.slot), 11, rc);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
 
             if (hovered) {
