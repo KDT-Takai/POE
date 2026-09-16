@@ -7,6 +7,7 @@
 #include "../../ECS/Components/Physics/Facing/Facing.h"
 #include "../../ECS/Components/Chara/RangedAttacker.h"
 #include "../../ECS/Components/Chara/AreaAttacker.h"
+#include "../../ECS/Components/Chara/Charger.h"
 #include <cmath>
 
 class EnemyAISystem {
@@ -47,6 +48,28 @@ public:
                     }
                 } else {
                     vel.velocity = { 0.0f, 0.0f };
+                }
+                continue;
+            }
+
+            if (registry.HasComponent<ChargerComponent>(entity)) {
+                auto& charger = registry.GetComponent<ChargerComponent>(entity);
+
+                if (charger.currentCharge >= 0.0f) {
+                    vel.velocity = charger.chargeDirection * stats.moveSpeed * charger.chargeSpeedMultiplier;
+                } else if (charger.currentTelegraph >= 0.0f) {
+                    vel.velocity = { 0.0f, 0.0f }; // rooted while winding up
+                } else if (distance > 0.001f) {
+                    sf::Vector2f direction = diff / distance;
+                    vel.velocity = direction * stats.moveSpeed; // chase normally otherwise
+                } else {
+                    vel.velocity = { 0.0f, 0.0f };
+                }
+
+                if (distance > 0.001f && registry.HasComponent<FacingComponent>(entity)) {
+                    auto& facing = registry.GetComponent<FacingComponent>(entity);
+                    if (diff.x > 0) facing.direction = 1;
+                    else if (diff.x < 0) facing.direction = -1;
                 }
                 continue;
             }

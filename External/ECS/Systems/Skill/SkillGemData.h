@@ -158,6 +158,54 @@ private:
         chaosBolt.isValid = true;
         gems.push_back({ 11, chaosBolt });
 
+        // SkillBehaviorType::Dash was already fully implemented (SkillSystem::ActivateSkill,
+        // UISystem's cyan icon color) but no gem used it -- an alternate, independently-
+        // cooldowned dash to slot alongside the base Roll action, matching PoE's "Flame Dash".
+        // Deals no damage, so it's intentionally excluded from SkillGemSystem's element display.
+        SkillData flameDash;
+        flameDash.name = "Flame Dash";
+        flameDash.behaviorType = SkillBehaviorType::Dash;
+        flameDash.cooldownTime = 3.5f;
+        flameDash.mpCost = 15;
+        flameDash.duration = 0.3f;
+        flameDash.isValid = true;
+        gems.push_back({ 12, flameDash });
+
+        // Third defensive Aura, parallel to Determination(Armour)/Discipline(ES): rounds
+        // out the trio of PoE2's classic defense-layer auras with Evasion.
+        SkillData grace;
+        grace.name = "Grace";
+        grace.behaviorType = SkillBehaviorType::Aura;
+        grace.spiritCost = 35.0f;
+        grace.auraEffect = { AffixStat::FlatEvasion, 50.0f, 1, true, "Evasion" };
+        grace.isValid = true;
+        gems.push_back({ 13, grace });
+
+        // Second Fire/Chaos skill each, so both attribute-2 elements reach the same
+        // 2-gem count Cold already has, and to add Melee/AreaEffect elemental variety
+        // (the only Melee gem so far, Cleave, was Physical-only).
+        SkillData immolate;
+        immolate.name = "Immolate";
+        immolate.behaviorType = SkillBehaviorType::Melee;
+        immolate.cooldownTime = 0.8f;
+        immolate.mpCost = 10;
+        immolate.damage = 100.0f; // % of atk
+        immolate.range = 65.0f;
+        immolate.element = DamageElement::Fire;
+        immolate.isValid = true;
+        gems.push_back({ 14, immolate });
+
+        SkillData soulRend;
+        soulRend.name = "Soul Rend";
+        soulRend.behaviorType = SkillBehaviorType::AreaEffect;
+        soulRend.cooldownTime = 7.0f;
+        soulRend.mpCost = 32;
+        soulRend.damage = 95.0f; // % of atk, matches Nova/Fireball convention
+        soulRend.range = 170.0f;
+        soulRend.element = DamageElement::Chaos;
+        soulRend.isValid = true;
+        gems.push_back({ 15, soulRend });
+
         return gems;
     }
 };

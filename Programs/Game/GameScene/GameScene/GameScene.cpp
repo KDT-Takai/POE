@@ -38,6 +38,7 @@ GameScene::GameScene() {
 	enemyRangedAttackSystem = std::make_shared<EnemyRangedAttackSystem>();
 	enemyAreaAttackSystem = std::make_shared<EnemyAreaAttackSystem>();
 	enemySummonSystem = std::make_shared<EnemySummonSystem>();
+	enemyChargeSystem = std::make_shared<EnemyChargeSystem>();
 	collisionSystem = std::make_shared<CollisionSystem>();
 	healthBarRenderSystem = std::make_shared<HealthBarRenderSystem>();
 	statusEffectSystem = std::make_shared<StatusEffectSystem>();
@@ -312,6 +313,7 @@ void GameScene::Update() {
         enemyRangedAttackSystem->Update(*registry, dt, playerPos);
         enemyAreaAttackSystem->Update(*registry, dt, playerPos);
         enemySummonSystem->Update(*registry, dt, playerPos);
+        enemyChargeSystem->Update(*registry, dt, playerPos);
         statusEffectSystem->Update(*registry, dt);
         // �������Z
         physicsSystem->Update(*registry, dt);

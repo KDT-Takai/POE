@@ -12,6 +12,7 @@
 #include "../../ECS/Components/Chara/RangedAttacker.h"
 #include "../../ECS/Components/Chara/AreaAttacker.h"
 #include "../../ECS/Components/Chara/Summoner.h"
+#include "../../ECS/Components/Chara/Charger.h"
 
 struct ZoneBuildResult {
     sf::Vector2f playerSpawn{ 100.f, 100.f };
@@ -142,7 +143,7 @@ private:
 
         // レア/ユニークとは独立して、一定確率で行動パターンの異なるアーケタイプにする
         // (接触ダメージのみだった既存モンスターに行動パターンの幅を持たせる。
-        //  遠距離/範囲攻撃/召喚は互いに排他)
+        //  遠距離/範囲攻撃/召喚/突進は互いに排他)
         float archetypeRoll = roll(rng);
         if (archetypeRoll < 0.15f) {
             stats.name = "叩き潰す" + stats.name;
@@ -176,6 +177,17 @@ private:
             summoner.maxActiveSummons = 2;
             summoner.statScale = 0.5f;
             enemy.AddComponent(summoner);
+        } else if (archetypeRoll < 0.60f) {
+            stats.name = "突進する" + stats.name;
+
+            ChargerComponent charger;
+            charger.triggerRange = 220.0f;
+            charger.telegraphTime = (std::max)(0.25f, 0.5f - tierScale * 0.03f);
+            charger.chargeDuration = 0.4f;
+            charger.chargeSpeedMultiplier = 3.5f;
+            charger.cooldownTime = (std::max)(1.2f, 2.0f - tierScale * 0.1f);
+            charger.baseColor = circle.color;
+            enemy.AddComponent(charger);
         }
 
         stats.currentHP = stats.maxHP;
