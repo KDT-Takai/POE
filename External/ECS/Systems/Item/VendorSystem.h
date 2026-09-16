@@ -50,6 +50,7 @@ private:
     std::vector<ItemComponent> m_stock;
     std::vector<BuybackEntry> m_buyback;
     bool m_stockGenerated = false;
+    int m_stockLevel = 0; // player level the current m_stock was generated at
     int m_selectedIndex = 0;
     VendorTab m_activeTab = VendorTab::Buy;
 
@@ -69,7 +70,12 @@ public:
     }
 
     void Open(int playerLevel) {
-        if (!m_stockGenerated) GenerateStock(playerLevel);
+        // Stock is regenerated for free whenever the player has leveled up (or down)
+        // since it was last rolled, so the vendor keeps offering gear appropriate to
+        // current story progress instead of staying frozen at whatever level the
+        // player was when they first talked to this vendor. Paid reroll (see
+        // TryReroll) is still the only way to get a fresh roll at the *same* level.
+        if (!m_stockGenerated || playerLevel != m_stockLevel) GenerateStock(playerLevel);
         isOpen = true;
         m_selectedIndex = 0;
         m_activeTab = VendorTab::Buy;
@@ -393,6 +399,7 @@ private:
         static std::random_device rd;
         static std::mt19937 rng(rd());
         int itemLevel = std::clamp(playerLevel, 1, 100);
+        m_stockLevel = playerLevel;
 
         for (int i = 0; i < 6; ++i) {
             EquipSlot slot = ItemFactory::RollSlot(rng);
