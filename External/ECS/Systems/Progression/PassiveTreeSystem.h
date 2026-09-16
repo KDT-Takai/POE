@@ -17,20 +17,30 @@
 
 class PassiveTreeSystem {
 private:
-    // Tree area keeps its old footprint (branches reach up to 350px from center);
-    // the footer below it is new space for the selected-node info + Confirm/Cancel.
-    static constexpr float kPanelW = 700.0f;
-    static constexpr float kTreeAreaH = 560.0f;
+    // Fills the whole window (unlike the other menus, which stay as small fixed-size
+    // panels) since the tree now has enough nodes/branches that a 700x560 box would be
+    // too cramped to read or click accurately. kMargin keeps a border so nodes never
+    // touch the screen edge; kHeaderH/kFooterH reserve fixed screen-space strips for the
+    // title/points text and the selected-node info + Confirm/Cancel buttons.
+    static constexpr float kMargin = 30.0f;
+    static constexpr float kHeaderH = 70.0f;
     static constexpr float kFooterH = 90.0f;
-    static constexpr float kPanelH = kTreeAreaH + kFooterH;
     static constexpr float kButtonW = 150.0f;
     static constexpr float kButtonH = 36.0f;
     static constexpr float kButtonGap = 24.0f;
+    // Node/text sizes stay fixed in screen pixels regardless of tree scale, so labels
+    // and click targets stay readable/clickable even when the tree is scaled down to
+    // fit a smaller window.
+    static constexpr float kNodeRadius = 10.0f;
+    static constexpr float kStartNodeRadius = 12.0f;
 
     struct PanelLayout {
         float panelX = 0.0f;
         float panelY = 0.0f;
+        float panelW = 0.0f;
+        float panelH = 0.0f;
         sf::Vector2f center;
+        float scale = 1.0f; // raw tree units -> screen pixels, fit to the tree area
         sf::FloatRect confirmBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
         sf::FloatRect cancelBtn{ {0.0f, 0.0f}, {0.0f, 0.0f} };
     };
@@ -101,7 +111,7 @@ public:
         float panelX = layout.panelX;
         float panelY = layout.panelY;
 
-        sf::RectangleShape bg({ kPanelW, kPanelH });
+        sf::RectangleShape bg({ layout.panelW, layout.panelH });
         bg.setPosition({ panelX, panelY });
         bg.setFillColor(sf::Color(15, 15, 20, 235));
         bg.setOutlineColor(sf::Color(150, 150, 160));
@@ -124,16 +134,16 @@ public:
                 bool bothAllocated = IsAllocated(tree, node.id) && IsAllocated(tree, neighborId);
                 sf::Color lineColor = bothAllocated ? sf::Color(120, 200, 255) : sf::Color(80, 80, 90);
                 std::array<sf::Vertex, 2> line = { {
-                    { layout.center + sf::Vector2f(node.x, node.y), lineColor },
-                    { layout.center + sf::Vector2f(neighbor->x, neighbor->y), lineColor }
+                    { NodeScreenPos(layout, node), lineColor },
+                    { NodeScreenPos(layout, *neighbor), lineColor }
                 } };
                 target.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
             }
         }
 
         for (const auto& node : PassiveTreeData::Nodes()) {
-            sf::Vector2f pos = layout.center + sf::Vector2f(node.x, node.y);
-            float radius = (node.id == 0) ? 12.0f : 10.0f;
+            sf::Vector2f pos = NodeScreenPos(layout, node);
+            float radius = (node.id == 0) ? kStartNodeRadius : kNodeRadius;
 
             sf::CircleShape circle(radius);
             circle.setOrigin({ radius, radius });
@@ -154,11 +164,11 @@ public:
             std::string info = selectedNode->effect.label + ": +" +
                 std::to_string(static_cast<int>(selectedNode->effect.value)) + (isPercent ? "%" : "");
             if (IsAllocated(tree, m_selectedNodeId)) info += " (allocated)";
-            DrawText(target, panelX + 20.0f, panelY + kTreeAreaH + 4.0f, info, 14, sf::Color(220, 220, 220));
+            DrawText(target, panelX + 20.0f, panelY + layout.panelH - kFooterH + 4.0f, info, 14, sf::Color(220, 220, 220));
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 20.0f, panelY + kTreeAreaH + 26.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
+            DrawText(target, panelX + 20.0f, panelY + layout.panelH - kFooterH + 22.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
         }
 
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
@@ -174,22 +184,37 @@ public:
 private:
     PanelLayout ComputeLayout(sf::Vector2u winSize) const {
         PanelLayout layout;
-        layout.panelX = (static_cast<float>(winSize.x) - kPanelW) / 2.0f;
-        layout.panelY = (static_cast<float>(winSize.y) - kPanelH) / 2.0f;
-        layout.center = { layout.panelX + kPanelW / 2.0f, layout.panelY + kTreeAreaH / 2.0f + 15.0f };
+        layout.panelX = kMargin;
+        layout.panelY = kMargin;
+        layout.panelW = (std::max)(100.0f, static_cast<float>(winSize.x) - kMargin * 2.0f);
+        layout.panelH = (std::max)(100.0f, static_cast<float>(winSize.y) - kMargin * 2.0f);
+
+        float treeAreaW = layout.panelW;
+        float treeAreaH = (std::max)(50.0f, layout.panelH - kHeaderH - kFooterH);
+        layout.center = { layout.panelX + treeAreaW / 2.0f, layout.panelY + kHeaderH + treeAreaH / 2.0f };
+
+        // Fit the tree's full radius inside the smaller of the area's half-width/height,
+        // with a little padding so outer nodes don't touch the header/footer/edges.
+        float maxRadius = (std::max)(1.0f, PassiveTreeData::MaxRadius());
+        float availableHalfExtent = (std::min)(treeAreaW, treeAreaH) / 2.0f;
+        layout.scale = (availableHalfExtent * 0.92f) / maxRadius;
 
         float totalBtnW = kButtonW * 2.0f + kButtonGap;
-        float btnX = layout.panelX + (kPanelW - totalBtnW) / 2.0f;
-        float btnY = layout.panelY + kTreeAreaH + 54.0f;
+        float btnX = layout.panelX + (layout.panelW - totalBtnW) / 2.0f;
+        float btnY = layout.panelY + layout.panelH - kFooterH + 44.0f;
         layout.confirmBtn = sf::FloatRect({ btnX, btnY }, { kButtonW, kButtonH });
         layout.cancelBtn = sf::FloatRect({ btnX + kButtonW + kButtonGap, btnY }, { kButtonW, kButtonH });
         return layout;
     }
 
+    sf::Vector2f NodeScreenPos(const PanelLayout& layout, const PassiveNodeDef& node) const {
+        return layout.center + sf::Vector2f(node.x, node.y) * layout.scale;
+    }
+
     int HitTestNode(const PanelLayout& layout, sf::Vector2f mouse) const {
         for (const auto& node : PassiveTreeData::Nodes()) {
-            sf::Vector2f pos = layout.center + sf::Vector2f(node.x, node.y);
-            float radius = (node.id == 0 ? 12.0f : 10.0f) + 6.0f; // slack for easier clicking
+            sf::Vector2f pos = NodeScreenPos(layout, node);
+            float radius = (node.id == 0 ? kStartNodeRadius : kNodeRadius) + 6.0f; // slack for easier clicking
             sf::Vector2f d = mouse - pos;
             if (d.x * d.x + d.y * d.y <= radius * radius) return node.id;
         }
@@ -327,6 +352,7 @@ private:
         case AffixStat::CritChance:
         case AffixStat::CritMultiplier:
         case AffixStat::MoveSpeed:
+        case AffixStat::BlockChance:
             return true;
         default:
             return false;
