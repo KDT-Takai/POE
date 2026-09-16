@@ -38,7 +38,8 @@
 - **XP/レベリング**: `External/ECS/Systems/Progression/LevelSystem.h`
 - **パッシブツリーUI（Pキー、ノード割り振り）**: `External/ECS/Systems/Progression/PassiveTreeSystem.h`, `PassiveTreeData.h`, `External/ECS/Components/Progression/PassiveTree.h`
 - **Vendor（商人、Bキーで購入）**: `External/ECS/Systems/Item/VendorSystem.h`（NPC自体は`ZoneBuilder::SpawnVendor`でタウン中央に配置）
-- **スキルジェム（Gキー、5スキルスロット+5スピリットスロット=計10枠をマウスのクリックのみで自由付け替え）**: `External/ECS/Systems/UI/SkillGemSystem.h`。ジェムの静的定義は`External/ECS/Systems/Skill/SkillGemData.h`（レベル1-20要件の基礎値/必要属性STR・DEX・INT付き）、サポートジェムの静的定義は`External/ECS/Systems/Skill/SupportGemData.h`。両者の適用・レベルスケーリングは`External/ECS/Systems/Skill/SkillGemScaling.h`(`BuildEquippedSkillData`)/`SupportGemSystem.h`。所持ジェムの個体管理(レベル/ソケット数/装着中サポート)は`External/ECS/Components/Item/SkillGem.h`の`OwnedGemInstance`（`SkillGemInventoryComponent.ownedGems`）。ドロップは未鑑定のUncut Gem(`SkillGemPickupComponent`、レベル+`GemPickupKind`でSkill/Support/Spiritの種別のみ判定済み)として発生し、拾うと即座に`SkillGemInventoryComponent.pendingUncutGems`(所持上限`kPendingCapacity`=8)へ格納される。`SkillGemSystem`画面上部の「Uncut Gems」チップをクリックして`External/ECS/Systems/UI/GemIdentifySystem.h`(Gem Cutting)を開き、どのジェムになるか選んで初めて所持化する(サポートジェムも同じ経路が必須、カタログからの自由装着は不可)。ソケット拡張はJeweller's Orb(`CurrencyType::JewellersOrb`、`CharacterStatsComponent::jewellersOrbs`)をSkillGemSystem画面上のボタンで消費。
+- **スキルジェム（Gキー、5スキルスロット+5スピリットスロット=計10枠をマウスのクリックのみで自由付け替え）**: `External/ECS/Systems/UI/SkillGemSystem.h`。ジェムの静的定義は`External/ECS/Systems/Skill/SkillGemData.h`（レベル1-20要件の基礎値/必要属性STR・DEX・INT付き）、サポートジェムの静的定義は`External/ECS/Systems/Skill/SupportGemData.h`。両者の適用・レベルスケーリングは`External/ECS/Systems/Skill/SkillGemScaling.h`(`BuildEquippedSkillData`)/`SupportGemSystem.h`。所持ジェムの個体管理(レベル/ソケット数/装着中サポート)は`External/ECS/Components/Item/SkillGem.h`の`OwnedGemInstance`（`SkillGemInventoryComponent.ownedGems`）。ドロップは未鑑定のUncut Gem(`SkillGemPickupComponent`、レベル+`GemPickupKind`でSkill/Support/Spiritの種別のみ判定済み)として発生し、拾うと即座に`SkillGemInventoryComponent.pendingUncutGems`(所持上限`kPendingCapacity`=8)へ格納される。`SkillGemSystem`画面上部の「Uncut Gems」チップをクリックして`External/ECS/Systems/UI/GemIdentifySystem.h`(Gem Cutting)を開き、どのジェムになるか選んで初めて所持化する(サポートジェムも同じ経路が必須、カタログからの自由装着は不可)。ソケット拡張はJeweller's Orb(`CurrencyType::JewellersOrb`、`CharacterStatsComponent::jewellersOrbs`)をSkillGemSystem画面上のボタンで消費。実発動時の可否判定は`External/ECS/Systems/Skill/SkillActivationSystem.h`の`CanUseSkill`に一元化(`SkillSystem::Update`が使用)。
+- **Permanent Minion（Spirit Gemの一種、`SkillBehaviorType::Minion`）**: `External/ECS/Systems/Chara/MinionSystem.h`が召喚体の追従/近接AI・死亡検知・リスポーンを管理。スポーン/デスポーン自体は`SpiritAuraSystem`のON/OFFがトリガー(`EntitySpawner::CreateMinion`で生成)。マーカーは`External/ECS/Components/Chara/Minion.h`(`AllyTagComponent`=プレイヤー陣営、`PermanentMinionComponent`=所有者/スロット参照)。
 - **アイテムUI共通ヘルパー（スロット名/レアリティ名・色）**: `External/ECS/Systems/UI/ItemUIHelpers.h`（CharacterSheetSystem/InventorySystem/VendorSystemが共有）
 - **キャラクターシートUI（Cキー）**: `External/ECS/Systems/UI/CharacterSheetSystem.h`
 - **ボスフェーズ（HP50%でEnrage）**: `External/ECS/Systems/Chara/BossPhaseSystem.h`
@@ -46,7 +47,7 @@
 - **突進モンスター（テレグラフ後に高速直進）**: `External/ECS/Systems/Chara/EnemyChargeSystem.h`（telegraph→charge→cooldownの状態遷移。移動自体は`EnemyAISystem.h`側、実際のダメージは専用の攻撃処理を持たず通常の接触ダメージ判定に乗る）、マーカーは`External/ECS/Components/Chara/Charger.h`
 - **入力管理（キーボード/マウス/パッド）**: `Programs/System/Input/`
 - **キーバインド設定（リバインド可能なゲームプレイ操作、Oキーで設定UI）**: `Programs/System/Input/KeyBindings/KeyBindings.h/.cpp`（保持/永続化）、`External/ECS/Systems/UI/KeyBindSystem.h`（リバインドUI）
-- **デバッグUI（ImGui、F1系）**: `Programs/System/DebugManager/`, `Programs/System/DebugGui/`
+- **デバッグUI（ImGui、F1系）**: `Programs/System/DebugManager/`, `Programs/System/DebugGui/`。ジェム専用のデバッグツール(Uncut Gemスポーン/ステータス編集/Spirit・スキル計算値表示)は`GameScene::RenderGemDebugTools`（Registryアクセスが要るため`DebugManager`本体ではなく`GameScene::RenderImGui`側に実装、"Gem Debug"ウィンドウ）。
 
 ## 命名・配置のルール（あれば）
 

@@ -11,6 +11,7 @@
 #include "../../Components/Item/SkillGem.h"
 #include "../../Components/Item/Waystone.h"
 #include "../../Components/Tags/Boss/Boss.h"
+#include "../../Components/Chara/Minion.h"
 #include <System/Campaign/CampaignManager.h>
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
@@ -49,6 +50,10 @@ public:
 
             for (auto enemyEntity : enemies) {
                 if (registry.HasComponent<PlayerInputComponent>(enemyEntity)) continue;
+                // Permanent Minions (AllyTagComponent) are friendly -- the player's own
+                // projectiles must never hit their own minion. MinionSystem handles
+                // minion-vs-real-enemy combat separately.
+                if (registry.HasComponent<AllyTagComponent>(enemyEntity)) continue;
 
                 auto& eTrans = registry.GetComponent<TransformComponent>(enemyEntity);
                 auto& eCol = registry.GetComponent<BoxColliderComponent>(enemyEntity);
@@ -155,6 +160,9 @@ public:
 
             for (auto e : enemies) {
                 if (e == playerEntity) continue;
+                // A Permanent Minion is friendly -- it must never contact-damage the
+                // player it belongs to.
+                if (registry.HasComponent<AllyTagComponent>(e)) continue;
                 if (pStats.hitInvincibilityTimer > 0.0f) break;
 
                 auto& eTrans = registry.GetComponent<TransformComponent>(e);

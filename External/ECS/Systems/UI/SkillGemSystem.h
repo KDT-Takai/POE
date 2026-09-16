@@ -143,7 +143,7 @@ public:
         for (int i = 0; i < kSpiritSlotCount; ++i) {
             if (loadout.auraGemIds[i] >= 0 && SpiritToggleRect(L, i).contains(mouse)) {
                 std::string message;
-                SpiritAuraSystem::TryToggleActive(loadout, i, gemInventory, equipment, stats, message);
+                SpiritAuraSystem::TryToggleActive(registry, player, loadout, i, gemInventory, equipment, stats, message);
                 lastActionMessage = message;
                 messageTimer = 2.0f;
                 return;
@@ -167,7 +167,7 @@ public:
             for (size_t i = 0; i < opts.size(); ++i) {
                 sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
-                    AssignSelected(skillComp, loadout, gemInventory, equipment, stats, opts[i]);
+                    AssignSelected(registry, player, skillComp, loadout, gemInventory, equipment, stats, opts[i]);
                     return;
                 }
             }
@@ -394,7 +394,9 @@ private:
                 label = def->name;
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
                 label += "  [" + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute) + "]";
-                color = (have < def->requirement) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
+                bool categoryConflict = inst && HasCategoryConflict(*inst, m_selectedSocket, *def);
+                if (categoryConflict) label += " (category conflict)";
+                color = (have < def->requirement || categoryConflict) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
             }
             DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
         }
@@ -461,6 +463,17 @@ private:
         return SkillGemScaling::FindOwnedGem(inv, gemId, isSupport);
     }
 
+    // True if `candidate` shares a SupportCategory with any OTHER socketed support on
+    // `inst` (excludeSocket is the socket being written to, not a conflict with itself).
+    static bool HasCategoryConflict(const OwnedGemInstance& inst, int excludeSocket, const SupportGemDefinition& candidate) {
+        for (int s = 0; s < kMaxPossibleSockets; ++s) {
+            if (s == excludeSocket || inst.supportGemIds[s] < 0) continue;
+            const SupportGemDefinition* other = SupportGemData::Find(inst.supportGemIds[s]);
+            if (other && other->category == candidate.category) return true;
+        }
+        return false;
+    }
+
     OwnedGemInstance* FindOwnedMutable(SkillGemInventoryComponent& inv, int gemId, bool isSupport) const {
         for (auto& owned : inv.ownedGems) {
             if (owned.isSupport == isSupport && owned.gemId == gemId) return &owned;
@@ -477,8 +490,8 @@ private:
             if (owned.isSupport) continue;
             const GemDefinition* def = SkillGemData::Find(owned.gemId);
             if (!def) continue;
-            bool isAura = (def->skill.behaviorType == SkillBehaviorType::Aura);
-            if (isAura == auraOnly) opts.push_back(owned.gemId);
+            bool isSpirit = SkillGemData::IsSpiritBehavior(def->skill.behaviorType);
+            if (isSpirit == auraOnly) opts.push_back(owned.gemId);
         }
         return opts;
     }
@@ -510,13 +523,13 @@ private:
         return SkillTags::TagsFor(skill.behaviorType, skill.element);
     }
 
-    void AssignSelected(PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, SkillGemInventoryComponent& gemInventory,
+    void AssignSelected(Registry& registry, Entity player, PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, SkillGemInventoryComponent& gemInventory,
         EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
         if (IsSpiritSlot()) {
             std::string message;
             // Only registers the gem into the slot -- it stays OFF (no Spirit reserved,
             // no effect applied) until separately toggled ON via SpiritToggleRect.
-            SpiritAuraSystem::TryRegister(loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
+            SpiritAuraSystem::TryRegister(registry, player, loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
             lastActionMessage = message;
             messageTimer = 2.0f;
         } else {
@@ -592,11 +605,17 @@ private:
                 return;
             }
             for (int s = 0; s < kMaxPossibleSockets; ++s) {
-                if (s != m_selectedSocket && inst->supportGemIds[s] == supportGemId) {
+                if (s == m_selectedSocket || inst->supportGemIds[s] < 0) continue;
+                if (inst->supportGemIds[s] == supportGemId) {
                     lastActionMessage = "Already socketed in this skill";
                     messageTimer = 2.0f;
                     return;
                 }
+            }
+            if (HasCategoryConflict(*inst, m_selectedSocket, *def)) {
+                lastActionMessage = "Support Category conflict";
+                messageTimer = 2.0f;
+                return;
             }
         }
 

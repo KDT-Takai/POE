@@ -19,6 +19,7 @@
 #include "../ECS/Components/Progression/PassiveTree.h"
 #include "../ECS/Components/Item/SkillGem.h"
 #include "../ECS/Components/Item/Waystone.h"
+#include "../ECS/Components/Chara/Minion.h"
 #include "../ECS/Systems/Skill/SkillGemScaling.h"
 
 class EntitySpawner {
@@ -142,6 +143,44 @@ public:
         registry.AddComponent<VelocityComponent>(entity, VelocityComponent{ {0.0f, 0.0f} });
 
         return EntityObject(entity , &registry);
+    }
+
+    // Permanent Minion (see MinionSystem for AI/respawn, SpiritAuraSystem for the Spirit-
+    // reservation-gated spawn/despawn trigger). ownerAtk is passed in rather than read from
+    // the owner here so this stays a pure "given these numbers, build an entity" factory
+    // like CreateEnemy/CreateMonument; damage type comes from the gem itself (skill.element),
+    // matching how any other skill gem's damage type is its own, not the caster's.
+    static EntityObject CreateMinion(Registry& registry, sf::Vector2f position, Entity owner, int spiritSlotIndex,
+        int gemId, int level, float ownerAtk) {
+
+        auto entity = registry.CreateEntityObject();
+
+        entity.AddComponent(TransformComponent{ position, {1.f, 1.f}, 0.f });
+        entity.AddComponent(CircleComponent{ 18.0f, sf::Color(80, 220, 220), true });
+
+        float colliderSize = 20.0f;
+        float offset = (36.0f - colliderSize) / 2.0f;
+        entity.AddComponent(BoxColliderComponent{ colliderSize, colliderSize, offset, offset, false, false });
+
+        const GemDefinition* def = SkillGemData::Find(gemId);
+
+        CharacterStatsComponent stats;
+        stats.name = def ? def->skill.name : "Minion";
+        stats.maxHP = def ? SkillGemScaling::ScaledMinionHp(def->skill.minionMaxHp, level) : 50.0f;
+        stats.currentHP = stats.maxHP;
+        stats.atk = def ? ownerAtk * (def->skill.damage / 100.0f) : 0.0f;
+        stats.moveSpeed = 220.0f;
+        stats.evasion = 30.0f;
+        stats.armour = 10.0f;
+        stats.accuracy = 100.0f;
+        stats.contactDamageType = def ? def->skill.element : DamageElement::Physical;
+        entity.AddComponent(stats);
+
+        entity.AddComponent(VelocityComponent{ {0.0f, 0.0f} });
+        entity.AddComponent(AllyTagComponent{});
+        entity.AddComponent(PermanentMinionComponent{ owner, spiritSlotIndex, gemId, 0.0f });
+
+        return entity;
     }
     // �����쐬
     static Entity CreateMonument(Registry& registry, sf::Vector2f position, int spiritID) {

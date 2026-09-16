@@ -175,6 +175,7 @@ namespace ItemUIHelpers {
         case AffixStat::CritMultiplier: return "クリティカルダメージ";
         case AffixStat::MoveSpeed: return "移動速度";
         case AffixStat::BlockChance: return "ブロック率";
+        case AffixStat::FlatSpirit: return "スピリット";
         default: return "?";
         }
     }

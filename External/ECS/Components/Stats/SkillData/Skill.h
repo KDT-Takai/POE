@@ -15,7 +15,8 @@ enum class SkillBehaviorType {
     GroundSlam,
     LightningWarp,
     LightningBall,
-    Aura        // reserves Spirit while equipped; always-on, not an activated skill slot
+    Aura,       // reserves Spirit while equipped; always-on, not an activated skill slot
+    Minion      // reserves Spirit while equipped; spawns a permanent ally (see MinionSystem)
 };
 
 struct SkillData {
@@ -31,10 +32,11 @@ struct SkillData {
     float currentCooldown = 0.0f;   // ���݂̑҂�����
     float castTime = 0.0f;          // �r������
     int mpCost = 0;                 // ����MP
-    float spiritCost = 0.0f;        // Aura only: reserved from maxSpirit while equipped
+    float spiritCost = 0.0f;        // Aura/Minion only: reserved from maxSpirit while equipped
     ItemAffix auraEffect;           // Aura only: applied/removed directly on equipment.baseStats (same ApplyAffix/RemoveAffix as passives)
+    float minionMaxHp = 0.0f;       // Minion only: base HP at level 1 (see SkillGemScaling::ScaledMinionHp)
 
-    float damage = 0.0f;             // �З�
+    float damage = 0.0f;             // �З� (Minion: attack power as % of the owner's atk, same convention as active skills)
     float duration = 0.0f;          // ��������
     float range = 0.0f;             // �˒������⑬�x
 

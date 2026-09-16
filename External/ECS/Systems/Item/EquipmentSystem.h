@@ -83,6 +83,7 @@ public:
         case AffixStat::CritMultiplier: live.critDamage += affix.value / 100.0f; break;
         case AffixStat::MoveSpeed: live.increasedMoveSpeed += affix.value; break;
         case AffixStat::BlockChance: live.blockChance = (std::min)(0.75f, live.blockChance + affix.value / 100.0f); break;
+        case AffixStat::FlatSpirit: live.maxSpirit += affix.value; break;
         }
     }
 
@@ -107,6 +108,7 @@ public:
         case AffixStat::CritMultiplier: live.critDamage -= affix.value / 100.0f; break;
         case AffixStat::MoveSpeed: live.increasedMoveSpeed -= affix.value; break;
         case AffixStat::BlockChance: live.blockChance -= affix.value / 100.0f; break;
+        case AffixStat::FlatSpirit: live.maxSpirit -= affix.value; break;
         }
     }
 };

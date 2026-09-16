@@ -51,6 +51,7 @@ GameScene::GameScene() {
 	skillGemSystem = std::make_shared<SkillGemSystem>();
 	gemIdentifySystem = std::make_shared<GemIdentifySystem>();
 	keyBindSystem = std::make_shared<KeyBindSystem>();
+	minionSystem = std::make_shared<MinionSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -318,6 +319,19 @@ void GameScene::Update() {
         auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
         sf::Vector2f centerPos = trans.position + sf::Vector2f(16.0f, 32.0f);
         CameraManager::Instance().SetCenter(centerPos);
+
+        // Safe to run every frame regardless of what changed maxSpirit/baseStats since the
+        // last call (equip swap, level up, passive spend) -- see SpiritAuraSystem::
+        // ReevaluateReservations. Not gated by isPaused since it's pure data consistency,
+        // not world simulation.
+        if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity) && registry->HasComponent<SkillGemInventoryComponent>(playerEntity)
+            && registry->HasComponent<EquipmentComponent>(playerEntity) && registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
+            SpiritAuraSystem::ReevaluateReservations(*registry, playerEntity,
+                registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity),
+                registry->GetComponent<SkillGemInventoryComponent>(playerEntity),
+                registry->GetComponent<EquipmentComponent>(playerEntity),
+                registry->GetComponent<CharacterStatsComponent>(playerEntity));
+        }
     }
     sf::Vector2f playerPos(0, 0);
     if (registry->HasComponent<TransformComponent>(playerEntity)) {
@@ -331,6 +345,7 @@ void GameScene::Update() {
         enemyAreaAttackSystem->Update(*registry, dt, playerPos);
         enemySummonSystem->Update(*registry, dt, playerPos);
         enemyChargeSystem->Update(*registry, dt, playerPos);
+        minionSystem->Update(*registry, dt);
         statusEffectSystem->Update(*registry, dt);
         // �������Z
         physicsSystem->Update(*registry, dt);
@@ -582,5 +597,88 @@ void GameScene::RenderImGui(const sf::Texture* renderTexture)
 
     DebugGui::End();
 
+    RenderGemDebugTools();
+
     editorSystem->RenderImGui(*registry);
+}
+
+// F1 debug menu only (see Application::Render's IsDebugMode gate). Covers the gem-system
+// debug tools from the spec: spawning each Uncut Gem kind at a chosen level, setting
+// Str/Dex/Int/current Mana, granting Jeweller's Orbs (the existing in-game path to add a
+// support socket, reused here instead of a separate one-off socket-adder), and read-only
+// panels showing the same Spirit reservation / final skill / support compatibility numbers
+// the real UI computes -- so this can never show a different result than actual gameplay
+// (see SkillActivationSystem's doc comment for the same "UI and Combat share one source of
+// truth" principle).
+void GameScene::RenderGemDebugTools() {
+    if (!registry->IsValid(playerEntity)) return;
+    if (!registry->HasComponent<SkillGemInventoryComponent>(playerEntity) || !registry->HasComponent<CharacterStatsComponent>(playerEntity)
+        || !registry->HasComponent<EquipmentComponent>(playerEntity)) return;
+
+    auto& gemInventory = registry->GetComponent<SkillGemInventoryComponent>(playerEntity);
+    auto& stats = registry->GetComponent<CharacterStatsComponent>(playerEntity);
+    auto& equipment = registry->GetComponent<EquipmentComponent>(playerEntity);
+
+    DebugGui::Begin("Gem Debug", "ジェムデバッグ");
+
+    static int debugGemLevel = 1;
+    ImGui::SliderInt("Gem Level", &debugGemLevel, 1, 20);
+    bool full = gemInventory.pendingUncutGems.size() >= SkillGemInventoryComponent::kPendingCapacity;
+    if (full) ImGui::TextDisabled("Uncut Gem storage full");
+    ImGui::BeginDisabled(full);
+    if (ImGui::Button("Spawn Uncut Skill Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Skill });
+    ImGui::SameLine();
+    if (ImGui::Button("Spawn Uncut Support Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Support });
+    ImGui::SameLine();
+    if (ImGui::Button("Spawn Uncut Spirit Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Spirit });
+    ImGui::EndDisabled();
+
+    ImGui::Separator();
+    bool statsChanged = false;
+    statsChanged |= ImGui::SliderInt("Strength", &stats.str, 1, 200);
+    statsChanged |= ImGui::SliderInt("Dexterity", &stats.dex, 1, 200);
+    statsChanged |= ImGui::SliderInt("Intelligence", &stats.intelligence, 1, 200);
+    if (statsChanged) EquipmentSystem::RecalculateStats(stats, equipment);
+    if (ImGui::SliderFloat("Max Spirit (base)", &equipment.baseStats.maxSpirit, 0.0f, 500.0f)) {
+        EquipmentSystem::RecalculateStats(stats, equipment);
+    }
+    ImGui::SliderFloat("Current Mana", &stats.currentMP, 0.0f, stats.maxMP);
+    if (ImGui::Button("Give 5 Jeweller's Orbs")) stats.jewellersOrbs += 5;
+
+    ImGui::Separator();
+    ImGui::Text("Spirit: %.1f reserved / %.1f max", stats.currentSpirit, stats.maxSpirit);
+    if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
+        auto& loadout = registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity);
+        for (int i = 0; i < static_cast<int>(loadout.auraGemIds.size()); ++i) {
+            if (loadout.auraGemIds[i] < 0) continue;
+            const GemDefinition* def = SkillGemData::Find(loadout.auraGemIds[i]);
+            ImGui::Text("  Slot %d: %s [%s] cost=%.1f", i + 1, def ? def->skill.name.c_str() : "?",
+                loadout.active[i] ? "ON" : "OFF", SpiritAuraSystem::SpiritCostOf(loadout.auraGemIds[i], gemInventory));
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Skill Calculation (final, post-Support/level):");
+    if (registry->HasComponent<PlayerSkill>(playerEntity)) {
+        auto& skillComp = registry->GetComponent<PlayerSkill>(playerEntity);
+        for (int i = 0; i < static_cast<int>(skillComp.skills.size()); ++i) {
+            const SkillData& s = skillComp.skills[i];
+            if (!s.isValid) continue;
+            ImGui::Text("  [%d] %s Lv%d dmg=%.1f mp=%d cd=%.2fs", i + 1, s.name.c_str(), s.level, s.damage, s.mpCost, s.cooldownTime);
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Support Compatibility vs Skill Slot 1:");
+        if (skillComp.skills[0].isValid) {
+            unsigned int tags = SkillTags::TagsFor(skillComp.skills[0].behaviorType, skillComp.skills[0].element);
+            for (const auto& def : SupportGemData::Gems()) {
+                bool ok = SkillTags::IsCompatible(tags, def.requiredTag);
+                ImGui::Text("  %s: %s", def.name.c_str(), ok ? "Compatible" : "Incompatible (tag)");
+            }
+        } else {
+            ImGui::TextDisabled("  (Slot 1 is empty)");
+        }
+    }
+
+    DebugGui::End();
 }

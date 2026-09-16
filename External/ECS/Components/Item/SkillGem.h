@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <array>
+#include "../../Core/Entity.h"
 
 // One owned gem "individual" (matches PoE2: a dropped gem has its own level, and skill/
 // spirit gems have their own support-gem sockets). isSupport distinguishes which catalog
@@ -54,4 +55,14 @@ struct SkillGemInventoryComponent {
 struct SpiritGemLoadoutComponent {
     std::array<int, 5> auraGemIds = { -1, -1, -1, -1, -1 };
     std::array<bool, 5> active = { false, false, false, false, false };
+
+    // Permanent Minion bookkeeping (SkillBehaviorType::Minion gems only; unused/left at
+    // defaults for Aura gems). minionEntity[i] is the live minion entity for slot i while
+    // one exists, kInvalidEntity otherwise. minionRespawnTimer[i] counts down while the
+    // slot is active but the minion is currently dead (see MinionSystem) -- the slot stays
+    // active[i]==true (Spirit stays reserved) the whole time, per spec: minion death does
+    // not release Spirit, only turning the skill OFF does.
+    static constexpr Entity kInvalidMinion = static_cast<Entity>(-1);
+    std::array<Entity, 5> minionEntity = { kInvalidMinion, kInvalidMinion, kInvalidMinion, kInvalidMinion, kInvalidMinion };
+    std::array<float, 5> minionRespawnTimer = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 };

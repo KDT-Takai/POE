@@ -30,6 +30,7 @@
 #include "../../ECS/Systems/UI/SkillGemSystem.h"
 #include "../../ECS/Systems/UI/GemIdentifySystem.h"
 #include "../../ECS/Systems/UI/KeyBindSystem.h"
+#include "../../ECS/Systems/Chara/MinionSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 
 class GameScene : public SceneBase {
@@ -46,6 +47,7 @@ private:
     void AdvanceToNextZone();
     void TryOpenEndgameMapFromHub();
     std::string HeldWaystoneSummary() const;
+    void RenderGemDebugTools();
 
     Entity playerEntity = -1;
 
@@ -93,4 +95,5 @@ private:
     std::shared_ptr<SkillGemSystem> skillGemSystem;
     std::shared_ptr<GemIdentifySystem> gemIdentifySystem;
     std::shared_ptr<KeyBindSystem> keyBindSystem;
+    std::shared_ptr<MinionSystem> minionSystem;
 };

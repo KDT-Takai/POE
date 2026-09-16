@@ -12,6 +12,8 @@
 #include "../../Components/Physics/Transform/Transform.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
 #include "../../Components/Combat/StatusEffects.h"
+#include "../../Components/Item/Equipment.h"
+#include "SkillActivationSystem.h"
 #include "../../../../Programs/System/Input/InputManager.h"
 #include "../../../../Programs/System/Input/KeyBindings/KeyBindings.h"
 #include <cmath>
@@ -26,7 +28,8 @@ public:
             // �K�v�ȃR���|�[�l���g�擾
             if (!registry.HasComponent<PlayerInputComponent>(entity) ||
                 !registry.HasComponent<VelocityComponent>(entity) ||
-                !registry.HasComponent<StateComponent>(entity)) {
+                !registry.HasComponent<StateComponent>(entity) ||
+                !registry.HasComponent<EquipmentComponent>(entity)) {
                 continue;
             }
 
@@ -34,6 +37,7 @@ public:
             auto& input = registry.GetComponent<PlayerInputComponent>(entity);
             auto& velocity = registry.GetComponent<VelocityComponent>(entity);
             auto& state = registry.GetComponent<StateComponent>(entity);
+            auto& equipment = registry.GetComponent<EquipmentComponent>(entity);
 
             auto& stats = registry.GetComponent<CharacterStatsComponent>(entity);
 
@@ -80,19 +84,11 @@ public:
             }
             else if (state.currentState == ActorState::Idle || state.currentState == ActorState::Run) {
                 for (int i = 0; i < 5; ++i) {
-                    if (input.skillInputs[i] && skillComp.skills[i].isValid && skillComp.skills[i].currentCooldown <= 0.0f) {
-                        float cost = (float)skillComp.skills[i].mpCost;
-                        if (stats.currentMP >= cost) {
-                            // MP������s
-                            stats.currentMP -= cost;
-                            // �X�L������
-                            sf::Vector2f mousePos = input.mouseWorldPos;
-                            ActivateSkill(registry, entity, i, skillComp, state, velocity, direction, pos, mousePos, stats);
-                            break;
-                        }
-                        else {
-                            // ����MP�s���̂Ƃ��̂��߂�
-                        }
+                    if (input.skillInputs[i] && SkillActivation::CanUseSkill(skillComp.skills[i], stats, equipment) == SkillActivation::Reason::Ok) {
+                        stats.currentMP -= static_cast<float>(skillComp.skills[i].mpCost);
+                        sf::Vector2f mousePos = input.mouseWorldPos;
+                        ActivateSkill(registry, entity, i, skillComp, state, velocity, direction, pos, mousePos, stats);
+                        break;
                     }
                 }
             }

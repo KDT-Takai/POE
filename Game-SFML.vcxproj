@@ -110,6 +110,8 @@
     <ClInclude Include="External\ECS\Systems\Chara\EnemyChargeSystem.h" />
     <ClInclude Include="External\ECS\Components\Chara\Charger.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemySpawnSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Chara\MinionSystem.h" />
+    <ClInclude Include="External\ECS\Components\Chara\Minion.h" />
     <ClInclude Include="External\ECS\Systems\Contorol\InputSystem.h" />
     <ClInclude Include="External\ECS\Systems\EditerSystem.h" />
     <ClInclude Include="External\ECS\EntityObject\EntityObject.h" />
@@ -119,6 +121,7 @@
     <ClInclude Include="External\ECS\Systems\Physics\ProjectileSystem.h" />
     <ClInclude Include="External\ECS\Systems\RenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SkillActivationSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillGemData.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillGemScaling.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillTags.h" />

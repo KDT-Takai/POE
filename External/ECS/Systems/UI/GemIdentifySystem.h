@@ -200,10 +200,10 @@ private:
             return opts;
         }
 
-        bool wantAura = (m_pendingKind == GemPickupKind::Spirit);
+        bool wantSpirit = (m_pendingKind == GemPickupKind::Spirit);
         for (const auto& def : SkillGemData::Gems()) {
-            bool isAura = (def.skill.behaviorType == SkillBehaviorType::Aura);
-            if (isAura != wantAura) continue;
+            bool isSpirit = SkillGemData::IsSpiritBehavior(def.skill.behaviorType);
+            if (isSpirit != wantSpirit) continue;
 
             const OwnedGemInstance* existing = FindOwned(gemInventory, def.id);
             if (existing && existing->level >= m_pendingLevel) continue;

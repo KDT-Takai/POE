@@ -15,6 +15,12 @@ struct SupportModifiers {
     float durationMult = 1.0f;
 };
 
+// Groups thematically-redundant supports so a skill can't stack more than one of the same
+// kind (spec: "同一Skill内で同一Categoryを複数使用できない", gated in
+// SkillGemSystem::AssignSupport, NOT a character-wide limit -- the same Category can still
+// be socketed into two different skills at once).
+enum class SupportCategory { DamageMult, Speed, Utility, AreaMod, Duration };
+
 struct SupportGemDefinition {
     int id;
     std::string name;
@@ -25,6 +31,7 @@ struct SupportGemDefinition {
     // →Support条件と比較→使用可能Supportのみ表示" -- gated at socket-assignment time
     // (SkillGemSystem::SupportOptions/AssignSupport), not inside SupportGemSystem::Apply.
     SkillTag requiredTag;
+    SupportCategory category;
     SupportModifiers mods;
 };
 
@@ -50,36 +57,36 @@ private:
 
         SupportModifiers addedDamage;
         addedDamage.damageMult = 1.25f;
-        gems.push_back({ 0, "Added Damage Support", GemAttribute::Str, 20, SkillTag::None, addedDamage });
+        gems.push_back({ 0, "Added Damage Support", GemAttribute::Str, 20, SkillTag::None, SupportCategory::DamageMult, addedDamage });
 
         SupportModifiers brutality;
         brutality.damageMult = 1.35f;
-        gems.push_back({ 1, "Brutality Support", GemAttribute::Str, 25, SkillTag::Physical, brutality });
+        gems.push_back({ 1, "Brutality Support", GemAttribute::Str, 25, SkillTag::Physical, SupportCategory::DamageMult, brutality });
 
         SupportModifiers fasterAttacks;
         fasterAttacks.cooldownMult = 0.80f;
-        gems.push_back({ 2, "Faster Attacks Support", GemAttribute::Dex, 20, SkillTag::Attack, fasterAttacks });
+        gems.push_back({ 2, "Faster Attacks Support", GemAttribute::Dex, 20, SkillTag::Attack, SupportCategory::Speed, fasterAttacks });
 
         SupportModifiers efficiency;
         efficiency.mpCostMult = 0.75f;
-        gems.push_back({ 3, "Efficiency Support", GemAttribute::Dex, 20, SkillTag::None, efficiency });
+        gems.push_back({ 3, "Efficiency Support", GemAttribute::Dex, 20, SkillTag::None, SupportCategory::Utility, efficiency });
 
         SupportModifiers increasedArea;
         increasedArea.rangeMult = 1.30f;
-        gems.push_back({ 4, "Increased Area Support", GemAttribute::Int, 20, SkillTag::AreaEffect, increasedArea });
+        gems.push_back({ 4, "Increased Area Support", GemAttribute::Int, 20, SkillTag::AreaEffect, SupportCategory::AreaMod, increasedArea });
 
         SupportModifiers increasedDuration;
         increasedDuration.durationMult = 1.40f;
-        gems.push_back({ 5, "Increased Duration Support", GemAttribute::Int, 20, SkillTag::Duration, increasedDuration });
+        gems.push_back({ 5, "Increased Duration Support", GemAttribute::Int, 20, SkillTag::Duration, SupportCategory::Duration, increasedDuration });
 
         SupportModifiers concentratedEffect;
         concentratedEffect.damageMult = 1.40f;
         concentratedEffect.rangeMult = 0.70f;
-        gems.push_back({ 6, "Concentrated Effect Support", GemAttribute::Int, 25, SkillTag::AreaEffect, concentratedEffect });
+        gems.push_back({ 6, "Concentrated Effect Support", GemAttribute::Int, 25, SkillTag::AreaEffect, SupportCategory::AreaMod, concentratedEffect });
 
         SupportModifiers elementalFocus;
         elementalFocus.damageMult = 1.30f;
-        gems.push_back({ 7, "Elemental Focus Support", GemAttribute::Int, 25, SkillTag::Elemental, elementalFocus });
+        gems.push_back({ 7, "Elemental Focus Support", GemAttribute::Int, 25, SkillTag::Elemental, SupportCategory::DamageMult, elementalFocus });
 
         return gems;
     }

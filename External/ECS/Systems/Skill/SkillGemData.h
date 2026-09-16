@@ -32,6 +32,13 @@ public:
         return nullptr;
     }
 
+    // Which behaviorTypes belong in a Spirit slot (SkillGemSystem/GemIdentifySystem) rather
+    // than an active skill slot -- both reserve Spirit and have no activation key, just a
+    // different persistent effect (stat bonus vs. a spawned ally).
+    static bool IsSpiritBehavior(SkillBehaviorType type) {
+        return type == SkillBehaviorType::Aura || type == SkillBehaviorType::Minion;
+    }
+
 private:
     static std::vector<GemDefinition> BuildGems() {
         std::vector<GemDefinition> gems;
@@ -213,6 +220,20 @@ private:
         soulRend.element = DamageElement::Chaos;
         soulRend.isValid = true;
         gems.push_back({ 15, soulRend, GemAttribute::Int, 8 });
+
+        // Permanent Minion gem: registers/toggles exactly like an Aura (Spirit slot,
+        // register-then-ON, see SpiritAuraSystem/MinionSystem) but its persistent effect
+        // is a spawned ally instead of a stat bonus. damage follows the same "% of owner's
+        // atk" convention as active skills; minionMaxHp is Minion-only (see SkillGemScaling).
+        SkillData summonSkeleton;
+        summonSkeleton.name = "Summon Skeleton";
+        summonSkeleton.behaviorType = SkillBehaviorType::Minion;
+        summonSkeleton.spiritCost = 45.0f;
+        summonSkeleton.minionMaxHp = 90.0f;
+        summonSkeleton.damage = 60.0f; // % of owner's atk, per minion attack
+        summonSkeleton.element = DamageElement::Physical;
+        summonSkeleton.isValid = true;
+        gems.push_back({ 16, summonSkeleton, GemAttribute::Int, 8 });
 
         return gems;
     }

@@ -8,7 +8,12 @@ enum class AffixStat {
     FireRes, ColdRes, LightningRes, ChaosRes,
     FlatArmour, FlatEvasion, FlatAccuracy,
     CritChance, CritMultiplier, MoveSpeed,
-    BlockChance
+    BlockChance,
+    // Grants MaxSpirit like any other flat roll -- Spirit gems' auraEffect already used
+    // this same ApplyAffix/RemoveAffix pipeline, but MaxSpirit itself had no source other
+    // than EntitySpawner's fixed starting value until now (see SpiritAuraSystem::
+    // ReevaluateReservations for what happens when equipment granting this is removed).
+    FlatSpirit
 };
 
 struct ItemAffix {

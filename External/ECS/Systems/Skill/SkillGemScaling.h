@@ -21,6 +21,10 @@ namespace SkillGemScaling {
         return baseSpiritCost * (1.0f + static_cast<float>(level - 1) * 0.05f);
     }
 
+    inline float ScaledMinionHp(float baseHp, int level) {
+        return baseHp * (1.0f + static_cast<float>(level - 1) * 0.08f);
+    }
+
     // Requirement grows with level so a high-level drop needs a correspondingly
     // developed character -- matches the "19/20 rare, and demanding to use" request.
     inline int RequiredStat(int baseRequirement, int level) {
