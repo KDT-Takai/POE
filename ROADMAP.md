@@ -51,6 +51,8 @@
 - **クリック判定を視覚化**: 商人に近づいている間、ワールド上に商人を中心としたクリック可能範囲の輪(半径36px、`GameScene::kVendorClickRadius`)を常時表示し、カーソルが輪の内側にあるときは黄色く強調表示することで「ここをクリックすれば良い」と分かるようにした。
 - **Vendor画面を閉じる手段をB以外に用意**: パネル右上に「Close」ボタンを新設し、クリックで閉じられるようにした(`VendorSystem`のUpdate/Renderに`closeBtnRect`を追加)。あわせてヘッダーの「Bキーで閉じる」表記や、拠点でのHUD表記("Press B to trade")も「Click the merchant to trade」に修正。
 
+**さらにフォローアップ: 「商人のタブと自分のアイテム欄が今は全く同じメニューに見える、分けてほしい」との指摘を受けて修正**。従来は`kPanelW=900`の単一の背景矩形(`sf::RectangleShape bg`)を描いてから内部で左右にコンテンツを配置していたため、実質1枚の連続したパネルに見えていた。CharacterSheet/Inventoryなど他のパネルが「それぞれ独立した箱」であるのと同じ見た目に揃えるため、**商人パネル(Buy/Buyback)と自分の所持品(バッグ)を、それぞれ独自の背景・枠線を持つ別々の矩形(`Layout::leftBox`/`rightBox`、間に24pxの視認できる隙間)として描画し直した**。ヘッダー文言(タイトル/ゴールド/リロール)は商人側の箱の中に、"Your Bag"見出しは自分の所持品側の箱の中に、それぞれ独立して表示するよう変更。当たり判定(ドラッグ売却の判定範囲、リスト行、バッグセル)も新しい2つの矩形基準に更新。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

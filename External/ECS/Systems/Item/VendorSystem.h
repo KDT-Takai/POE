@@ -32,12 +32,14 @@ private:
 
     static constexpr int kMaxBuyback = 12; // matches PoE's buyback tab size
 
-    static constexpr float kPanelW = 900.0f;
+    // The vendor's own panel and the player's bag are two visually separate boxes
+    // (own background/border each, like CharacterSheet/Inventory are their own boxes)
+    // with a visible gap between them, rather than one continuous panel.
+    static constexpr float kBoxGap = 24.0f;
+    static constexpr float kLeftW = 440.0f;
+    static constexpr float kRightW = 440.0f;
     static constexpr float kPanelH = 660.0f;
-
-    static constexpr float kLeftW = 420.0f;
-    static constexpr float kRightW = 420.0f;
-    static constexpr float kRightGap = 20.0f; // gap between the two columns
+    static constexpr float kPanelW = kLeftW + kBoxGap + kRightW; // bounding width, for centering only
 
     static constexpr int kBagCols = 6;
     static constexpr int kBagRows = 4;
@@ -110,11 +112,10 @@ public:
             TryReroll(stats);
         }
 
-        // Dragging a bag item onto the vendor's (left) panel sells it.
+        // Dragging a bag item onto the vendor's (left) box sells it.
         if (m_dragging) {
             if (!mouseInput.GetMouse(sf::Mouse::Button::Left)) {
-                sf::FloatRect leftRect({ layout.panelX + 20.0f, layout.panelY }, { kLeftW, kPanelH });
-                if (leftRect.contains(mouse)) {
+                if (layout.leftBox.contains(mouse)) {
                     SellFromBag(m_dragBagIndex, inventory, stats);
                 }
                 m_dragging = false;
@@ -184,23 +185,30 @@ public:
         target.setView(target.getDefaultView());
 
         Layout layout = ComputeLayout(target.getSize());
-        float panelX = layout.panelX;
         float panelY = layout.panelY;
 
-        sf::RectangleShape bg({ kPanelW, kPanelH });
-        bg.setPosition({ panelX, panelY });
-        bg.setFillColor(sf::Color(15, 15, 20, 235));
-        bg.setOutlineColor(sf::Color(150, 150, 160));
-        bg.setOutlineThickness(2.0f);
-        target.draw(bg);
+        // Two independent boxes (own background/border each), not one continuous panel --
+        // visually the same "each menu is its own box" language as CharacterSheet/Inventory.
+        sf::RectangleShape leftBg(layout.leftBox.size);
+        leftBg.setPosition(layout.leftBox.position);
+        leftBg.setFillColor(sf::Color(15, 15, 20, 235));
+        leftBg.setOutlineColor(sf::Color(150, 150, 160));
+        leftBg.setOutlineThickness(2.0f);
+        target.draw(leftBg);
+
+        sf::RectangleShape rightBg(layout.rightBox.size);
+        rightBg.setPosition(layout.rightBox.position);
+        rightBg.setFillColor(sf::Color(15, 15, 20, 235));
+        rightBg.setOutlineColor(sf::Color(150, 150, 160));
+        rightBg.setOutlineThickness(2.0f);
+        target.draw(rightBg);
 
         std::string rerollKeyName = KeyToString(KeyBindings::Instance().Get(GameAction::VendorReroll));
-        DrawText(target, panelX + 20.0f, panelY + 12.0f,
-            "Vendor - drag or Ctrl+click your items to sell, click a listing to buy/reclaim, " + rerollKeyName + " reroll stock",
-            13, sf::Color(255, 220, 120));
-        DrawText(target, panelX + 20.0f, panelY + 30.0f,
-            "Gold: " + std::to_string(playerStats.gold) + "   Reroll cost: " + std::to_string(RerollPrice(playerStats.level)) + "g",
-            13, sf::Color(255, 215, 90));
+        DrawText(target, layout.leftBox.position.x + 20.0f, panelY + 12.0f,
+            "Vendor - drag or Ctrl+click your items to sell, click a listing to buy/reclaim", 12, sf::Color(255, 220, 120));
+        DrawText(target, layout.leftBox.position.x + 20.0f, panelY + 30.0f,
+            "Gold: " + std::to_string(playerStats.gold) + "   Reroll (" + rerollKeyName + "): " + std::to_string(RerollPrice(playerStats.level)) + "g",
+            12, sf::Color(255, 215, 90));
 
         sf::RectangleShape closeBtn(layout.closeBtnRect.size);
         closeBtn.setPosition(layout.closeBtnRect.position);
@@ -236,8 +244,8 @@ public:
             DrawBuybackList(target, layout, "(nothing sold yet)");
         }
 
-        // --- Right column: player's bag ---
-        DrawText(target, layout.rightX, panelY + 62.0f, "Your Bag", 14, sf::Color(220, 220, 220));
+        // --- Right box: player's bag ---
+        DrawText(target, layout.rightBox.position.x + 20.0f, panelY + 62.0f, "Your Bag", 14, sf::Color(220, 220, 220));
         for (int i = 0; i < kBagCols * kBagRows; ++i) {
             sf::FloatRect rect = BagCellRect(layout, i);
             bool hasItem = i < static_cast<int>(inventory.items.size());
@@ -265,7 +273,7 @@ public:
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 20.0f, panelY + kPanelH - 22.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
+            DrawText(target, layout.leftBox.position.x + 20.0f, panelY + kPanelH - 22.0f, lastActionMessage, 13, sf::Color(255, 230, 120));
         }
 
         // Drag ghost
@@ -281,8 +289,7 @@ public:
             target.draw(ghost);
             DrawText(target, mouse.x - gw / 2.0f + 4.0f, mouse.y - gh / 2.0f + 4.0f, m_dragItemCache.baseName.substr(0, 8), 11, sf::Color::Black);
 
-            sf::FloatRect leftRect({ panelX + 20.0f, panelY }, { kLeftW, kPanelH });
-            if (leftRect.contains(mouse)) {
+            if (layout.leftBox.contains(mouse)) {
                 DrawText(target, mouse.x + gw / 2.0f + 6.0f, mouse.y - 6.0f, "Sell", 12, sf::Color(120, 255, 120));
             }
         }
@@ -293,7 +300,8 @@ public:
 private:
     struct Layout {
         float panelX = 0.0f, panelY = 0.0f;
-        float rightX = 0.0f;
+        sf::FloatRect leftBox;
+        sf::FloatRect rightBox;
         sf::FloatRect buyTabRect;
         sf::FloatRect buybackTabRect;
         sf::FloatRect closeBtnRect;
@@ -305,10 +313,11 @@ private:
         Layout layout;
         layout.panelX = (static_cast<float>(winSize.x) - kPanelW) / 2.0f;
         layout.panelY = (static_cast<float>(winSize.y) - kPanelH) / 2.0f;
-        layout.rightX = layout.panelX + 20.0f + kLeftW + kRightGap;
-        layout.buyTabRect = sf::FloatRect({ layout.panelX + 20.0f, layout.panelY + 56.0f }, { 90.0f, 24.0f });
-        layout.buybackTabRect = sf::FloatRect({ layout.panelX + 118.0f, layout.panelY + 56.0f }, { 140.0f, 24.0f });
-        layout.closeBtnRect = sf::FloatRect({ layout.panelX + kPanelW - 90.0f, layout.panelY + 10.0f }, { 70.0f, 24.0f });
+        layout.leftBox = sf::FloatRect({ layout.panelX, layout.panelY }, { kLeftW, kPanelH });
+        layout.rightBox = sf::FloatRect({ layout.panelX + kLeftW + kBoxGap, layout.panelY }, { kRightW, kPanelH });
+        layout.buyTabRect = sf::FloatRect({ layout.leftBox.position.x + 20.0f, layout.panelY + 56.0f }, { 90.0f, 24.0f });
+        layout.buybackTabRect = sf::FloatRect({ layout.leftBox.position.x + 118.0f, layout.panelY + 56.0f }, { 140.0f, 24.0f });
+        layout.closeBtnRect = sf::FloatRect({ layout.rightBox.position.x + kRightW - 90.0f, layout.panelY + 10.0f }, { 70.0f, 24.0f });
         layout.listY = layout.panelY + 90.0f;
         layout.lineHeight = 20.0f;
         return layout;
@@ -317,7 +326,7 @@ private:
     sf::FloatRect BagCellRect(const Layout& layout, int index) const {
         int col = index % kBagCols;
         int row = index / kBagCols;
-        float x = layout.rightX + static_cast<float>(col) * (kCellSize + kCellGap);
+        float x = layout.rightBox.position.x + 20.0f + static_cast<float>(col) * (kCellSize + kCellGap);
         float y = layout.panelY + 90.0f + static_cast<float>(row) * (kCellSize + kCellGap);
         return sf::FloatRect({ x, y }, { kCellSize, kCellSize });
     }
@@ -333,7 +342,7 @@ private:
         int count = (m_activeTab == VendorTab::Buy) ? static_cast<int>(m_stock.size()) : static_cast<int>(m_buyback.size());
         for (int i = 0; i < count; ++i) {
             float y = layout.listY + static_cast<float>(i) * layout.lineHeight;
-            sf::FloatRect rowRect({ layout.panelX + 20.0f, y }, { kLeftW, layout.lineHeight });
+            sf::FloatRect rowRect({ layout.leftBox.position.x + 20.0f, y }, { kLeftW - 40.0f, layout.lineHeight });
             if (rowRect.contains(mouse)) return i;
         }
         return -1;
@@ -341,7 +350,7 @@ private:
 
     void DrawBuyList(sf::RenderTarget& target, const Layout& layout, const std::string& emptyMessage) {
         if (m_stock.empty()) {
-            DrawText(target, layout.panelX + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
+            DrawText(target, layout.leftBox.position.x + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
             return;
         }
         for (size_t i = 0; i < m_stock.size(); ++i) {
@@ -353,7 +362,7 @@ private:
 
     void DrawBuybackList(sf::RenderTarget& target, const Layout& layout, const std::string& emptyMessage) {
         if (m_buyback.empty()) {
-            DrawText(target, layout.panelX + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
+            DrawText(target, layout.leftBox.position.x + 20.0f, layout.listY, emptyMessage, 13, sf::Color(150, 150, 150));
             return;
         }
         for (size_t i = 0; i < m_buyback.size(); ++i) {
@@ -366,8 +375,8 @@ private:
     void DrawListRow(sf::RenderTarget& target, const Layout& layout, float y, int index, const ItemComponent& item, int price) {
         bool selected = (index == m_selectedIndex);
         if (selected) {
-            sf::RectangleShape highlight({ kLeftW - 4.0f, layout.lineHeight });
-            highlight.setPosition({ layout.panelX + 20.0f, y });
+            sf::RectangleShape highlight({ kLeftW - 40.0f, layout.lineHeight });
+            highlight.setPosition({ layout.leftBox.position.x + 20.0f, y });
             highlight.setFillColor(sf::Color(60, 60, 90, 180));
             target.draw(highlight);
         }
@@ -376,7 +385,7 @@ private:
             ItemUIHelpers::RarityName(item.rarity) + ", iLvl " + std::to_string(item.itemLevel) + ", " +
             std::to_string(item.affixes.size()) + " mods) - " + std::to_string(price) + "g";
 
-        DrawText(target, layout.panelX + 24.0f, y + 2.0f, line, 12, ItemUIHelpers::RarityColor(item.rarity));
+        DrawText(target, layout.leftBox.position.x + 24.0f, y + 2.0f, line, 12, ItemUIHelpers::RarityColor(item.rarity));
     }
 
     void GenerateStock(int playerLevel) {
