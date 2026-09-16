@@ -1,5 +1,6 @@
 #pragma once
 #include "SupportGemData.h"
+#include "SkillTags.h"
 #include "../../Components/Stats/SkillData/Skill.h"
 #include <array>
 
@@ -14,25 +15,22 @@
 class SupportGemSystem {
 public:
     static void Apply(SkillData& skill, const std::array<int, 5>& supportGemIds) {
+        unsigned int skillTags = SkillTags::TagsFor(skill.behaviorType, skill.element);
         for (int gemId : supportGemIds) {
             if (gemId < 0) continue;
             const SupportGemDefinition* def = SupportGemData::Find(gemId);
             if (!def) continue;
+            // SkillGemSystem::AssignSupport already blocks socketing an incompatible
+            // support, but this stays defensive in case a save file has a stale socket
+            // from before a support's requiredTag changed.
+            if (!SkillTags::IsCompatible(skillTags, def->requiredTag)) continue;
             ApplyOne(skill, def->mods);
         }
     }
 
 private:
     static void ApplyOne(SkillData& skill, const SupportModifiers& mods) {
-        bool isPhysical = (skill.element == DamageElement::Physical);
-        bool isElemental = (skill.element == DamageElement::Fire || skill.element == DamageElement::Cold
-            || skill.element == DamageElement::Lightning);
-
-        bool damageAllowed = (!mods.physicalOnly || isPhysical) && (!mods.elementalOnly || isElemental);
-        if (damageAllowed) {
-            skill.damage *= mods.damageMult;
-        }
-
+        skill.damage *= mods.damageMult;
         skill.cooldownTime *= mods.cooldownMult;
         skill.mpCost = static_cast<int>(static_cast<float>(skill.mpCost) * mods.mpCostMult);
         skill.range *= mods.rangeMult;

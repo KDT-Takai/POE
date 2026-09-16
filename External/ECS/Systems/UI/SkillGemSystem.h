@@ -13,6 +13,7 @@
 #include "../Skill/SupportGemData.h"
 #include "../Skill/SupportGemSystem.h"
 #include "../Skill/SkillGemScaling.h"
+#include "../Skill/SkillTags.h"
 #include "../Skill/SpiritAuraSystem.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
@@ -36,6 +37,8 @@ private:
     static constexpr float kSocketBoxW = 82.0f;
     static constexpr float kSocketBoxH = 16.0f;
     static constexpr float kSocketGap = 4.0f;
+    static constexpr float kToggleBtnW = 46.0f;
+    static constexpr float kToggleBtnH = 18.0f;
 
     // Shared row geometry, computed once so Update()'s click hit-testing and Render()'s
     // drawing can never drift apart. Declared this early (not just before ComputeLayout)
@@ -128,12 +131,19 @@ public:
         }
 
         for (int i = 0; i < kSpiritSlotCount; ++i) {
+            if (loadout.auraGemIds[i] >= 0 && SpiritToggleRect(L, i).contains(mouse)) {
+                std::string message;
+                SpiritAuraSystem::TryToggleActive(loadout, i, gemInventory, equipment, stats, message);
+                lastActionMessage = message;
+                messageTimer = 2.0f;
+                return;
+            }
             sf::FloatRect rect({ kPanelX + 12.0f, SpiritRowY(L, i) }, { kPanelW - 24.0f, L.spiritRowHeight });
             if (rect.contains(mouse)) { m_selectedSlot = kSkillSlotCount + i; m_selectedSocket = -1; return; }
         }
 
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions();
+            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp));
             for (size_t i = 0; i < opts.size(); ++i) {
                 sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
@@ -253,18 +263,25 @@ public:
 
             int gemId = loadout.auraGemIds[i];
             const GemDefinition* def = gemId >= 0 ? SkillGemData::Find(gemId) : nullptr;
+            bool active = def && loadout.active[i];
             std::string line = "[Spirit " + std::to_string(i + 1) + "] " + (def ? def->skill.name : "-- Empty --");
             if (def) {
                 int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
                 line += " Lv" + std::to_string(level) + "  (" + FormatFloat(SpiritAuraSystem::SpiritCostOf(gemId, gemInventory)) + " spirit)";
             }
 
-            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth, 12), 12,
+            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth - kToggleBtnW - 8.0f, 12), 12,
                 def ? sf::Color(180, 230, 230) : sf::Color(120, 120, 120));
+
+            if (def) {
+                sf::FloatRect toggleRect = SpiritToggleRect(L, i);
+                DrawButtonSmall(target, toggleRect, active ? "ON" : "OFF",
+                    active ? sf::Color(60, 130, 70) : sf::Color(70, 60, 60));
+            }
         }
 
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions();
+            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp));
             RenderSupportPicker(target, L, panelX, contentWidth, opts, skillComp, gemInventory, stats);
         } else {
             bool spiritSlot = IsSpiritSlot();
@@ -393,6 +410,14 @@ private:
         return sf::FloatRect({ x, y }, { kSocketBoxW, kSocketBoxH });
     }
 
+    // ON/OFF button pinned to the right edge of a Spirit row (registering a gem there
+    // does NOT activate it -- this is the separate toggle, see SpiritAuraSystem).
+    sf::FloatRect SpiritToggleRect(const Layout& L, int rowIndex) const {
+        float x = kPanelX + (kPanelW - 24.0f) + 12.0f - kToggleBtnW - 4.0f;
+        float y = SpiritRowY(L, rowIndex) + (L.spiritRowHeight - kToggleBtnH) / 2.0f;
+        return sf::FloatRect({ x, y }, { kToggleBtnW, kToggleBtnH });
+    }
+
     // Shared with CharacterSheetSystem's identical constants: the two panels are
     // tab-switched (mutually exclusive, last one toggled wins) so they occupy the
     // same screen slot.
@@ -430,27 +455,39 @@ private:
     }
 
     // Unlike skill/Spirit gems, support gems aren't found as world drops in this
-    // simplified design -- every support in the catalog is always available to socket,
-    // gated only by its Str/Dex/Int requirement (see AssignSupport).
-    std::vector<int> SupportOptions() const {
+    // simplified design -- every support in the catalog is available to socket, gated by
+    // its Str/Dex/Int requirement (see AssignSupport) AND by whether the host skill has
+    // the support's required SkillTag (spec 29.2: only show compatible supports).
+    std::vector<int> SupportOptions(unsigned int hostSkillTags) const {
         std::vector<int> opts = { -1 };
-        for (const auto& def : SupportGemData::Gems()) opts.push_back(def.id);
+        for (const auto& def : SupportGemData::Gems()) {
+            if (SkillTags::IsCompatible(hostSkillTags, def.requiredTag)) opts.push_back(def.id);
+        }
         return opts;
+    }
+
+    unsigned int HostSkillTags(const PlayerSkill& skillComp) const {
+        if (m_selectedSlot >= kSkillSlotCount || !skillComp.skills[m_selectedSlot].isValid) return 0;
+        const SkillData& skill = skillComp.skills[m_selectedSlot];
+        return SkillTags::TagsFor(skill.behaviorType, skill.element);
     }
 
     void AssignSelected(PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, SkillGemInventoryComponent& gemInventory,
         EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
         if (IsSpiritSlot()) {
             std::string message;
-            SpiritAuraSystem::TryAssign(loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
+            // Only registers the gem into the slot -- it stays OFF (no Spirit reserved,
+            // no effect applied) until separately toggled ON via SpiritToggleRect.
+            SpiritAuraSystem::TryRegister(loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
             lastActionMessage = message;
             messageTimer = 2.0f;
         } else {
-            AssignGem(skillComp, gemInventory, stats, gemId);
+            AssignGem(skillComp, gemInventory, equipment, stats, gemId);
         }
     }
 
-    void AssignGem(PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory, CharacterStatsComponent& stats, int gemId) {
+    void AssignGem(PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory,
+        const EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
         if (gemId < 0) {
             skillComp.skills[m_selectedSlot] = SkillData{};
             lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": Empty";
@@ -478,6 +515,15 @@ private:
             return;
         }
 
+        unsigned int tags = SkillTags::TagsFor(def->skill.behaviorType, def->skill.element);
+        bool needsWeapon = (tags & static_cast<unsigned int>(SkillTag::Attack)) != 0;
+        bool hasWeapon = equipment.slots[static_cast<size_t>(EquipSlot::Weapon)].has_value();
+        if (needsWeapon && !hasWeapon) {
+            lastActionMessage = "Requires a weapon equipped";
+            messageTimer = 2.0f;
+            return;
+        }
+
         BuildSkillData(skillComp.skills[m_selectedSlot], gemId, gemInventory);
         lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": " + skillComp.skills[m_selectedSlot].name;
         messageTimer = 2.0f;
@@ -492,6 +538,14 @@ private:
         if (supportGemId >= 0) {
             const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
             if (!def) return;
+
+            unsigned int hostTags = SkillTags::TagsFor(skillComp.skills[m_selectedSlot].behaviorType, skillComp.skills[m_selectedSlot].element);
+            if (!SkillTags::IsCompatible(hostTags, def->requiredTag)) {
+                lastActionMessage = "Not compatible with this skill";
+                messageTimer = 2.0f;
+                return;
+            }
+
             int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
             if (have < def->requirement) {
                 lastActionMessage = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)

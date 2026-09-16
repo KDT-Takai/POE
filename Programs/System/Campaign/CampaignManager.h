@@ -65,6 +65,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::vector<OwnedGemInstance> m_savedOwnedGems;
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, 5> m_savedAuraLoadout = { -1, -1, -1, -1, -1 };
+    std::array<bool, 5> m_savedAuraActive = { false, false, false, false, false };
     std::array<int, WaystoneInventoryComponent::kMaxTier> m_savedWaystones{};
     bool m_isHardcore = false;
 
@@ -116,6 +117,9 @@ public:
 
     void SaveAuraLoadout(const std::array<int, 5>& gemIds) { m_savedAuraLoadout = gemIds; }
     const std::array<int, 5>& GetSavedAuraLoadout() const { return m_savedAuraLoadout; }
+
+    void SaveAuraActive(const std::array<bool, 5>& active) { m_savedAuraActive = active; }
+    const std::array<bool, 5>& GetSavedAuraActive() const { return m_savedAuraActive; }
 
     void SaveWaystones(const std::array<int, WaystoneInventoryComponent::kMaxTier>& counts) { m_savedWaystones = counts; }
     const std::array<int, WaystoneInventoryComponent::kMaxTier>& GetSavedWaystones() const { return m_savedWaystones; }

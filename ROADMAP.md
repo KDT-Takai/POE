@@ -4,6 +4,13 @@
 
 ## 済 (Done)
 
+**スキルジェム仕様の乖離を修正(スピリットON/OFF分離・サポートのTags適合フィルタ・武器要件)**。「スキルジェムの仕様が違う」との指摘を受け、ユーザーから詳細な仕様書(PoE2ジェムシステム仕様書 21-43章)を提示してもらい、既存実装との差分をすり合わせた上で、実現可能な3点(スピリットON/OFF分離・サポートのTags適合フィルタ・武器要件)に絞って修正した(ターゲティング方式/Charge/Weapon Set/Trigger Skill等、対応するゲームシステム自体が無い篇は対象外とユーザーに確認済み)。
+- **スピリットジェムの登録とON/OFFを分離**: 従来はスロットへセットした瞬間にSpiritを予約し効果を即発動していたが、仕様書21.2/30.1-30.4に合わせ「登録(`SpiritAuraSystem::TryRegister`、効果なし)」と「ON/OFF切替(`TryToggleActive`、ここで初めてSpirit予約+効果適用/解除)」の2段階に分離。`SpiritGemLoadoutComponent`に`active[5]`を追加し、`SkillGemSystem`の各スピリット行にON/OFFトグルボタンを新設。登録済みジェムを別のものへ差し替える際、ONだったら自動的に先にOFF化してから差し替える(古い効果が残留しない)。セーブ形式にも`auraLoadout.active{i}`を追加(`CampaignManager`)。
+- **サポートジェムをSkill Tagsで適合フィルタ**: 従来は全8種のサポートがどのスキルにも無条件で装着可能だったが、仕様書29.2「Skill Tags確認→Support条件と比較→使用可能Supportのみ表示」に合わせ、`SkillTag`ビットマスク(Attack/Spell/Melee/Projectile/AreaEffect/Duration/Movement/Physical/Elemental/Chaos)を新設。各スキルのタグは`behaviorType`/`element`から機械的に導出(`SkillTags::TagsFor`、個別ジェムを手動タグ付けしない、既存の`GemAttribute`導出と同じ方針)。各サポートに`requiredTag`(適合に必要な単一タグ、`None`なら誰でも装着可)を設定し直し(例: Faster Attacks→Attack必須、Increased Area/Concentrated Effect→AreaEffect必須、Elemental Focus→Elemental必須、Added Damage/Efficiency→無条件)、ピッカーリストは適合するサポートのみ表示する。
+- **Attack系スキルの武器要件**: 仕様書21.2/24「対応武器未装備→使用不可」に合わせ、`SkillTag::Attack`を持つスキル(Melee/GroundSlam/Projectile系)をスキルスロットへ登録する際、武器スロット(`EquipSlot::Weapon`)が空だと拒否するチェックを`SkillGemSystem::AssignGem`に追加。本作は武器種別(Bow/Mace等)を区別しない単一の武器スロットのみのため、「対応武器」ではなく「武器スロットが埋まっているか」で簡略化した。
+
+
+
 **クラッシュ診断機構を新規追加(`game.log`/`crash.dmp`)**。ユーザーから「町から次のゾーンへ移動したタイミングでエラーダイアログが出て落ちた」と報告を受けたが、間欠的で再現しないことがあり、かつ原因コードを`SkillGemSystem`/`GemIdentifySystem`/`CollisionSystem`のジェムドロップ処理/`ZoneBuilder`の突進アーケタイプ/`CampaignManager`のセーブ復元処理など広範囲にわたって精査したが確実な原因を特定できなかった。そのため`Programs/System/Main/Main.cpp`に恒久的な診断機構を追加:
 - `spdlog`のデフォルトロガーをコンソールのみから`game.log`ファイル出力へ変更(warning以上は即flush、クラッシュでコンソールが消えてもログが残る)。
 - `main()`を`try/catch`で囲み、C++例外(`EntityObject::GetComponent<T>()`がスローする`std::runtime_error("Component not found")`等)が捕捉されずに落ちる場合、その`what()`を`game.log`に記録してから再送出する。

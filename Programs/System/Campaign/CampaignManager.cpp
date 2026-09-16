@@ -431,6 +431,7 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         out << "auraLoadout.slot" << i << "=" << m_savedAuraLoadout[i] << "\n";
+        out << "auraLoadout.active" << i << "=" << (m_savedAuraActive[i] ? 1 : 0) << "\n";
     }
 
     for (size_t i = 0; i < m_savedWaystones.size(); ++i) {
@@ -511,6 +512,7 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
+        m_savedAuraActive[i] = GetI(kv, "auraLoadout.active" + std::to_string(i), 0) != 0;
     }
 
     for (size_t i = 0; i < m_savedWaystones.size(); ++i) {

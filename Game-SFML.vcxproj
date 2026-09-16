@@ -121,6 +121,7 @@
     <ClInclude Include="External\ECS\Systems\Skill\SkillSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillGemData.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SkillGemScaling.h" />
+    <ClInclude Include="External\ECS\Systems\Skill\SkillTags.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SupportGemData.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SupportGemSystem.h" />
     <ClInclude Include="External\ECS\Systems\Skill\SpiritAuraSystem.h" />

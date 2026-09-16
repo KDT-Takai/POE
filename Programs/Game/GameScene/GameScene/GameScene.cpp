@@ -96,8 +96,13 @@ GameScene::GameScene() {
             }
 
             // The aura's stat bonus already lives in equipment.baseStats (restored above),
-            // so this only restores which gem each Spirit slot displays as equipped.
-            player.GetComponent<SpiritGemLoadoutComponent>().auraGemIds = campaign.GetSavedAuraLoadout();
+            // so this only restores which gem each Spirit slot displays as equipped and
+            // whether it was toggled ON (for the UI's ON/OFF button state -- the actual
+            // reserved amount is CharacterStatsComponent::currentSpirit, already restored
+            // as part of the stats blob above).
+            auto& spiritLoadout = player.GetComponent<SpiritGemLoadoutComponent>();
+            spiritLoadout.auraGemIds = campaign.GetSavedAuraLoadout();
+            spiritLoadout.active = campaign.GetSavedAuraActive();
             player.GetComponent<WaystoneInventoryComponent>().counts = campaign.GetSavedWaystones();
         }
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
@@ -136,7 +141,9 @@ void GameScene::AdvanceToNextZone() {
         campaign.SaveSkillLoadout(loadout);
     }
     if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
-        campaign.SaveAuraLoadout(registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity).auraGemIds);
+        auto& spiritLoadout = registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity);
+        campaign.SaveAuraLoadout(spiritLoadout.auraGemIds);
+        campaign.SaveAuraActive(spiritLoadout.active);
     }
     if (registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) {
         campaign.SaveWaystones(registry->GetComponent<WaystoneInventoryComponent>(playerEntity).counts);

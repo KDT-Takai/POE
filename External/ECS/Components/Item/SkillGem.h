@@ -34,7 +34,11 @@ struct SkillGemInventoryComponent {
 
 // 5 Spirit slots (expanded from a fixed 2), separate from the 5 activated skill slots in
 // PlayerSkill -- together they form the 10-slot shared equip pool (SkillGemSystem).
-// -1 = empty. See SpiritAuraSystem for assignment/effect application.
+// -1 = empty. Registering a gem into a slot (auraGemIds[i]) does NOT reserve Spirit or
+// apply its effect by itself -- active[i] tracks whether the player has separately
+// switched that registered gem ON, matching the spec's two-step
+// "register -> (separately) toggle ON" flow. See SpiritAuraSystem.
 struct SpiritGemLoadoutComponent {
     std::array<int, 5> auraGemIds = { -1, -1, -1, -1, -1 };
+    std::array<bool, 5> active = { false, false, false, false, false };
 };
