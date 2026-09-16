@@ -82,6 +82,8 @@
 
 **フォローアップ: 「アイテムに何のモッドが付いているかわかりにくい」との指摘を受けて修正**。原因は`CharacterSheetSystem`(Cキー、装備確認の主要画面)の装備欄だけが「スロット名: アイテム名 (レアリティ, N mods)」という件数のみの1行表示で、ホバーしても詳細が一切出ない作りだったこと(InventorySystem/VendorSystemには既にホバーツールチップがあったが、この画面だけ抜けていた)。他の2画面と同じ内容・体裁の`DrawItemTooltip`(名前/レアリティ/スロット/レベル/ソケット/モッド一覧/売却額)を追加し、装備欄の各行にカーソルを乗せると詳細が見られるようにした(装備欄を全行描き終えたあとにまとめてツールチップを描く設計で、直前に修正したのと同じ描画順序バグを再発させないようにしている)。
 
+**さらにフォローアップ: 「まだわかりにくい、PoE2だったら『マナ+10』『火耐性+10%』って感じ」との指摘を受けて表示順を修正**。それまでは`+10.0% 火耐性`のように**値が先・効果名が後**の順で表示しており、本家PoE2の実際の表記(`Fire Resistance +10%`のように**効果名が先・値が後**)と逆だった。あわせて小数点(`+10.0`)も本家は基本整数表示のため、`std::lround`で丸めるよう変更。`ItemUIHelpers::FormatAffixLine(const ItemAffix&)`を新設して「効果名 +値[%]」の順で整形するロジックを一本化し、`InventorySystem`/`VendorSystem`/`CharacterSheetSystem`の3箇所全てで同じ関数を呼ぶよう統一(個別にostringstreamを組み立てていた重複コードも解消)。
+
 **エンドゲーム(ウェイストーン制マップ)を実装**: 実際のPoE2の仕様([Waystones | PoE2 Wiki](https://pathofexile2.wiki.fextralife.com/Waystones)、[PoE2 Waystone Guide](https://poe2path.com/guides/poe2-waystone-system-guide/)等で調査)に基づき、以下を実装。
 - **新規アイテム`WaystoneInventoryComponent`/`WaystonePickupComponent`**(`Components/Item/Waystone.h`): ティア1〜15を`std::array<int,15>`のティア別所持数として管理する非装備の消費アイテム。装備アイテムと違い「保持しておいて隠れ家で自分の意思で使う」性質のため、Currency(拾った瞬間に即適用)とは別の仕組みにした。プレイヤーは`EntitySpawner::CreatePlayer`でTier1を1個所持した状態で開始する(本家は幕を終えたクエスト報酬で入手するが、早期に入手できないと検証すら出来ないため簡略化)。
 - **ドロップ**: `CollisionSystem::TrySpawnWaystoneDrop`が、現在の幕が`isEndgame`のときだけ動作。**ボスは100%の確率で「使用したウェイストーンの1ティア上」を確定ドロップ**(本家PoE2の仕様通り)。**Rareモンスターは35%の確率で同ティアのウェイストーンをドロップ**(マップ周回の持続用、本家のドロップ機構を簡略化して再現)。拾得は他のドロップ品同様クリック方式(`ItemPickupSystem`に統合)。

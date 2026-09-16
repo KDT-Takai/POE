@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include "Components/Item/Item.h"
 
 namespace ItemUIHelpers {
@@ -149,6 +150,17 @@ namespace ItemUIHelpers {
         default:
             return false;
         }
+    }
+
+    // "火耐性 +10%" / "マナ +10" style line, matching real PoE2's stat-name-first mod
+    // display (label first, then the signed value, rounded to a whole number since
+    // PoE2 doesn't show decimals on these). Shared so Inventory/Vendor/CharacterSheet
+    // render mods identically.
+    inline std::string FormatAffixLine(const ItemAffix& affix) {
+        long rounded = std::lround(affix.value);
+        std::string sign = (rounded >= 0) ? "+" : "";
+        std::string unit = IsPercentAffix(affix.stat) ? "%" : "";
+        return affix.label + " " + sign + std::to_string(rounded) + unit;
     }
 
     inline sf::Color RarityColor(ItemRarity rarity) {
