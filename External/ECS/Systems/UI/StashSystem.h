@@ -15,10 +15,12 @@
 // StashComponent::kTabCount independent pages (PoE-style stash tabs, switched via tab
 // buttons at the top of the left box). Two boxes side by side like VendorSystem's
 // own-panel + player-bag layout: left = the active Stash tab's grid, right = the player's
-// bag (same 6x4 grid InventorySystem/VendorSystem render). Dragging an item from one box
-// and releasing over the other moves it there (first free slot in the target grid, not
-// the exact drop position -- same simplification VendorSystem's bag-to-shop sell drag
-// already uses). No gold/trading involved, purely storage.
+// bag (same 6x4 grid InventorySystem/VendorSystem render). Dragging an item and releasing
+// it moves it to the exact cell it was dropped on (or swaps with a same-size item already
+// there) -- across boxes or within the same one -- via ItemUIHelpers::TryMoveWithinGrid/
+// TryMoveBetweenGrids, so players can freely arrange both grids instead of every move
+// landing in the first free slot (see AI/DECISIONS.md "自由配置"). No gold/trading
+// involved, purely storage.
 class StashSystem {
 private:
     static constexpr float kBoxGap = 24.0f;
@@ -85,10 +87,37 @@ public:
 
         if (m_dragging) {
             if (!mouseInput.GetMouse(sf::Mouse::Button::Left)) {
+                int targetCol, targetRow;
                 if (!m_dragFromStash && layout.leftBox.contains(mouse)) {
-                    MoveItem(inventory.items, activeTabItems, m_dragIndex, StashComponent::kCols, StashComponent::kRows, "Stash");
+                    // Bag -> Stash
+                    if (MouseToCell(layout, true, mouse, targetCol, targetRow)) {
+                        if (!ItemUIHelpers::TryMoveBetweenGrids(inventory.items, activeTabItems, m_dragIndex,
+                            targetCol, targetRow, StashComponent::kCols, StashComponent::kRows)) {
+                            lastActionMessage = "Can't place there";
+                            messageTimer = 1.5f;
+                        }
+                    }
                 } else if (m_dragFromStash && layout.rightBox.contains(mouse)) {
-                    MoveItem(activeTabItems, inventory.items, m_dragIndex, ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows, "Bag");
+                    // Stash -> Bag
+                    if (MouseToCell(layout, false, mouse, targetCol, targetRow)) {
+                        if (!ItemUIHelpers::TryMoveBetweenGrids(activeTabItems, inventory.items, m_dragIndex,
+                            targetCol, targetRow, ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows)) {
+                            lastActionMessage = "Can't place there";
+                            messageTimer = 1.5f;
+                        }
+                    }
+                } else if (!m_dragFromStash && layout.rightBox.contains(mouse)) {
+                    // Bag -> Bag (reposition within the bag while this screen is open)
+                    if (MouseToCell(layout, false, mouse, targetCol, targetRow)) {
+                        ItemUIHelpers::TryMoveWithinGrid(inventory.items, m_dragIndex, targetCol, targetRow,
+                            ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows);
+                    }
+                } else if (m_dragFromStash && layout.leftBox.contains(mouse)) {
+                    // Stash -> Stash (reposition within the active tab)
+                    if (MouseToCell(layout, true, mouse, targetCol, targetRow)) {
+                        ItemUIHelpers::TryMoveWithinGrid(activeTabItems, m_dragIndex, targetCol, targetRow,
+                            StashComponent::kCols, StashComponent::kRows);
+                    }
                 }
                 m_dragging = false;
             }
@@ -297,25 +326,23 @@ private:
         return -1;
     }
 
-    // Moves items[m_dragIndex] from `from` into `to` (first free cell in the target
-    // grid's own dimensions); leaves it untouched if the target has no room.
-    void MoveItem(std::vector<ItemComponent>& from, std::vector<ItemComponent>& to, int index, int targetCols, int targetRows,
-        const std::string& targetName) {
-        if (index < 0 || index >= static_cast<int>(from.size())) return;
-        ItemComponent item = from[index];
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
-        int col, row;
-        if (!ItemUIHelpers::FindBagFreeSpace(to, sz.x, sz.y, col, row, targetCols, targetRows)) {
-            lastActionMessage = targetName + " full";
-            messageTimer = 2.0f;
-            return;
-        }
-        item.gridCol = col;
-        item.gridRow = row;
-        to.push_back(item);
-        from.erase(from.begin() + index);
-        lastActionMessage = "Moved: " + item.baseName + " -> " + targetName;
-        messageTimer = 2.0f;
+    // Converts a screen point into a (col,row) cell of the given box, for drop-position
+    // handling (see ItemUIHelpers::TryMoveWithinGrid/TryMoveBetweenGrids). Returns false
+    // if the point falls outside that box's actual grid (e.g. over the tab row or Stash's
+    // title text) rather than clamping to the nearest cell.
+    bool MouseToCell(const Layout& layout, bool stash, sf::Vector2f mouse, int& outCol, int& outRow) const {
+        const sf::FloatRect& box = stash ? layout.leftBox : layout.rightBox;
+        int cols = stash ? StashComponent::kCols : ItemUIHelpers::kBagGridCols;
+        int rows = stash ? StashComponent::kRows : ItemUIHelpers::kBagGridRows;
+        float relX = mouse.x - (box.position.x + 20.0f);
+        float relY = mouse.y - (box.position.y + kGridTopY);
+        if (relX < 0.0f || relY < 0.0f) return false;
+        int col = static_cast<int>(relX / (kCellSize + kCellGap));
+        int row = static_cast<int>(relY / (kCellSize + kCellGap));
+        if (col < 0 || col >= cols || row < 0 || row >= rows) return false;
+        outCol = col;
+        outRow = row;
+        return true;
     }
 
     std::string Truncate(const std::string& s, size_t maxLen) const {

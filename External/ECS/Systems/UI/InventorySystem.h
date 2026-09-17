@@ -430,35 +430,7 @@ private:
                 QuickUnequip(m_dragSlot, inventory, equipment, stats); // 空き無しなら自動配置にフォールバック
             }
         } else {
-            TryMoveBagItem(m_dragBagIndex, targetCol, targetRow, inventory);
-        }
-    }
-
-    // バッグ内アイテムを指定セルへ移動する。空いていれば移動、ちょうど同サイズの
-    // 別アイテムがその位置を占めていれば入れ替え、それ以外は何もしない(元の位置に残る)。
-    void TryMoveBagItem(int dragIndex, int targetCol, int targetRow, InventoryComponent& inventory) {
-        if (dragIndex < 0 || dragIndex >= static_cast<int>(inventory.items.size())) return;
-        ItemComponent& dragItem = inventory.items[dragIndex];
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(dragItem);
-
-        if (targetCol == dragItem.gridCol && targetRow == dragItem.gridRow) return; // 元の位置のまま
-
-        if (ItemUIHelpers::BagRegionFree(inventory.items, targetCol, targetRow, sz.x, sz.y, dragIndex)) {
-            dragItem.gridCol = targetCol;
-            dragItem.gridRow = targetRow;
-            return;
-        }
-
-        for (size_t i = 0; i < inventory.items.size(); ++i) {
-            if (static_cast<int>(i) == dragIndex) continue;
-            ItemComponent& other = inventory.items[i];
-            if (other.gridCol != targetCol || other.gridRow != targetRow) continue;
-            sf::Vector2i otherSz = ItemUIHelpers::ItemGridSize(other);
-            if (otherSz.x == sz.x && otherSz.y == sz.y) {
-                std::swap(dragItem.gridCol, other.gridCol);
-                std::swap(dragItem.gridRow, other.gridRow);
-            }
-            return;
+            ItemUIHelpers::TryMoveWithinGrid(inventory.items, m_dragBagIndex, targetCol, targetRow);
         }
     }
 

@@ -308,6 +308,20 @@ void GameScene::Update() {
         m_hoveringNpc = (vdx * vdx + vdy * vdy) < (kVendorClickRadius * kVendorClickRadius);
         m_clickedOnNpc = m_hoveringNpc && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
     }
+
+    // マップデバイス(ポータル)もNPCと同じく左クリックで操作する(Enterキーでの
+    // 起動は廃止、「エンターで開くのではなく左クリックで開く」というフィードバック対応)。
+    m_hoveringPortal = false;
+    m_clickedOnPortal = false;
+    bool anyMenuBlockingPortal = inventorySystem->isOpen || passiveTreeSystem->isOpen || atlasSystem->isOpen ||
+        vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen || anyNpcPanelOpen;
+    if (m_hasPortal && m_playerNearPortal && !anyMenuBlockingPortal) {
+        sf::Vector2f mouseWorldForPortal = InputManager::Instance().GetMouseWorldPosition();
+        float pdx = mouseWorldForPortal.x - m_portalPos.x;
+        float pdy = mouseWorldForPortal.y - m_portalPos.y;
+        m_hoveringPortal = (pdx * pdx + pdy * pdy) < (kVendorClickRadius * kVendorClickRadius);
+        m_clickedOnPortal = m_hoveringPortal && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
+    }
     if (m_clickedOnNpc) {
         switch (m_townNpcs[m_nearNpcIndex].kind) {
         case TownNpcKind::ItemVendor: {
@@ -378,7 +392,7 @@ void GameScene::Update() {
 
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnNpc);
+        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnNpc || m_clickedOnPortal);
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N
@@ -466,8 +480,7 @@ void GameScene::Update() {
                 float distSq = dx * dx + dy * dy;
                 m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !atlasSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
-                    InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
+                if (m_clickedOnPortal) {
                     TryOpenEndgameMapFromHub();
                     return;
                 }
@@ -522,6 +535,17 @@ void GameScene::Render(sf::RenderTarget& target) {
         target.draw(ring);
     }
 
+    // マップデバイス(ポータル)もNPCと同じクリック範囲リングを表示する。
+    if (m_hasPortal && m_playerNearPortal) {
+        sf::CircleShape portalRing(kVendorClickRadius);
+        portalRing.setOrigin({ kVendorClickRadius, kVendorClickRadius });
+        portalRing.setPosition(m_portalPos);
+        portalRing.setFillColor(sf::Color::Transparent);
+        portalRing.setOutlineThickness(2.0f);
+        portalRing.setOutlineColor(m_hoveringPortal ? sf::Color(255, 255, 120, 220) : sf::Color(120, 220, 255, 140));
+        target.draw(portalRing);
+    }
+
     target.setView(target.getDefaultView());
 	uiSystem->Render(*registry, target);
 
@@ -530,10 +554,10 @@ void GameScene::Render(sf::RenderTarget& target) {
         if (m_playerNearPortal) {
             auto& campaign = CampaignManager::Instance();
             if (campaign.HasActiveMapAttempt()) {
-                hudLine = "Press Enter to re-enter your Tier " + std::to_string(campaign.GetEndgameMapTier())
+                hudLine = "Click to re-enter your Tier " + std::to_string(campaign.GetEndgameMapTier())
                     + " map (" + std::to_string(campaign.GetMapDeathsRemaining()) + " portals left)";
             } else {
-                hudLine = "Press Enter to open the Atlas (Waystones held: " + HeldWaystoneSummary() + ")";
+                hudLine = "Click to open the Atlas (Waystones held: " + HeldWaystoneSummary() + ")";
             }
         }
         else if (m_nearNpcIndex >= 0) hudLine = NpcHudHint(m_townNpcs[m_nearNpcIndex].kind);

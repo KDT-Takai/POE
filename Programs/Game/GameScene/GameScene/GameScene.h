@@ -61,6 +61,8 @@ private:
     bool m_hasPortal = false;
     bool m_playerNearPortal = false;
     sf::Vector2f m_portalPos;
+    bool m_hoveringPortal = false;  // クリック可能範囲にカーソルがあるか(輪の描画に使用、NPCと同じパターン)
+    bool m_clickedOnPortal = false; // このフレームでマップデバイスを左クリックしたか(スキル発動クリックとの競合防止用)
 
     // Town NPCs (item Vendor / Waystone Vendor / Stash, see ZoneBuilder::PlaceTownNpcs).
     // m_nearNpcIndex is the one within click range this frame (-1 = none); at most one

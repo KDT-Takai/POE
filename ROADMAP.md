@@ -4,6 +4,12 @@
 
 ## 済 (Done)
 
+**マップデバイスを左クリック操作へ変更+Atlasの起動をドラッグ&ドロップ化+アイテムグリッドの自由配置修正**。「エンターで開くのではなく左クリックで開く。また、マップを選択したら1マスの四角が出てきて自分のアイテム欄からドラッグアンドドロップでウェイストーンを入れる。また、アイテム欄今基本的に左上からしか入れられないけど自由に配置できるようにしてほしい」という3点のフィードバックに対応。
+- **マップデバイスの操作方式**: Enterキー起動を廃止し、既存のNPC(Vendor/Waystone Vendor/Stash)と同じ「近づくとクリック範囲の輪が表示→左クリックで発動」方式に統一(`GameScene`に`m_hoveringPortal`/`m_clickedOnPortal`を新設、`m_hoveringNpc`/`m_clickedOnNpc`と同じ1フレーム遅延パターン)。HUDの案内文も「Press Enter to...」から「Click to...」へ変更。
+- **Atlasのマップ起動をドラッグ&ドロップ化**: 前回実装した「ノード選択→Open Mapボタン」を撤回し、`AtlasSystem`にプレイヤーのバッグ(6x4グリッド)を画面右にドッキング表示、ノード選択後に現れる1マスの「ソケット」へバッグからWaystoneをドラッグ&ドロップした瞬間に判定する方式へ変更。ティア一致で即座に消費してマップを開始、不一致やWaystone以外は理由を表示して拒否(確認ボタン無し、ドロップ=確定)。
+- **アイテムグリッドの自由配置**: `StashSystem`のバッグ⇔Stash間ドラッグが常に転送先の「最初の空きマス」へ強制配置しドロップ位置を無視していたバグを修正。`ItemUIHelpers::TryMoveWithinGrid`/`TryMoveBetweenGrids`を新設し`InventorySystem`(重複コード削除)/`StashSystem`(バッグ⇔Stash・Stash内・バッグ内の全パターン)/`AtlasSystem`(バッグ内再配置)で共有、常に実際のドロップ位置(または同サイズアイテムとの入れ替え)へ配置されるようにした。
+- ビルド確認済み(`/t:Build`、0エラー)。バックグラウンド起動でのクラッシュ無し確認も実施。ただし実際のマウス操作によるプレイテストは本セッションの制約上未実施。
+
 **PoE2風の全画面Atlas(無限に広がるマップ選択画面)を実装**。直前のバッチで「今回スコープ外」としていたAtlas風マップ選択UIについて、続けて「実装して」との指示を受け実装した。
 - `AtlasComponent`(`External/ECS/Components/Progression/Atlas.h`、クリア済みノード座標のみ保持)+`AtlasData`(`External/ECS/Systems/Progression/AtlasData.h`、座標→ティア/隣接/画面座標を都度算出する純粋関数群、ノード自体は無限グリッドのため保存しない)+`AtlasSystem`(`External/ECS/Systems/Progression/AtlasSystem.h`、`PassiveTreeSystem`と同じ全画面パン/ズームUIパターンを踏襲)の3点構成。
 - 拠点のポータルEnterキー(`GameScene::TryOpenEndgameMapFromHub`)の挙動を「バッグ内最高ティアWaystoneを即消費してマップへ」から「マップアタempt中でなければAtlas画面を開く」へ変更。Atlas画面でノードを選択し「Open Map」を押すと、そのノードのティア(開始点からのチェビシェフ距離+1、`AtlasData::TierForCoord`)に一致するWaystoneをバッグから1個消費して`CampaignManager::OpenEndgameMap`+新設`SetPendingAtlasNode`を呼ぶ。実際のゾーン遷移は既存の`AdvanceToNextZone`にそのまま乗せる(`AtlasSystem::ConsumeMapStartRequest()`を`GameScene::Update`が毎フレーム確認、trueなら`AdvanceToNextZone()`)。

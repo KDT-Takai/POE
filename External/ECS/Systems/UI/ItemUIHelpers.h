@@ -104,6 +104,79 @@ namespace ItemUIHelpers {
         }
     }
 
+    // Moves items[index] to (targetCol,targetRow) within the SAME container: a no-op if
+    // it's already there, moves it if the target region is free, swaps with whatever
+    // occupies it if that's a single same-size item, otherwise leaves it untouched. This
+    // is what lets the player freely rearrange a grid instead of every placement being
+    // forced to the first free slot (see AI/DECISIONS.md "自由配置").
+    inline void TryMoveWithinGrid(std::vector<ItemComponent>& items, int index, int targetCol, int targetRow,
+        int cols = kBagGridCols, int rows = kBagGridRows) {
+        if (index < 0 || index >= static_cast<int>(items.size())) return;
+        ItemComponent& dragItem = items[index];
+        sf::Vector2i sz = ItemGridSize(dragItem);
+
+        if (targetCol == dragItem.gridCol && targetRow == dragItem.gridRow) return;
+
+        if (BagRegionFree(items, targetCol, targetRow, sz.x, sz.y, index, cols, rows)) {
+            dragItem.gridCol = targetCol;
+            dragItem.gridRow = targetRow;
+            return;
+        }
+
+        for (size_t i = 0; i < items.size(); ++i) {
+            if (static_cast<int>(i) == index) continue;
+            ItemComponent& other = items[i];
+            if (other.gridCol != targetCol || other.gridRow != targetRow) continue;
+            sf::Vector2i otherSz = ItemGridSize(other);
+            if (otherSz.x == sz.x && otherSz.y == sz.y) {
+                std::swap(dragItem.gridCol, other.gridCol);
+                std::swap(dragItem.gridRow, other.gridRow);
+            }
+            return;
+        }
+    }
+
+    // Moves `from[index]` into `to` at the exact (targetCol,targetRow) the player dropped
+    // it on -- if that region is free, or swaps positions with whatever single same-size
+    // item occupies it there. Returns false (leaving both containers untouched) if
+    // neither applies, e.g. dropped on a differently-shaped item -- callers should show a
+    // message rather than silently falling back to "first free slot" like this used to.
+    inline bool TryMoveBetweenGrids(std::vector<ItemComponent>& from, std::vector<ItemComponent>& to, int index,
+        int targetCol, int targetRow, int toCols = kBagGridCols, int toRows = kBagGridRows) {
+        if (index < 0 || index >= static_cast<int>(from.size())) return false;
+        ItemComponent dragItem = from[index];
+        sf::Vector2i sz = ItemGridSize(dragItem);
+
+        if (BagRegionFree(to, targetCol, targetRow, sz.x, sz.y, -1, toCols, toRows)) {
+            dragItem.gridCol = targetCol;
+            dragItem.gridRow = targetRow;
+            to.push_back(dragItem);
+            from.erase(from.begin() + index);
+            return true;
+        }
+
+        for (size_t i = 0; i < to.size(); ++i) {
+            ItemComponent& other = to[i];
+            if (other.gridCol != targetCol || other.gridRow != targetRow) continue;
+            sf::Vector2i otherSz = ItemGridSize(other);
+            if (otherSz.x != sz.x || otherSz.y != sz.y) return false;
+
+            ItemComponent movedIn = dragItem;
+            movedIn.gridCol = other.gridCol;
+            movedIn.gridRow = other.gridRow;
+            ItemComponent movedOut = other;
+            movedOut.gridCol = dragItem.gridCol;
+            movedOut.gridRow = dragItem.gridRow;
+
+            to.erase(to.begin() + i);
+            from.erase(from.begin() + index);
+            to.push_back(movedIn);
+            from.push_back(movedOut);
+            return true;
+        }
+        return false;
+    }
+
     // Simple left-to-right, top-to-bottom shelf packing for a transient list that has
     // no persisted placement (vendor stock/buyback) -- just lays items out in order.
     inline std::vector<sf::Vector2i> ShelfPack(const std::vector<sf::Vector2i>& sizes, int gridCols) {
