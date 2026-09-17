@@ -54,7 +54,7 @@ namespace ItemUIHelpers {
     }
 
     constexpr int kBagGridCols = 6;
-    constexpr int kBagGridRows = 4;
+    constexpr int kBagGridRows = 6; // was 4; widened to give the player more carry capacity
 
     // True if the WxH region at (col,row) doesn't run off the grid or overlap any
     // already-placed item (skipping ignoreIndex, e.g. the item currently being dragged).

@@ -37,7 +37,7 @@
 class InventorySystem {
 private:
     static constexpr float kPanelW = 760.0f;
-    static constexpr float kPanelH = 400.0f;
+    static constexpr float kPanelH = 560.0f; // was 400; grown to fit kBagGridRows going 4->6
     static constexpr float kContentX = 20.0f;
     static constexpr float kContentY = 70.0f;
 

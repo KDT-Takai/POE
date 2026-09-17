@@ -87,6 +87,13 @@ private:
     int m_selectedSocket = -1;
     float m_pickerScroll = 0.0f;
 
+    // Read-only reference view of every skill/support gem in the game (whether owned or
+    // not), toggled by the "All Skills" button -- separate from the normal slot/picker UI
+    // ("すきるいちらんはげーむない" -> the reference needs to live in-game, not just in
+    // Docs/スキル一覧.md). Reuses DrawPickerCard's name/req/description card layout.
+    bool m_codexOpen = false;
+    float m_codexScroll = 0.0f;
+
 public:
     bool isOpen = false;
     std::string lastActionMessage;
@@ -96,7 +103,7 @@ public:
         m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     }
 
-    void Toggle() { isOpen = !isOpen; m_pickerScroll = 0.0f; }
+    void Toggle() { isOpen = !isOpen; m_pickerScroll = 0.0f; m_codexOpen = false; m_codexScroll = 0.0f; }
     void Close() { isOpen = false; }
 
     // Used by GameScene to resolve click ownership between the non-pausing menus:
@@ -126,10 +133,26 @@ public:
 
         Layout L = ComputeLayout();
         sf::Vector2f mouseAny = InputManager::Instance().GetMouseInput().GetMousePointF();
+        float wheel = InputManager::Instance().GetMouseWheelDelta();
+
+        if (m_codexOpen) {
+            if (wheel != 0.0f) {
+                sf::FloatRect codexClip({ kPanelX, CodexTopY() }, { kPanelW, CodexViewportH() });
+                if (codexClip.contains(mouseAny)) {
+                    float contentH = static_cast<float>(BuildCodexEntries(stats).size()) * kCodexRowHeight;
+                    float maxScroll = (std::max)(0.0f, contentH - CodexViewportH());
+                    m_codexScroll = std::clamp(m_codexScroll - wheel * kCodexRowHeight, 0.0f, maxScroll);
+                }
+            }
+            auto& mouseInputCodex = InputManager::Instance().GetMouseInput();
+            if (mouseInputCodex.IsGetMouse(sf::Mouse::Button::Left) && CodexToggleRect().contains(mouseAny)) {
+                m_codexOpen = false;
+            }
+            return;
+        }
 
         // Mouse-wheel scroll over the picker viewport -- independent of the left-click
         // gate below, since scrolling shouldn't require holding/clicking anything.
-        float wheel = InputManager::Instance().GetMouseWheelDelta();
         if (wheel != 0.0f) {
             sf::FloatRect pickerClip({ kPanelX, L.pickerRowY }, { kPanelW, L.pickerViewportH });
             if (pickerClip.contains(mouseAny)) {
@@ -145,6 +168,12 @@ public:
         auto& mouseInput = InputManager::Instance().GetMouseInput();
         if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
         sf::Vector2f mouse = mouseInput.GetMousePointF();
+
+        if (CodexToggleRect().contains(mouse)) {
+            m_codexOpen = true;
+            m_codexScroll = 0.0f;
+            return;
+        }
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             sf::FloatRect mainRect({ kPanelX + 12.0f, SkillRowY(L, i) }, { kPanelW - 24.0f, L.skillMainLineH });
@@ -235,7 +264,17 @@ public:
         auto& binds = KeyBindings::Instance();
         std::string closeKey = KeyToString(binds.Get(GameAction::ToggleSkillGems));
         DrawText(target, panelX + 12.0f, panelY + 6.0f,
-            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem from your bag", contentWidth, 12), 12, sf::Color(255, 220, 120));
+            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem from your bag", contentWidth - 120.0f, 12), 12, sf::Color(255, 220, 120));
+
+        sf::FloatRect codexBtn = CodexToggleRect();
+        DrawButtonSmall(target, codexBtn, m_codexOpen ? "< Back" : "All Skills",
+            m_codexOpen ? sf::Color(70, 70, 90) : sf::Color(60, 85, 60));
+
+        if (m_codexOpen) {
+            RenderCodex(target, stats);
+            target.setView(oldView);
+            return;
+        }
 
         const std::string kSlotKeys[kSkillSlotCount] = {
             KeyToString(binds.Get(GameAction::Skill1)),
@@ -501,6 +540,112 @@ private:
         }
         if (!description.empty()) {
             DrawText(target, textX, y + 37.0f, Truncate(description, textW, 10), 10, sf::Color(170, 170, 178));
+        }
+    }
+
+    static constexpr float kCodexRowHeight = 58.0f;
+
+    sf::FloatRect CodexToggleRect() const {
+        return sf::FloatRect({ kPanelX + kPanelW - 130.0f, kPanelY + 8.0f }, { 110.0f, 22.0f });
+    }
+    float CodexTopY() const { return kPanelY + 42.0f; }
+    float CodexViewportH() const { return (kPanelY + kPanelH) - CodexTopY() - 20.0f; }
+
+    struct CodexEntry {
+        std::string name;
+        std::string reqLine;
+        std::string description;
+        sf::Color iconColor;
+        sf::Color statusColor;
+    };
+
+    // Every skill/support gem in the game, owned or not -- the reference catalog behind
+    // the "All Skills" button. Built fresh each frame (25 entries, negligible cost) so it
+    // never drifts from the live SkillGemData/SupportGemData catalogs.
+    std::vector<CodexEntry> BuildCodexEntries(const CharacterStatsComponent& stats) const {
+        std::vector<CodexEntry> out;
+        for (const auto& def : SkillGemData::Gems()) {
+            CodexEntry e;
+            e.name = def.skill.name;
+            e.description = def.skill.description;
+            e.iconColor = AttributeColor(def.primaryAttribute);
+
+            int required = SkillGemScaling::RequiredStat(def.baseRequirement, 1);
+            int have = SpiritAuraSystem::StatValue(stats, def.primaryAttribute);
+            e.statusColor = (have < required) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
+
+            std::string statLine;
+            if (def.skill.behaviorType == SkillBehaviorType::Aura) {
+                statLine = "Aura, Spirit " + FormatFloat(def.skill.spiritCost);
+            } else if (def.skill.behaviorType == SkillBehaviorType::Minion) {
+                statLine = "Minion, Spirit " + FormatFloat(def.skill.spiritCost);
+            } else {
+                statLine = "CD " + FormatFloat(def.skill.cooldownTime) + "s, MP" + std::to_string(def.skill.mpCost);
+                if (def.skill.damage > 0.0f) statLine += ", " + FormatFloat(def.skill.damage) + "% dmg";
+                if (DealsElementalDamage(def.skill.behaviorType)) statLine += ", " + ElementName(def.skill.element);
+            }
+            statLine += " | Req " + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def.primaryAttribute)
+                + " (have " + std::to_string(have) + ")";
+            e.reqLine = statLine;
+            out.push_back(e);
+        }
+        for (const auto& def : SupportGemData::Gems()) {
+            CodexEntry e;
+            e.name = def.name;
+            e.description = def.description;
+            e.iconColor = CategoryColor(def.category);
+
+            int have = SpiritAuraSystem::StatValue(stats, def.primaryAttribute);
+            e.statusColor = (have < def.requirement) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
+            e.reqLine = "Support | Req " + std::to_string(def.requirement) + " " + SpiritAuraSystem::AttributeName(def.primaryAttribute)
+                + " (have " + std::to_string(have) + ")";
+            out.push_back(e);
+        }
+        return out;
+    }
+
+    // Scrollable, clipped list of every gem in the game (same viewport-clipping technique
+    // as the normal picker) -- purely informational, nothing here is clickable.
+    void RenderCodex(sf::RenderTarget& target, const CharacterStatsComponent& stats) {
+        float contentWidth = kPanelW - 32.0f;
+        std::vector<CodexEntry> entries = BuildCodexEntries(stats);
+
+        DrawText(target, kPanelX + 12.0f, kPanelY + 22.0f,
+            "All Skill & Support Gems (owned or not) - scroll for more:", 12, sf::Color(200, 200, 200));
+
+        float topY = CodexTopY();
+        float viewportH = CodexViewportH();
+
+        sf::Vector2u winSize = target.getSize();
+        sf::View codexView(sf::FloatRect({ kPanelX, topY }, { kPanelW, viewportH }));
+        codexView.setViewport(sf::FloatRect(
+            { kPanelX / static_cast<float>(winSize.x), topY / static_cast<float>(winSize.y) },
+            { kPanelW / static_cast<float>(winSize.x), viewportH / static_cast<float>(winSize.y) }));
+        target.setView(codexView);
+
+        for (size_t i = 0; i < entries.size(); ++i) {
+            float y = topY + static_cast<float>(i) * kCodexRowHeight - m_codexScroll;
+            const CodexEntry& e = entries[i];
+            DrawPickerCard(target, kPanelX, contentWidth, y, kCodexRowHeight, e.name, e.reqLine, e.description, e.iconColor, true, e.statusColor);
+        }
+
+        target.setView(target.getDefaultView());
+
+        float contentH = static_cast<float>(entries.size()) * kCodexRowHeight;
+        if (contentH > viewportH) {
+            sf::FloatRect track({ kPanelX + kPanelW - kScrollBarW - 4.0f, topY }, { kScrollBarW, viewportH });
+            sf::RectangleShape trackShape(track.size);
+            trackShape.setPosition(track.position);
+            trackShape.setFillColor(sf::Color(40, 40, 45));
+            target.draw(trackShape);
+
+            float thumbH = (std::max)(16.0f, viewportH * (viewportH / contentH));
+            float maxScroll = contentH - viewportH;
+            float thumbY = track.position.y + (maxScroll > 0.0f ? (m_codexScroll / maxScroll) * (viewportH - thumbH) : 0.0f);
+            sf::RectangleShape thumb({ kScrollBarW, thumbH });
+            thumb.setPosition({ track.position.x, thumbY });
+            thumb.setFillColor(sf::Color(130, 130, 150));
+            target.draw(thumb);
         }
     }
 
