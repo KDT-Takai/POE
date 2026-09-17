@@ -46,6 +46,21 @@ public:
             auto& pCol = registry.GetComponent<BoxColliderComponent>(projEntity);
             sf::FloatRect bulletRect = GetBounds(pTrans.position, pCol);
 
+            // Snapshot everything needed from `proj`/`pTrans` by value, once, before the
+            // enemy-hit loop below -- a piercing/bouncy projectile can hit several
+            // enemies in the same frame, and each hit's ImpactVfx::SpawnHitBurst call
+            // adds components (Transform/Velocity/Projectile/SparkVisual) that can
+            // reallocate those pools' backing storage, silently invalidating `proj`/
+            // `pTrans` themselves after the FIRST hit. Every use below reads these
+            // locals, never `proj`/`pTrans` again (this is exactly what caused the
+            // "スキル使うと落ちる" crash once ImpactVfx started running on every hit).
+            Entity projOwner = proj.ownerEntity;
+            DamageElement projDamageType = proj.damageType;
+            SkillBehaviorType projType = proj.type;
+            bool projIsBouncy = proj.isBouncy;
+            float projDamage = proj.damage;
+            sf::Vector2f projPos = pTrans.position;
+
             bool hitSomething = false;
 
             for (auto enemyEntity : enemies) {
@@ -64,21 +79,21 @@ public:
 
                     // �܂�����ł��Ȃ��ꍇ�̂݃_���[�W��^����
                     if (stats.currentHP > 0) {
-                        bool ownerValid = registry.IsValid(proj.ownerEntity) && registry.HasComponent<CharacterStatsComponent>(proj.ownerEntity);
-                        bool isCrit = ownerValid && CombatMath::RollCrit(registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critRate);
-                        float critMult = ownerValid ? registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critDamage : 1.0f;
+                        bool ownerValid = registry.IsValid(projOwner) && registry.HasComponent<CharacterStatsComponent>(projOwner);
+                        bool isCrit = ownerValid && CombatMath::RollCrit(registry.GetComponent<CharacterStatsComponent>(projOwner).critRate);
+                        float critMult = ownerValid ? registry.GetComponent<CharacterStatsComponent>(projOwner).critDamage : 1.0f;
 
-                        float rawDamage = proj.damage * (isCrit ? critMult : 1.0f);
+                        float rawDamage = projDamage * (isCrit ? critMult : 1.0f);
                         if (registry.HasComponent<StatusEffectsComponent>(enemyEntity)) {
                             auto& targetStatus = registry.GetComponent<StatusEffectsComponent>(enemyEntity);
                             if (targetStatus.shockRemaining > 0.0f) rawDamage *= (1.0f + targetStatus.shockIncreasedDamageTaken);
                         }
 
-                        float dealt = CombatMath::ApplyDamage(stats, rawDamage, proj.damageType);
+                        float dealt = CombatMath::ApplyDamage(stats, rawDamage, projDamageType);
 
                         if (dealt > 0.0f) {
                             registry.AddComponent(enemyEntity, HitFlashComponent{ 0.08f });
-                            ImpactVfx::SpawnHitBurst(registry, pTrans.position, ImpactVfx::ElementColor(proj.damageType), isCrit);
+                            ImpactVfx::SpawnHitBurst(registry, projPos, ImpactVfx::ElementColor(projDamageType), isCrit);
                             // A small punch of feedback on landing a crit -- taking damage
                             // already shakes the camera (below), dealing damage previously
                             // didn't at all.
@@ -86,11 +101,11 @@ public:
                         }
 
                         if (registry.HasComponent<StatusEffectsComponent>(enemyEntity)) {
-                            CombatMath::ApplyAilmentOnHit(registry.GetComponent<StatusEffectsComponent>(enemyEntity), proj.damageType, dealt, stats.maxHP, isCrit);
+                            CombatMath::ApplyAilmentOnHit(registry.GetComponent<StatusEffectsComponent>(enemyEntity), projDamageType, dealt, stats.maxHP, isCrit);
                         }
 
                         if (ownerValid) {
-                            auto& ownerStats = registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity);
+                            auto& ownerStats = registry.GetComponent<CharacterStatsComponent>(projOwner);
                             if (ownerStats.leechPercent > 0.0f) {
                                 ownerStats.pendingLeech += dealt * ownerStats.leechPercent;
                             }
@@ -100,9 +115,9 @@ public:
                         if (stats.currentHP <= 0) {
                             deadEntities.push_back(enemyEntity);
 
-                            if (ownerValid && registry.HasComponent<PlayerInputComponent>(proj.ownerEntity) && registry.HasComponent<EquipmentComponent>(proj.ownerEntity)) {
-                                auto& ownerStats = registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity);
-                                auto& ownerEquip = registry.GetComponent<EquipmentComponent>(proj.ownerEntity);
+                            if (ownerValid && registry.HasComponent<PlayerInputComponent>(projOwner) && registry.HasComponent<EquipmentComponent>(projOwner)) {
+                                auto& ownerStats = registry.GetComponent<CharacterStatsComponent>(projOwner);
+                                auto& ownerEquip = registry.GetComponent<EquipmentComponent>(projOwner);
                                 std::string levelMsg;
                                 if (LevelSystem::GrantXP(ownerStats, ownerEquip, LevelSystem::CalcKillXP(stats), levelMsg)) {
                                     EquipmentSystem::RecalculateStats(ownerStats, ownerEquip);
@@ -115,7 +130,7 @@ public:
 
                             for (auto playerEnt : registry.View<PlayerInputComponent, CharacterStatsComponent, PlayerSkill>()) {
 
-                                if (proj.type == SkillBehaviorType::LightningWarp) {
+                                if (projType == SkillBehaviorType::LightningWarp) {
                                     auto& pStats = registry.GetComponent<CharacterStatsComponent>(playerEnt);
                                     auto& pSkill = registry.GetComponent<PlayerSkill>(playerEnt);
                                     // �}�i�S�� & �N�[���^�C�����Z�b�g (�X�L���X���b�g�͎��R�Ɋ��蓖�Ĉʒu���ς��̂ŁA
@@ -131,7 +146,7 @@ public:
                         }
                     }
 
-                    if (!proj.isBouncy) {
+                    if (!projIsBouncy) {
                         hitSomething = true;
                         break;
                     }
@@ -216,28 +231,37 @@ public:
 
                     if (!boltRect.findIntersection(playerRect)) continue;
 
-                    bool ownerValid = registry.IsValid(proj.ownerEntity) && registry.HasComponent<CharacterStatsComponent>(proj.ownerEntity);
-                    bool isCrit = ownerValid && CombatMath::RollCrit(registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critRate);
-                    float critMult = ownerValid ? registry.GetComponent<CharacterStatsComponent>(proj.ownerEntity).critDamage : 1.0f;
+                    // Snapshot before any registry mutation below -- see the matching
+                    // comment in the player-projectile-vs-enemy loop above for why
+                    // (ImpactVfx::SpawnHitBurst can reallocate the pool `proj`/`pTrans2`
+                    // reference into, invalidating them).
+                    Entity projOwner = proj.ownerEntity;
+                    DamageElement projDamageType = proj.damageType;
+                    float projDamage = proj.damage;
+                    sf::Vector2f projPos = pTrans2.position;
 
-                    float rawDamage = proj.damage * (isCrit ? critMult : 1.0f);
+                    bool ownerValid = registry.IsValid(projOwner) && registry.HasComponent<CharacterStatsComponent>(projOwner);
+                    bool isCrit = ownerValid && CombatMath::RollCrit(registry.GetComponent<CharacterStatsComponent>(projOwner).critRate);
+                    float critMult = ownerValid ? registry.GetComponent<CharacterStatsComponent>(projOwner).critDamage : 1.0f;
+
+                    float rawDamage = projDamage * (isCrit ? critMult : 1.0f);
                     bool hasStatus = registry.HasComponent<StatusEffectsComponent>(playerEntity);
                     if (hasStatus) {
                         auto& pStatus = registry.GetComponent<StatusEffectsComponent>(playerEntity);
                         if (pStatus.shockRemaining > 0.0f) rawDamage *= (1.0f + pStatus.shockIncreasedDamageTaken);
                     }
 
-                    float dealt = CombatMath::ApplyDamage(pStats, rawDamage, proj.damageType);
+                    float dealt = CombatMath::ApplyDamage(pStats, rawDamage, projDamageType);
 
                     if (dealt > 0.0f) {
                         registry.AddComponent(playerEntity, HitFlashComponent{ 0.08f });
                         float shakeStrength = std::clamp(dealt / pStats.maxHP, 0.0f, 1.0f) * 12.0f;
                         CameraManager::Instance().Shake(shakeStrength, 0.2f);
-                        ImpactVfx::SpawnHitBurst(registry, pTrans2.position, ImpactVfx::ElementColor(proj.damageType), isCrit);
+                        ImpactVfx::SpawnHitBurst(registry, projPos, ImpactVfx::ElementColor(projDamageType), isCrit);
                     }
 
                     if (hasStatus) {
-                        CombatMath::ApplyAilmentOnHit(registry.GetComponent<StatusEffectsComponent>(playerEntity), proj.damageType, dealt, pStats.maxHP, isCrit);
+                        CombatMath::ApplyAilmentOnHit(registry.GetComponent<StatusEffectsComponent>(playerEntity), projDamageType, dealt, pStats.maxHP, isCrit);
                     }
 
                     pStats.hitInvincibilityTimer = 0.6f;
