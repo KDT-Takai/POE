@@ -20,9 +20,10 @@
 // PassiveTreeSystem's full-screen pan/zoom pattern for the node graph (left), with the
 // player's bag docked on the right (same grid InventorySystem/StashSystem use) so a
 // Waystone can be dragged straight from the bag into the "map device" socket that
-// appears once a node is selected. Dropping a Waystone whose tier matches the selected
-// node's tier there immediately consumes it and opens the map; anything else bounces
-// back with a message (see AI/DECISIONS.md).
+// appears once a node is selected. Nodes have no tier of their own -- dropping ANY
+// Waystone into the socket immediately consumes it and opens a map at THAT Waystone's
+// tier (per user request: the map's level comes from the Waystone, not the node). A
+// non-Waystone drop bounces back with a message (see AI/DECISIONS.md).
 class AtlasSystem {
 private:
     static constexpr float kMargin = 30.0f;
@@ -225,9 +226,8 @@ public:
             "Atlas - Click a node, then drag a Waystone into the socket (Esc to close)", 15, sf::Color(255, 220, 120));
 
         int furthestDist = AtlasData::FurthestCompletedDistance(atlas);
-        int furthestTier = AtlasData::TierForCoord(furthestDist, 0);
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
-            "Furthest cleared: Tier " + std::to_string(furthestTier), 14, sf::Color(200, 200, 200));
+            "Furthest cleared: " + std::to_string(furthestDist) + " map(s) out from start", 14, sf::Color(200, 200, 200));
 
         // --- Node graph (left) ---
         sf::Vector2u winSize = target.getSize();
@@ -267,11 +267,11 @@ public:
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
 
         if (m_hasSelection) {
-            int tier = AtlasData::TierForCoord(m_selectedCol, m_selectedRow);
+            bool completed = AtlasData::IsCompleted(atlas, m_selectedCol, m_selectedRow);
             bool unlocked = AtlasData::IsUnlocked(atlas, m_selectedCol, m_selectedRow);
-            std::string info = "Tier " + std::to_string(tier) + " Map";
-            if (!unlocked) info += "  [Complete an adjacent map first]";
-            else info += "  (owned: " + std::to_string(CountOwnedTier(inventory, tier)) + ")";
+            std::string info;
+            if (!unlocked) info = "Locked  [Complete an adjacent map first]";
+            else info = completed ? "Cleared - drop a Waystone to run it again" : "Unlocked - drop a Waystone to open it";
             DrawText(target, panelX + 20.0f, panelY + layout.panelH - kFooterH + 4.0f, info, 14, sf::Color(220, 220, 220));
         }
 
@@ -284,7 +284,7 @@ public:
         if (!m_bagDragging) {
             int hoverCol, hoverRow;
             if (HitTestNode(layout, mouse, nodeRadius, hoverCol, hoverRow)) {
-                DrawNodeTooltip(target, mouse, atlas, inventory, hoverCol, hoverRow);
+                DrawNodeTooltip(target, mouse, atlas, hoverCol, hoverRow);
             }
         }
 
@@ -367,14 +367,6 @@ private:
         target.draw(line.data(), line.size(), sf::PrimitiveType::Lines);
     }
 
-    static int CountOwnedTier(const InventoryComponent& inventory, int tier) {
-        int count = 0;
-        for (const auto& item : inventory.items) {
-            if (item.category == ItemCategory::Waystone && item.waystoneTier == tier) count++;
-        }
-        return count;
-    }
-
     // --- Bag panel (right side): same 6x4 grid as InventorySystem/StashSystem, docked so
     // a Waystone can be dragged straight out of it into the socket above.
 
@@ -428,6 +420,10 @@ private:
         // it was, matching this project's "invalid drop target = no change" convention.
     }
 
+    // Nodes have no tier of their own -- whichever Waystone the player drops here decides
+    // the map's tier (per user request: "まっぷでウェイストーンのレベル決めないで。
+    // ウェイストーンのレベルで決まるようにして"), so any tier is accepted as long as
+    // it's actually a Waystone and the node itself is reachable.
     void TryPlaceWaystone(AtlasComponent& atlas, InventoryComponent& inventory, int bagIndex) {
         if (!AtlasData::IsUnlocked(atlas, m_selectedCol, m_selectedRow)) {
             lastActionMessage = "Complete an adjacent map first";
@@ -436,21 +432,16 @@ private:
         }
 
         const ItemComponent& item = inventory.items[bagIndex];
-        int requiredTier = AtlasData::TierForCoord(m_selectedCol, m_selectedRow);
         if (item.category != ItemCategory::Waystone) {
             lastActionMessage = "Only Waystones can go in the map device";
             messageTimer = 2.0f;
             return;
         }
-        if (item.waystoneTier != requiredTier) {
-            lastActionMessage = "Requires a Tier " + std::to_string(requiredTier) + " Waystone (this is Tier " + std::to_string(item.waystoneTier) + ")";
-            messageTimer = 2.5f;
-            return;
-        }
 
+        int tier = item.waystoneTier;
         std::vector<WaystoneMod> mods = item.waystoneMods;
         inventory.items.erase(inventory.items.begin() + bagIndex);
-        CampaignManager::Instance().OpenEndgameMap(requiredTier, mods);
+        CampaignManager::Instance().OpenEndgameMap(tier, mods);
         CampaignManager::Instance().SetPendingAtlasNode(m_selectedCol, m_selectedRow);
         m_mapStartRequested = true;
         Close();
@@ -481,7 +472,7 @@ private:
                 "Select a map node first", kBagCellSize);
         } else {
             DrawWrappedHint(target, layout.socketRect.position.x + kBagCellSize + 12.0f, layout.socketRect.position.y,
-                "Drop a matching Waystone here", kBagCellSize);
+                "Drop any Waystone here", kBagCellSize);
         }
 
         for (int row = 0; row < ItemUIHelpers::kBagGridRows; ++row) {
@@ -585,15 +576,14 @@ private:
         }
     }
 
-    void DrawNodeTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const AtlasComponent& atlas, const InventoryComponent& inventory, int col, int row) {
-        int tier = AtlasData::TierForCoord(col, row);
+    void DrawNodeTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const AtlasComponent& atlas, int col, int row) {
         bool completed = AtlasData::IsCompleted(atlas, col, row);
         bool unlocked = AtlasData::IsUnlocked(atlas, col, row);
 
-        std::string body = "Tier " + std::to_string(tier) + " Map";
-        if (completed) body += "\n(Cleared, can be run again)";
-        else if (unlocked) body += "\nOwned Waystones: " + std::to_string(CountOwnedTier(inventory, tier));
-        else body += "\n(Complete an adjacent map first)";
+        std::string body;
+        if (completed) body = "Cleared - drop any Waystone to run it again";
+        else if (unlocked) body = "Unlocked - drop any Waystone to open it";
+        else body = "Locked\n(Complete an adjacent map first)";
 
         sf::Text text(*m_font, sf::String::fromUtf8(body.begin(), body.end()), 14);
         text.setFillColor(sf::Color::White);
