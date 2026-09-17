@@ -44,6 +44,14 @@ public:
         DrawOrb(target, 80.0f, height - 80.0f, 45.0f, sf::Color(180, 0, 0), stats.currentHP, stats.maxHP, "HP");
         DrawOrb(target, width - 80.0f, height - 80.0f, 45.0f, sf::Color(0, 80, 200), stats.currentMP, stats.maxMP, "MP");
 
+        // Energy Shield: a smaller orb stacked above HP (PoE-style -- ES absorbs non-Chaos
+        // damage before HP, see CombatMath::ApplyDamage), only shown once the character
+        // actually has any (maxES > 0) so a build with none doesn't carry a permanently
+        // empty orb on screen.
+        if (stats.maxES > 0.0f) {
+            DrawOrb(target, 80.0f, height - 80.0f - 45.0f - 20.0f - 28.0f, 28.0f, sf::Color(80, 160, 255), stats.currentES, stats.maxES, "ES");
+        }
+
         if (registry.HasComponent<StatusEffectsComponent>(playerEntity)) {
             auto& fx = registry.GetComponent<StatusEffectsComponent>(playerEntity);
             DrawDebuffIcons(target, 160.0f, height - 140.0f, fx);

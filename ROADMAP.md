@@ -4,6 +4,8 @@
 
 ## 済 (Done)
 
+**常時表示HUDにEnergy Shieldオーブを追加**。「エナジーシールドの表示して」という指示に対応。従来`UISystem`(常時表示HUD)はHP/MPの2オーブのみで、ESは`CharacterSheetSystem`(Cキー)を開かないと確認できなかった。`stats.maxES > 0`の時だけHPオーブの真上に小さめのES専用オーブ(水色、`DrawOrb`を再利用)を追加表示するようにした。ビルド確認済み(`/t:Build`、0エラー)、バックグラウンド起動でのクラッシュ無し確認も実施。
+
 **スキルジェムをウェイストーンと同じアイテム欄ベースへ全面移行(専用所持リストを廃止)**。「すきるじぇむとかもウェイストーンみたいにアイテム欄におく そのスキルジェムを右クリックですきなスキルに変換。その後Gキーを押して空いているスロットに入れる。その後Gキーで開いている状態でキーにセットする。」という指示に対応。前回の「Waystoneをアイテム化」と同じ発想をスキル/サポート/スピリットジェムにも拡張した、本セッション最大級のアーキテクチャ変更。
 - **データモデル**: `ItemComponent`に`category==ItemCategory::SkillGem`+`skillGemIdentified`/`skillGemIsSupport`/`skillGemUncutKind`/`skillGemId`/`skillGemLevel`/`skillGemMaxSockets`/`skillGemSupportIds[5]`を追加。旧`SkillGemInventoryComponent`(`ownedGems`/`pendingUncutGems`)・`OwnedGemInstance`・`SkillGemPickupComponent`・`PendingUncutGem`は全廃し、Uncut/識別済みジェムはどちらもバッグ/StashのItemComponent1つで表現するようにした(個体ごとに独立したアイテムのため、同じgemIdを複数レベル分重複所持することも可能になった)。
 - **鑑定はInventorySystemの右クリックへ移動**: 旧`SkillGemSystem`の「Uncut Gems」チップ列は廃止。`InventorySystem`(Iキー)でUncut Gemアイテムを右クリックすると`GemIdentifySystem`が開き、選んだジェムでそのアイテム自身が同じバッグ座標のまま識別済みへ変化する(消費→再生成ではなくin-place更新)。
