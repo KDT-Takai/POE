@@ -267,7 +267,7 @@ public:
             Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem from your bag", contentWidth - 120.0f, 12), 12, sf::Color(255, 220, 120));
 
         sf::FloatRect codexBtn = CodexToggleRect();
-        DrawButtonSmall(target, codexBtn, m_codexOpen ? "< Back" : "All Skills",
+        DrawButtonSmall(target, codexBtn, m_codexOpen ? "< 戻る" : "スキル一覧",
             m_codexOpen ? sf::Color(70, 70, 90) : sf::Color(60, 85, 60));
 
         if (m_codexOpen) {
@@ -285,6 +285,16 @@ public:
         };
 
         Layout L = ComputeLayout();
+
+        // Hover tooltip (name + description), shown like a normal game tooltip wherever the
+        // cursor rests on a gem -- equipped slot, Spirit slot, or a filled support socket --
+        // so the player can see what a skill does without opening the picker or the "All
+        // Skills" codex. Populated while drawing below, rendered once at the very end (on
+        // top of everything, in default-view screen space) so it isn't drawn under later rows.
+        sf::Vector2f mouseNow = InputManager::Instance().GetMouseInput().GetMousePointF();
+        bool tipActive = false;
+        std::string tipName, tipStat, tipDesc;
+        sf::Color tipColor(200, 200, 200);
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             float y = SkillRowY(L, i);
@@ -322,7 +332,20 @@ public:
             if (equipped) {
                 for (int s = 0; s < equipped->skillGemMaxSockets && s < kMaxPossibleSockets; ++s) {
                     bool socketSelected = selected && (s == m_selectedSocket);
-                    DrawSocketBox(target, SocketRect(L, i, s), equipped->skillGemSupportIds[s], socketSelected);
+                    sf::FloatRect socketRect = SocketRect(L, i, s);
+                    DrawSocketBox(target, socketRect, equipped->skillGemSupportIds[s], socketSelected);
+
+                    int supportId = equipped->skillGemSupportIds[s];
+                    if (supportId >= 0 && socketRect.contains(mouseNow)) {
+                        const SupportGemDefinition* supportDef = SupportGemData::Find(supportId);
+                        if (supportDef) {
+                            tipActive = true;
+                            tipName = supportDef->name;
+                            tipStat = "Support";
+                            tipDesc = supportDef->description;
+                            tipColor = CategoryColor(supportDef->category);
+                        }
+                    }
                 }
                 if (equipped->skillGemMaxSockets < kMaxPossibleSockets) {
                     bool canAfford = stats.jewellersOrbs > 0;
@@ -330,6 +353,17 @@ public:
                     DrawButtonSmall(target, btn, "+Jeweller(" + std::to_string(stats.jewellersOrbs) + ")",
                         canAfford ? sf::Color(70, 90, 70) : sf::Color(50, 50, 55));
                 }
+            }
+
+            sf::FloatRect mainRectForTip({ panelX + 12.0f, y }, { panelW - 24.0f, L.skillMainLineH });
+            if (skill.isValid && mainRectForTip.contains(mouseNow)) {
+                tipActive = true;
+                tipName = skill.name + " Lv" + std::to_string(skill.level);
+                std::string statLine = "CD " + FormatFloat(skill.cooldownTime) + "s, MP" + std::to_string(skill.mpCost);
+                if (DealsElementalDamage(skill.behaviorType)) statLine += ", " + ElementName(skill.element);
+                tipStat = statLine;
+                tipDesc = skill.description;
+                tipColor = def ? AttributeColor(def->primaryAttribute) : sf::Color(200, 200, 200);
             }
         }
 
@@ -379,6 +413,15 @@ public:
                 sf::FloatRect toggleRect = SpiritToggleRect(L, i);
                 DrawButtonSmall(target, toggleRect, active ? "ON" : "OFF",
                     active ? sf::Color(60, 130, 70) : sf::Color(70, 60, 60));
+            }
+
+            sf::FloatRect spiritRectForTip({ panelX + 12.0f, y }, { panelW - 24.0f, L.spiritRowHeight });
+            if (def && spiritRectForTip.contains(mouseNow)) {
+                tipActive = true;
+                tipName = def->skill.name + " Lv" + (item ? std::to_string(item->skillGemLevel) : "1");
+                tipStat = "Spirit " + FormatFloat(item ? SpiritAuraSystem::SpiritCostOf(*item) : def->skill.spiritCost);
+                tipDesc = def->skill.description;
+                tipColor = AttributeColor(def->primaryAttribute);
             }
         }
 
@@ -433,6 +476,10 @@ public:
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
             DrawText(target, panelX + 12.0f, L.pickerRowY + L.pickerViewportH + 8.0f,
                 Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
+        }
+
+        if (tipActive) {
+            DrawHoverTooltip(target, mouseNow, tipName, tipStat, tipDesc, tipColor);
         }
 
         target.setView(oldView);
@@ -611,7 +658,7 @@ private:
         std::vector<CodexEntry> entries = BuildCodexEntries(stats);
 
         DrawText(target, kPanelX + 12.0f, kPanelY + 22.0f,
-            "All Skill & Support Gems (owned or not) - scroll for more:", 12, sf::Color(200, 200, 200));
+            "全スキル/サポートジェム一覧(未所持含む、スクロールで続きを表示):", 12, sf::Color(200, 200, 200));
 
         float topY = CodexTopY();
         float viewportH = CodexViewportH();
@@ -1074,5 +1121,42 @@ private:
         box.setOutlineThickness(1.0f);
         target.draw(box);
         DrawText(target, rect.position.x + 3.0f, rect.position.y + 1.0f, Truncate(label, rect.size.x - 6.0f, 9), 9, sf::Color(220, 220, 220));
+    }
+
+    // Small floating box near the cursor (name / stat line / description), the same idea as
+    // a normal game tooltip -- kept deliberately compact (one line per field, truncated
+    // rather than wrapped) rather than a big panel, since the equipped-slot rows have no
+    // room to show a description inline the way the picker/codex cards do.
+    void DrawHoverTooltip(sf::RenderTarget& target, sf::Vector2f mouse, const std::string& name,
+        const std::string& statLine, const std::string& description, sf::Color accent) {
+        const float boxW = 260.0f;
+        const float pad = 8.0f;
+        const float lineH = 16.0f;
+        int lines = 1 + (statLine.empty() ? 0 : 1) + (description.empty() ? 0 : 1);
+        float boxH = pad * 2.0f + lineH * static_cast<float>(lines);
+
+        sf::Vector2f pos = mouse + sf::Vector2f(18.0f, 18.0f);
+        sf::Vector2u winSize = target.getSize();
+        if (pos.x + boxW > static_cast<float>(winSize.x)) pos.x = static_cast<float>(winSize.x) - boxW - 4.0f;
+        if (pos.y + boxH > static_cast<float>(winSize.y)) pos.y = static_cast<float>(winSize.y) - boxH - 4.0f;
+
+        sf::RectangleShape box({ boxW, boxH });
+        box.setPosition(pos);
+        box.setFillColor(sf::Color(18, 18, 22, 240));
+        box.setOutlineColor(accent);
+        box.setOutlineThickness(1.5f);
+        target.draw(box);
+
+        float textW = boxW - pad * 2.0f;
+        float ty = pos.y + pad;
+        DrawText(target, pos.x + pad, ty, Truncate(name, textW, 13), 13, sf::Color(255, 230, 150));
+        ty += lineH;
+        if (!statLine.empty()) {
+            DrawText(target, pos.x + pad, ty, Truncate(statLine, textW, 11), 11, sf::Color(180, 205, 225));
+            ty += lineH;
+        }
+        if (!description.empty()) {
+            DrawText(target, pos.x + pad, ty, Truncate(description, textW, 11), 11, sf::Color(225, 225, 230));
+        }
     }
 };

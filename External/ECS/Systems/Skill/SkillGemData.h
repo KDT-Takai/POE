@@ -46,7 +46,7 @@ private:
 
         SkillData spark;
         spark.name = "Spark";
-        spark.description = "Fires 7 erratic lightning bolts in a spread that pierce through every enemy they hit.";
+        spark.description = "雷弾を7発ばら撒き、当たった敵を貫通する";
         spark.behaviorType = SkillBehaviorType::Spark;
         spark.cooldownTime = 0.3f;
         spark.mpCost = 4;
@@ -58,7 +58,7 @@ private:
 
         SkillData slam;
         slam.name = "Thunder Slam";
-        slam.description = "Slams the ground with a single heavy blow that pierces through everything in its path.";
+        slam.description = "地面を叩きつけ、経路上の敵を貫通する重い一撃";
         slam.behaviorType = SkillBehaviorType::GroundSlam;
         slam.cooldownTime = 5.0f;
         slam.mpCost = 35;
@@ -69,7 +69,7 @@ private:
 
         SkillData warp;
         warp.name = "Lightning Warp";
-        warp.description = "Teleports to the target location, then detonates a lightning blast on arrival.";
+        warp.description = "対象地点へ瞬間移動し、着地点で雷を爆発させる";
         warp.behaviorType = SkillBehaviorType::LightningWarp;
         warp.range = 350.0f;
         warp.damage = 80.0f;
@@ -81,7 +81,7 @@ private:
 
         SkillData ball;
         ball.name = "Lightning Ball";
-        ball.description = "Releases a ring of 12 crackling orbs that expand outward from you in every direction.";
+        ball.description = "自分を中心に12個の雷弾が輪になって広がる";
         ball.behaviorType = SkillBehaviorType::LightningBall;
         ball.damage = 40.0f; // % of atk, per bullet (fires 12)
         ball.cooldownTime = 12.0f;
@@ -92,7 +92,7 @@ private:
 
         SkillData warcry;
         warcry.name = "War Cry";
-        warcry.description = "A battle shout that empowers you with bonus attack damage and move speed for a short time.";
+        warcry.description = "自己バフの雄叫び。一定時間、攻撃力と移動速度が上がる";
         warcry.behaviorType = SkillBehaviorType::Buff;
         warcry.cooldownTime = 18.0f;
         warcry.mpCost = 20;
@@ -105,7 +105,7 @@ private:
 
         SkillData nova;
         nova.name = "Nova";
-        nova.description = "Unleashes an instant burst of cold damage centered on yourself.";
+        nova.description = "自分中心に冷気の即時爆発を起こす";
         nova.behaviorType = SkillBehaviorType::AreaEffect;
         nova.cooldownTime = 6.0f;
         nova.mpCost = 30;
@@ -117,7 +117,7 @@ private:
 
         SkillData cleave;
         cleave.name = "Cleave";
-        cleave.description = "A wide melee swing that hits every enemy caught in front of you.";
+        cleave.description = "前方の敵を幅広く薙ぎ払う近接攻撃";
         cleave.behaviorType = SkillBehaviorType::Melee;
         cleave.cooldownTime = 0.6f;
         cleave.mpCost = 8;
@@ -129,7 +129,7 @@ private:
 
         SkillData frostBolt;
         frostBolt.name = "Frost Bolt";
-        frostBolt.description = "Fires a single fast-moving bolt of cold damage at the target.";
+        frostBolt.description = "冷気の弾を1発、素早く発射する";
         frostBolt.behaviorType = SkillBehaviorType::Projectile;
         frostBolt.cooldownTime = 0.5f;
         frostBolt.mpCost = 6;
@@ -144,7 +144,7 @@ private:
         // (removed the same way on unequip; see SpiritAuraSystem).
         SkillData determination;
         determination.name = "Determination";
-        determination.description = "Aura. Continuously grants bonus Armour while equipped and active.";
+        determination.description = "装備してONの間、継続的にArmourを付与するオーラ";
         determination.behaviorType = SkillBehaviorType::Aura;
         determination.spiritCost = 50.0f;
         determination.auraEffect = { AffixStat::FlatArmour, 60.0f, 1, true, "Armour" };
@@ -153,7 +153,7 @@ private:
 
         SkillData discipline;
         discipline.name = "Discipline";
-        discipline.description = "Aura. Continuously grants bonus Energy Shield while equipped and active.";
+        discipline.description = "装備してONの間、継続的にEnergy Shieldを付与するオーラ";
         discipline.behaviorType = SkillBehaviorType::Aura;
         discipline.spiritCost = 40.0f;
         discipline.auraEffect = { AffixStat::FlatES, 40.0f, 1, true, "Energy Shield" };
@@ -165,7 +165,7 @@ private:
         // though monsters and item resistances both use all 4 elements.
         SkillData fireball;
         fireball.name = "Fireball";
-        fireball.description = "Hurls an explosive ball of fire that deals damage in an area on impact.";
+        fireball.description = "爆発する火球を放ち、着弾点に範囲ダメージ";
         fireball.behaviorType = SkillBehaviorType::AreaEffect;
         fireball.cooldownTime = 5.0f;
         fireball.mpCost = 28;
@@ -177,7 +177,7 @@ private:
 
         SkillData chaosBolt;
         chaosBolt.name = "Chaos Bolt";
-        chaosBolt.description = "Fires a single fast-moving bolt of chaos damage at the target.";
+        chaosBolt.description = "カオスの弾を1発、素早く発射する";
         chaosBolt.behaviorType = SkillBehaviorType::Projectile;
         chaosBolt.cooldownTime = 0.5f;
         chaosBolt.mpCost = 6;
@@ -192,7 +192,7 @@ private:
         // Deals no damage, so it's intentionally excluded from SkillGemSystem's element display.
         SkillData flameDash;
         flameDash.name = "Flame Dash";
-        flameDash.description = "Dashes a short distance in your facing direction. Deals no damage.";
+        flameDash.description = "向いている方向へ短距離ダッシュする(ダメージ無し)";
         flameDash.behaviorType = SkillBehaviorType::Dash;
         flameDash.cooldownTime = 3.5f;
         flameDash.mpCost = 15;
@@ -204,7 +204,7 @@ private:
         // out the trio of PoE2's classic defense-layer auras with Evasion.
         SkillData grace;
         grace.name = "Grace";
-        grace.description = "Aura. Continuously grants bonus Evasion while equipped and active.";
+        grace.description = "装備してONの間、継続的にEvasionを付与するオーラ";
         grace.behaviorType = SkillBehaviorType::Aura;
         grace.spiritCost = 35.0f;
         grace.auraEffect = { AffixStat::FlatEvasion, 50.0f, 1, true, "Evasion" };
@@ -216,7 +216,7 @@ private:
         // (the only Melee gem so far, Cleave, was Physical-only).
         SkillData immolate;
         immolate.name = "Immolate";
-        immolate.description = "A close-range melee strike that burns the target for fire damage.";
+        immolate.description = "至近距離の近接攻撃で対象を燃やす";
         immolate.behaviorType = SkillBehaviorType::Melee;
         immolate.cooldownTime = 0.8f;
         immolate.mpCost = 10;
@@ -228,7 +228,7 @@ private:
 
         SkillData soulRend;
         soulRend.name = "Soul Rend";
-        soulRend.description = "An instant burst of chaos damage centered on yourself.";
+        soulRend.description = "自分中心にカオスダメージの即時爆発を起こす";
         soulRend.behaviorType = SkillBehaviorType::AreaEffect;
         soulRend.cooldownTime = 7.0f;
         soulRend.mpCost = 32;
@@ -244,7 +244,7 @@ private:
         // atk" convention as active skills; minionMaxHp is Minion-only (see SkillGemScaling).
         SkillData summonSkeleton;
         summonSkeleton.name = "Summon Skeleton";
-        summonSkeleton.description = "Minion. Summons a permanent skeleton ally that fights alongside you and is replaced automatically if it dies.";
+        summonSkeleton.description = "恒久的なスケルトンの仲間を1体召喚する(死亡時は自動的に再召喚)";
         summonSkeleton.behaviorType = SkillBehaviorType::Minion;
         summonSkeleton.spiritCost = 45.0f;
         summonSkeleton.minionMaxHp = 90.0f;
