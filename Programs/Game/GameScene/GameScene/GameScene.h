@@ -26,6 +26,7 @@
 #include "../../ECS/Systems/UI/CharacterSheetSystem.h"
 #include "../../ECS/Systems/UI/InventorySystem.h"
 #include "../../ECS/Systems/Progression/PassiveTreeSystem.h"
+#include "../../ECS/Systems/Progression/AtlasSystem.h"
 #include "../../ECS/Systems/Item/VendorSystem.h"
 #include "../../ECS/Systems/Item/WaystoneVendorSystem.h"
 #include "../../ECS/Systems/UI/StashSystem.h"
@@ -100,6 +101,7 @@ private:
     std::shared_ptr<CharacterSheetSystem> characterSheetSystem;
     std::shared_ptr<InventorySystem> inventorySystem;
     std::shared_ptr<PassiveTreeSystem> passiveTreeSystem;
+    std::shared_ptr<AtlasSystem> atlasSystem;
     std::shared_ptr<VendorSystem> vendorSystem;
     std::shared_ptr<WaystoneVendorSystem> waystoneVendorSystem;
     std::shared_ptr<StashSystem> stashSystem;

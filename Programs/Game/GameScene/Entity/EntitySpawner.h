@@ -18,6 +18,7 @@
 #include "../ECS/Components/Item/Inventory.h"
 #include "../ECS/Components/Item/Stash.h"
 #include "../ECS/Components/Progression/PassiveTree.h"
+#include "../ECS/Components/Progression/Atlas.h"
 #include "../ECS/Components/Item/SkillGem.h"
 #include "../ECS/Components/Chara/Minion.h"
 #include "../ECS/Systems/Skill/SkillGemScaling.h"
@@ -70,6 +71,7 @@ public:
         entity.AddComponent(InventoryComponent{});
         entity.AddComponent(StashComponent{});
         entity.AddComponent(PassiveTreeComponent{});
+        entity.AddComponent(AtlasComponent{});
 
         // �`��ݒ�
         float radius = 16.0f;

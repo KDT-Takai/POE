@@ -77,6 +77,7 @@
     <ClInclude Include="External\ECS\Components\Item\Inventory.h" />
     <ClInclude Include="External\ECS\Components\Item\Stash.h" />
     <ClInclude Include="External\ECS\Components\Progression\PassiveTree.h" />
+    <ClInclude Include="External\ECS\Components\Progression\Atlas.h" />
     <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemFactory.h" />
     <ClInclude Include="External\ECS\Systems\Item\EquipmentSystem.h" />
@@ -89,6 +90,8 @@
     <ClInclude Include="External\ECS\Systems\Progression\LevelSystem.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeData.h" />
     <ClInclude Include="External\ECS\Systems\Progression\PassiveTreeSystem.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\AtlasData.h" />
+    <ClInclude Include="External\ECS\Systems\Progression\AtlasSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\BoxCollider\BoxCollider.h" />
     <ClInclude Include="External\ECS\Components\Physics\Facing\Facing.h" />
     <ClInclude Include="External\ECS\Components\Physics\Gravity\Gravity.h" />

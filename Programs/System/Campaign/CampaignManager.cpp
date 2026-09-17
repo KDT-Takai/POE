@@ -286,6 +286,9 @@ void CampaignManager::ConsumeMapDeath() {
     m_mapDeathsRemaining--;
     if (m_mapDeathsRemaining <= 0) {
         m_mapAttemptActive = false;
+        // The attempt ended in failure (portals exhausted), not a clear -- don't leave a
+        // stale pending node around for a future successful attempt to wrongly complete.
+        m_pendingAtlasNodeValid = false;
     }
 }
 
@@ -310,6 +313,8 @@ void CampaignManager::ResetCampaign() {
     m_mapAttemptActive = false;
     m_mapDeathsRemaining = 0;
     m_activeMapMods.clear();
+    m_pendingAtlasNodeValid = false;
+    m_savedAtlasNodes.clear();
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -397,6 +402,11 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         out << "auraLoadout.active" << i << "=" << (m_savedAuraActive[i] ? 1 : 0) << "\n";
     }
 
+    out << "atlas.count=" << m_savedAtlasNodes.size() << "\n";
+    for (size_t i = 0; i < m_savedAtlasNodes.size(); ++i) {
+        out << "atlas.node" << i << ".col=" << m_savedAtlasNodes[i].first << "\n";
+        out << "atlas.node" << i << ".row=" << m_savedAtlasNodes[i].second << "\n";
+    }
 }
 
 bool CampaignManager::LoadFromDisk(const std::string& path) {
@@ -499,6 +509,18 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
         m_savedAuraActive[i] = GetI(kv, "auraLoadout.active" + std::to_string(i), 0) != 0;
+    }
+
+    // Pre-Atlas saves have no "atlas.count" key -- defaults to no completed nodes beyond
+    // the always-cleared start node, same fallback convention as the other post-launch
+    // additions above.
+    m_savedAtlasNodes.clear();
+    int atlasCount = GetI(kv, "atlas.count", 0);
+    for (int i = 0; i < atlasCount; ++i) {
+        std::string p = "atlas.node" + std::to_string(i) + ".";
+        int col = GetI(kv, p + "col", 0);
+        int row = GetI(kv, p + "row", 0);
+        m_savedAtlasNodes.push_back({ col, row });
     }
 
     return true;

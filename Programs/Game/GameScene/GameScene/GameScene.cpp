@@ -11,6 +11,7 @@
 
 #include "../MapGenerator/MapGenerator.h"
 #include "../Zone/ZoneBuilder.h"
+#include "../../ECS/Systems/Progression/AtlasData.h"
 
 #include "System/SceneManager/SceneManager.h"
 #include "System/Input/InputManager.h"
@@ -47,6 +48,7 @@ GameScene::GameScene() {
 	characterSheetSystem = std::make_shared<CharacterSheetSystem>();
 	inventorySystem = std::make_shared<InventorySystem>();
 	passiveTreeSystem = std::make_shared<PassiveTreeSystem>();
+	atlasSystem = std::make_shared<AtlasSystem>();
 	vendorSystem = std::make_shared<VendorSystem>();
 	waystoneVendorSystem = std::make_shared<WaystoneVendorSystem>();
 	stashSystem = std::make_shared<StashSystem>();
@@ -76,6 +78,12 @@ GameScene::GameScene() {
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
             player.GetComponent<StashComponent>().tabs = campaign.GetSavedStash();
             player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
+
+            auto& atlasComp = player.GetComponent<AtlasComponent>();
+            atlasComp.completedNodeKeys.clear();
+            for (const auto& [col, row] : campaign.GetSavedAtlasNodes()) {
+                atlasComp.completedNodeKeys.push_back(AtlasData::PackKey(col, row));
+            }
 
             // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
             // EntitySpawner-seeded starter loadout in that case instead of blanking it out.
@@ -150,6 +158,15 @@ void GameScene::AdvanceToNextZone() {
     if (registry->HasComponent<PassiveTreeComponent>(playerEntity)) {
         campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);
     }
+    if (registry->HasComponent<AtlasComponent>(playerEntity)) {
+        std::vector<std::pair<int, int>> nodes;
+        for (int64_t key : registry->GetComponent<AtlasComponent>(playerEntity).completedNodeKeys) {
+            int col, row;
+            AtlasData::UnpackKey(key, col, row);
+            nodes.push_back({ col, row });
+        }
+        campaign.SaveAtlasNodes(nodes);
+    }
     if (registry->HasComponent<SkillGemInventoryComponent>(playerEntity)) {
         campaign.SaveOwnedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).ownedGems);
         campaign.SavePendingUncutGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).pendingUncutGems);
@@ -215,10 +232,11 @@ std::string GameScene::NpcHudHint(TownNpcKind kind) {
 // Endgame hub's map device. If a map attempt is still open (<=6 deaths used, see
 // CampaignManager::HasActiveMapAttempt), re-enters that same tier/mods for free -- one
 // of the up-to-6 portals real PoE2 grants per Waystone, letting the player try again
-// after dying without needing another Waystone. Otherwise spends the player's
-// highest-tier held Waystone (matches PoE2's advice to always run your best one),
-// consuming it and rolling a fresh 6-portal attempt. Refuses (with a message, no zone
-// change) if the player holds none.
+// after dying without needing another Waystone. Otherwise opens the Atlas screen
+// (AtlasSystem) so the player picks which map node to run; the actual Waystone
+// consumption + CampaignManager::OpenEndgameMap call happens there once a node is chosen
+// (see AtlasSystem::TryOpenSelected), and GameScene::Update picks up the resulting
+// ConsumeMapStartRequest() to transition in exactly like this function used to do directly.
 void GameScene::TryOpenEndgameMapFromHub() {
     auto& campaign = CampaignManager::Instance();
 
@@ -227,31 +245,7 @@ void GameScene::TryOpenEndgameMapFromHub() {
         return;
     }
 
-    if (!registry->HasComponent<InventoryComponent>(playerEntity)) return;
-    auto& inventory = registry->GetComponent<InventoryComponent>(playerEntity);
-
-    int bestIndex = -1;
-    int highestTier = -1;
-    for (size_t i = 0; i < inventory.items.size(); ++i) {
-        const auto& item = inventory.items[i];
-        if (item.category != ItemCategory::Waystone) continue;
-        if (item.waystoneTier > highestTier) {
-            highestTier = item.waystoneTier;
-            bestIndex = static_cast<int>(i);
-        }
-    }
-
-    if (bestIndex < 0) {
-        itemPickupSystem->lastMessage = "Need a Waystone to open a map";
-        itemPickupSystem->messageTimer = 2.5f;
-        return;
-    }
-
-    std::vector<WaystoneMod> mods = inventory.items[bestIndex].waystoneMods;
-    inventory.items.erase(inventory.items.begin() + bestIndex);
-    campaign.OpenEndgameMap(highestTier, mods);
-    spdlog::info("Opening endgame map at tier {}.", highestTier);
-    AdvanceToNextZone();
+    atlasSystem->Open();
 }
 
 void GameScene::Update() {
@@ -276,6 +270,7 @@ void GameScene::Update() {
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Escape)) {
         closeFreePanels();
         passiveTreeSystem->Close();
+        atlasSystem->Close();
         vendorSystem->Close();
         waystoneVendorSystem->Close();
         stashSystem->Close();
@@ -285,19 +280,19 @@ void GameScene::Update() {
 
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
         characterSheetSystem->Toggle();
-        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (characterSheetSystem->isOpen) { skillGemSystem->Close(); passiveTreeSystem->Close(); atlasSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleInventory))) {
         inventorySystem->Toggle();
-        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (inventorySystem->isOpen) { passiveTreeSystem->Close(); atlasSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::TogglePassiveTree))) {
         passiveTreeSystem->Toggle();
-        if (passiveTreeSystem->isOpen) { closeFreePanels(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (passiveTreeSystem->isOpen) { closeFreePanels(); atlasSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleSkillGems))) {
         skillGemSystem->Toggle();
-        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
+        if (skillGemSystem->isOpen) { characterSheetSystem->isOpen = false; passiveTreeSystem->Close(); atlasSystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); }
     }
     // PoE2同様、NPCへの話しかけは左クリックのみ(Bキーの「話しかける」操作は廃止)。
     // NPC本体にカーソルが乗っているかは常時判定し、Render側で当たり判定の輪を
@@ -319,26 +314,31 @@ void GameScene::Update() {
             int playerLevel = registry->HasComponent<CharacterStatsComponent>(playerEntity)
                 ? registry->GetComponent<CharacterStatsComponent>(playerEntity).level : 1;
             vendorSystem->Toggle(playerLevel);
-            if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
+            if (vendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); atlasSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
             break;
         }
         case TownNpcKind::WaystoneVendor:
             waystoneVendorSystem->Toggle();
-            if (waystoneVendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); stashSystem->Close(); }
+            if (waystoneVendorSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); atlasSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); stashSystem->Close(); }
             break;
         case TownNpcKind::Stash:
             stashSystem->Toggle();
-            if (stashSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); }
+            if (stashSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); atlasSystem->Close(); keyBindSystem->Close(); gemIdentifySystem->Close(); vendorSystem->Close(); waystoneVendorSystem->Close(); }
             break;
         }
     }
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::O)) {
         keyBindSystem->Toggle();
-        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
+        if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); atlasSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
     }
     keyBindSystem->Update(*registry, dt);
     inventorySystem->Update(*registry, dt);
     passiveTreeSystem->Update(*registry, dt);
+    atlasSystem->Update(*registry, dt);
+    if (atlasSystem->ConsumeMapStartRequest()) {
+        AdvanceToNextZone();
+        return;
+    }
     vendorSystem->Update(*registry, dt);
     waystoneVendorSystem->Update(*registry, dt);
     stashSystem->Update(*registry, dt);
@@ -350,7 +350,7 @@ void GameScene::Update() {
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
     // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。未鑑定ジェムの
     // 選択画面(GemIdentifySystem)も選んでいる間は戦闘が進まないようポーズ系に含める。
-    bool isPaused = passiveTreeSystem->isOpen || vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
+    bool isPaused = passiveTreeSystem->isOpen || atlasSystem->isOpen || vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
     // 非ポーズ系メニュー(インベントリ/キャラクターシート/スキルジェム)はゲームを
     // 止めないので、開いている間もフィールド上でのスキル発動クリックは通したい。
     // マウスが実際にそのパネルの上に重なっている時だけクリックをUI側へ譲る
@@ -466,7 +466,7 @@ void GameScene::Update() {
                 float distSq = dx * dx + dy * dy;
                 m_playerNearPortal = distSq < (150.0f * 150.0f);
 
-                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
+                if (m_playerNearPortal && !inventorySystem->isOpen && !passiveTreeSystem->isOpen && !atlasSystem->isOpen && !vendorSystem->isOpen && !skillGemSystem->isOpen && !keyBindSystem->isOpen &&
                     InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Enter)) {
                     TryOpenEndgameMapFromHub();
                     return;
@@ -485,6 +485,12 @@ void GameScene::Update() {
         }
         if (!anyEnemyAlive) {
             spdlog::info("Zone cleared!");
+            auto& campaign = CampaignManager::Instance();
+            int pendingCol, pendingRow;
+            if (campaign.GetPendingAtlasNode(pendingCol, pendingRow) && registry->HasComponent<AtlasComponent>(playerEntity)) {
+                AtlasData::MarkCompleted(registry->GetComponent<AtlasComponent>(playerEntity), pendingCol, pendingRow);
+                campaign.ClearPendingAtlasNode();
+            }
             AdvanceToNextZone();
             return;
         }
@@ -527,7 +533,7 @@ void GameScene::Render(sf::RenderTarget& target) {
                 hudLine = "Press Enter to re-enter your Tier " + std::to_string(campaign.GetEndgameMapTier())
                     + " map (" + std::to_string(campaign.GetMapDeathsRemaining()) + " portals left)";
             } else {
-                hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
+                hudLine = "Press Enter to open the Atlas (Waystones held: " + HeldWaystoneSummary() + ")";
             }
         }
         else if (m_nearNpcIndex >= 0) hudLine = NpcHudHint(m_townNpcs[m_nearNpcIndex].kind);
@@ -568,7 +574,7 @@ void GameScene::Render(sf::RenderTarget& target) {
         // 地面のアイテムにカーソルが乗っている間、名前をカーソル脇に表示する
         // (マウスが実際にUIパネルへ重なっている間だけ誤表示を防ぐため止める)。
         sf::Vector2f mouseScreenPosForHover = InputManager::Instance().GetMouseInput().GetMousePointF();
-        bool uiOwnsClicksForHover = passiveTreeSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen ||
+        bool uiOwnsClicksForHover = passiveTreeSystem->isOpen || atlasSystem->isOpen || vendorSystem->isOpen || keyBindSystem->isOpen ||
             inventorySystem->IsPointInPanel(mouseScreenPosForHover, target.getSize()) ||
             characterSheetSystem->IsPointInPanel(mouseScreenPosForHover) ||
             skillGemSystem->IsPointInPanel(mouseScreenPosForHover);
@@ -659,6 +665,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     characterSheetSystem->Render(*registry, target);
     inventorySystem->Render(*registry, target);
     passiveTreeSystem->Render(*registry, target);
+    atlasSystem->Render(*registry, target);
     vendorSystem->Render(*registry, target);
     waystoneVendorSystem->Render(*registry, target);
     stashSystem->Render(*registry, target);

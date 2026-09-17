@@ -59,6 +59,15 @@ class CampaignManager : public Singleton<CampaignManager> {
     int m_mapDeathsRemaining = 0;
     std::vector<WaystoneMod> m_activeMapMods;
 
+    // Which Atlas node (see AtlasSystem/AtlasData) the current map attempt was opened
+    // from, if any -- set right before entering the map, consumed on a successful clear
+    // (marks the node completed) or cleared without completing if the attempt ends in
+    // failure (all 6 portals used). Not persisted, same reasoning as the map attempt
+    // fields above.
+    bool m_pendingAtlasNodeValid = false;
+    int m_pendingAtlasCol = 0;
+    int m_pendingAtlasRow = 0;
+
     bool m_hasSavedPlayer = false;
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
@@ -70,6 +79,7 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, 5> m_savedAuraLoadout = { -1, -1, -1, -1, -1 };
     std::array<bool, 5> m_savedAuraActive = { false, false, false, false, false };
+    std::vector<std::pair<int, int>> m_savedAtlasNodes;
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -102,6 +112,18 @@ public:
     // portals; once none remain, the attempt closes (HasActiveMapAttempt() becomes
     // false) and the next map requires a fresh Waystone.
     void ConsumeMapDeath();
+
+    // Atlas node tied to the currently-open map attempt (see AtlasSystem::TryOpenSelected/
+    // GameScene's zone-cleared handling). GetPendingAtlasNode returns false (and leaves
+    // col/row untouched) if no map was opened from an Atlas node this attempt.
+    void SetPendingAtlasNode(int col, int row) { m_pendingAtlasNodeValid = true; m_pendingAtlasCol = col; m_pendingAtlasRow = row; }
+    bool GetPendingAtlasNode(int& col, int& row) const {
+        if (!m_pendingAtlasNodeValid) return false;
+        col = m_pendingAtlasCol;
+        row = m_pendingAtlasRow;
+        return true;
+    }
+    void ClearPendingAtlasNode() { m_pendingAtlasNodeValid = false; }
 
     // 死亡時: エンドゲームハブへ戻す
     void ReturnToLastTown();
@@ -138,6 +160,12 @@ public:
 
     void SaveAuraActive(const std::array<bool, 5>& active) { m_savedAuraActive = active; }
     const std::array<bool, 5>& GetSavedAuraActive() const { return m_savedAuraActive; }
+
+    // Atlas progress (see AtlasComponent/AtlasData). Stored as plain (col, row) pairs
+    // rather than AtlasData's packed key format, so CampaignManager stays agnostic of
+    // that encoding (same reasoning as m_savedPassiveTree storing raw node ids).
+    void SaveAtlasNodes(const std::vector<std::pair<int, int>>& nodes) { m_savedAtlasNodes = nodes; }
+    const std::vector<std::pair<int, int>>& GetSavedAtlasNodes() const { return m_savedAtlasNodes; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

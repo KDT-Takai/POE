@@ -4,6 +4,14 @@
 
 ## 済 (Done)
 
+**PoE2風の全画面Atlas(無限に広がるマップ選択画面)を実装**。直前のバッチで「今回スコープ外」としていたAtlas風マップ選択UIについて、続けて「実装して」との指示を受け実装した。
+- `AtlasComponent`(`External/ECS/Components/Progression/Atlas.h`、クリア済みノード座標のみ保持)+`AtlasData`(`External/ECS/Systems/Progression/AtlasData.h`、座標→ティア/隣接/画面座標を都度算出する純粋関数群、ノード自体は無限グリッドのため保存しない)+`AtlasSystem`(`External/ECS/Systems/Progression/AtlasSystem.h`、`PassiveTreeSystem`と同じ全画面パン/ズームUIパターンを踏襲)の3点構成。
+- 拠点のポータルEnterキー(`GameScene::TryOpenEndgameMapFromHub`)の挙動を「バッグ内最高ティアWaystoneを即消費してマップへ」から「マップアタempt中でなければAtlas画面を開く」へ変更。Atlas画面でノードを選択し「Open Map」を押すと、そのノードのティア(開始点からのチェビシェフ距離+1、`AtlasData::TierForCoord`)に一致するWaystoneをバッグから1個消費して`CampaignManager::OpenEndgameMap`+新設`SetPendingAtlasNode`を呼ぶ。実際のゾーン遷移は既存の`AdvanceToNextZone`にそのまま乗せる(`AtlasSystem::ConsumeMapStartRequest()`を`GameScene::Update`が毎フレーム確認、trueなら`AdvanceToNextZone()`)。
+- ノードは開始ノード(0,0、常時クリア済み扱い)から隣接クリア済みノードを辿って解放される(`AtlasData::IsUnlocked`)。表示範囲は既クリア最遠距離+2まで(`AtlasSystem::VisibleRadius`)で、進むほど画面上のノード数が増えていく「無限に広がる」挙動を実現。一度解放したノードは実際のPoE2同様クリア後も再度選択可能(周回ファーミング用途、再ロックしない)。
+- マップクリア時(`GameScene::Update`のゾーンクリア判定)に`CampaignManager::GetPendingAtlasNode`で対象ノードを特定し`AtlasData::MarkCompleted`でクリア済みにする。6回死亡してポータルを使い切り失敗した場合は`CampaignManager::ConsumeMapDeath`がペンディングノードを破棄するのみでノードはクリア済みにならない(再挑戦は可能)。
+- セーブ/ロード: `CampaignManager`に`m_savedAtlasNodes`(`atlas.count`/`atlas.node{i}.col/.row`、平文の座標ペアとして保存しAtlasData独自のパック形式には依存しない設計、`m_savedPassiveTree`と同じ思想)を追加。
+- ビルド確認済み(`/t:Build`、0エラー)。バックグラウンド起動でのクラッシュ無し確認も実施。ただし実際のマウス操作によるプレイテスト(ノード選択→Waystone消費→マップクリア→隣接ノード解放→再訪、という一連の流れ)は本セッションの制約上未実施。
+
 **Waystoneをインベントリの通常アイテム化+MODシステム+ポータル/デス制へ改修(レベルカーブも修正)**。「修正点。まず行けるレベルは2lvは5から。3lvは15lvからにしよう。あと、ウェイストーンは普通のアイテムと同じようにアイテム欄で所持する。なのでアイテムがいっぱいの時は買えない。また...ウェイストーンにはPOE2と同じくMODをつける。例えば元素耐性が下がったり。あと、マップデバイスで開くと最大6個のポータルが出る。要するに最大6回死ぬことが可能。それ以上死ぬとマップは閉じてしまう」という指示に対応(A/B/D/Eを実装、C=Atlasツリー風の無限マップ選択画面は今回のスコープ外、下記参照)。
 - **①レベルカーブの修正**: 前回実装した`MaxTierForLevel(level) = clamp(level, 1, 15)`(1:1対応)を撤回し、`WaystoneVendorSystem::RequiredLevelForTier`をテーブル方式(`{1,5,15,22,29,36,43,50,57,64,71,78,85,92,99}`)へ変更。指定された2点(Tier2=Lv5, Tier3=Lv15)を固定アンカーとし、Tier4以降はTier15がLv99に収まるよう+7/レベルの線形カーブで補間した(この後半カーブはユーザー未確認の暫定値、要フィードバック)。
 - **②Waystoneをインベントリアイテム化**: `WaystoneInventoryComponent`(ティア別カウント配列)/`WaystonePickupComponent`を全廃し、`ItemComponent`に`category`(`Gear`/`Waystone`)判別フィールドを追加(`slot`/`affixes`はGear専用、`waystoneTier`/`waystoneMods`はWaystone専用として同じ構造体を共用、既存の全アイテムグリッド/売買/拾得/保存パイプラインにそのまま乗せるため)。`ItemUIHelpers::ItemGridSize`にアイテム受け取りオーバーロードを追加し、`VendorSystem`/`InventorySystem`/`StashSystem`/`ItemPickupSystem`の全呼び出し箇所を追従。Waystoneは1x1マスとしてバッグ/Stash/Vendorに現れ、`WaystoneVendorSystem::TryBuy`はバッグに空きが無いと「Inventory full」で購入を拒否する(拾う時と同じ`FindBagFreeSpace`判定を共有)。装備防止(`QuickEquip`)・比較ツールチップ・ソケット数計算(`SocketCount`)にも`category==Gear`ガードを追加(Waystoneが武器スロットへ装備可能に見えてしまう欠陥を実装中に発見し修正)。
@@ -11,7 +19,7 @@
 - **④マップデバイスのポータル/デス制(最大6回死亡まで許容)**: `CampaignManager`に「マップアタempt」状態(`m_mapAttemptActive`/`m_mapDeathsRemaining`/`m_activeMapMods`、ゾーン/エンティティ状態と同様に非永続)を新設。`OpenEndgameMap`はWaystone消費時にdeathsRemaining=6で開始、`GameScene`の死亡処理で`ConsumeMapDeath()`を呼び残機を減算、0を切るとマップ強制クローズ(ハブへ送還)。既にアタempt中にマップデバイスへ再入場する場合はWaystoneを消費せず無料で再入場する(`HasActiveMapAttempt()`で分岐)。実装中に「`OpenEndgameMap`が`m_zoneIndex=1`を直接代入した直後、同じ呼び出し内の`CompleteCurrentZoneAndAdvance`のトグル計算で即座に0へ戻ってしまい、マップへ実際には移動できない」という潜在バグを発見・修正(直接代入を削除しトグルのみに依存)。
 - 旧`External/ECS/Components/Item/Waystone.h`は全コード箇所の移行完了を確認の上で削除、`Game-SFML.vcxproj`からも除去。
 - ビルド確認済み(`/t:Build`、0エラー)。バックグラウンド起動でのクラッシュ無し確認も実施。ただし実際のマウス操作によるプレイテスト(購入→満杯拒否→マップ挑戦→MOD反映→6回死亡でクローズ、という一連の流れ)は本セッションの制約上未実施。
-- **今回スコープ外**: 指示にあった「マップデバイスで開くと...パッシブツリーのような感じで無限に広がるマップをひたすら進めていく」というAtlas風の無限マップ選択UIは実装していない。手続き的に無限生成されるノードグラフの永続データ構造+専用の全画面UIという、本バッチの他4項目とは独立した規模の新機能になると判断し、今回は見送った(現状のマップ選択は「バッグ内のWaystoneを消費してその場でマップを開く」という従来のシンプルな仕組みのまま)。将来実装する場合は`PassiveTreeSystem`の全画面パン/ズームUIパターンが流用できる可能性がある。
+- **(このバッチでは)スコープ外としていたが、直後の指示で追加実装済み**: 指示にあった「マップデバイスで開くと...パッシブツリーのような感じで無限に広がるマップをひたすら進めていく」というAtlas風の無限マップ選択UIは、当初は独立した規模の新機能になると判断し見送ったが、ユーザーから続けて「実装して」との指示を受け、このすぐ上の「PoE2風の全画面Atlas」エントリで実装済み。
 
 **Waystone Tier1を無料化し、購入可能な上限をキャラクターレベルに連動**。「ウェイストーンlv1は無料にしよう あと自分のレベルで行けるウェイストーンの上限解放にしたい」という指示に対応。
 - `WaystoneVendorSystem::PriceForTier`をTier1のみ0ゴールドに変更(最初のマップに挑戦する手段が無い詰みを防ぐ)。
