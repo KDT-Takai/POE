@@ -20,6 +20,9 @@ struct ZoneDefinition {
 
     int mapWidth = 60;
     int mapHeight = 60;
+    float tileSize = 64.0f; // world px per tile (see MapComponent) -- per-zone so a
+    // single zone (e.g. the endgame map) can use finer/smaller tiles without affecting
+    // the town's already-tuned scale.
 
     int enemyCount = 20;
     float enemyHpMult = 1.0f;

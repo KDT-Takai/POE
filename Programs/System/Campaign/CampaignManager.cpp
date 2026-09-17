@@ -257,10 +257,16 @@ void CampaignManager::BuildActs() {
         act.displayName = "エンドゲーム：地図の狭間";
         act.isEndgame = true;
         act.zones.push_back(MakeTown("endgame_hub", "地図の間"));
-        // 90x90(旧70x70から拡張、「マップをもう少し広くして」の指示対応)。敵数は
-        // 面積比(8100/4900)に合わせて18→30へ増やし、広くなった分だけ間延びしないようにした。
-        act.zones.push_back(MakeBoss("endgame_map", "歪んだ地図", 90, 90, 30, 3.2f, 3.0f, "歪みの落とし子", sf::Color(200, 40, 160),
-            "地図の歪みの化身", 14.0f, 3.5f, sf::Color(255, 0, 120), DamageElement::Lightning));
+        // タイル数130x130(旧90x90からさらに拡張)+タイルサイズ48px(既定64pxから縮小、
+        // 「タイルの大きさを小さくしてマップひろくして」の指示対応)。ワールド座標での
+        // 実サイズは130*48=6240pxで旧90*64=5760pxよりなお広く、かつタイル細分化で
+        // 見た目の解像度も上がる。敵数は面積比(16900/8100)に合わせて30→62へ増やした。
+        // タウン(endgame_hub)は既に別フィードバックでサイズ調整済みのためtileSizeは
+        // 既定の64pxのまま変更しない。
+        ZoneDefinition endgameMap = MakeBoss("endgame_map", "歪んだ地図", 130, 130, 62, 3.2f, 3.0f, "歪みの落とし子", sf::Color(200, 40, 160),
+            "地図の歪みの化身", 14.0f, 3.5f, sf::Color(255, 0, 120), DamageElement::Lightning);
+        endgameMap.tileSize = 48.0f;
+        act.zones.push_back(endgameMap);
         m_acts.push_back(act);
     }
 }

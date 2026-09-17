@@ -8,11 +8,12 @@
 
 class MapGenerator {
 public:
-    static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100) {
+    static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100, float tileSize = 64.0f) {
         auto entity = registry.CreateEntityObject();
 
         entity.AddComponent(MapComponent{});
         auto& map = entity.GetComponent<MapComponent>();
+        map.tileSize = tileSize;
 
         // ユーザーの好みでランダムウォーク方式に戻した(部屋+通路方式は区画的で
         // 狭く感じるため、より広く開けたマップになるこちらを採用)。
@@ -22,10 +23,11 @@ public:
         return entity;
     }
 
-    static EntityObject CreateTownWorld(Registry& registry, int w = 30, int h = 20) {
+    static EntityObject CreateTownWorld(Registry& registry, int w = 30, int h = 20, float tileSize = 64.0f) {
         auto entity = registry.CreateEntityObject();
         entity.AddComponent(MapComponent{});
         auto& map = entity.GetComponent<MapComponent>();
+        map.tileSize = tileSize;
         map.Resize(w, h);
 
         for (int y = 0; y < h; ++y) {

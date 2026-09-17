@@ -29,8 +29,8 @@ public:
         ZoneBuildResult result;
 
         auto worldObj = (zone.kind == ZoneKind::Town)
-            ? MapGenerator::CreateTownWorld(registry, zone.mapWidth, zone.mapHeight)
-            : MapGenerator::CreateProceduralWorld(registry, zone.mapWidth, zone.mapHeight);
+            ? MapGenerator::CreateTownWorld(registry, zone.mapWidth, zone.mapHeight, zone.tileSize)
+            : MapGenerator::CreateProceduralWorld(registry, zone.mapWidth, zone.mapHeight, zone.tileSize);
         if (!worldObj) return result;
 
         auto& map = worldObj.GetComponent<MapComponent>();
@@ -226,11 +226,17 @@ private:
 
         auto& circle = boss.GetComponent<CircleComponent>();
         circle.color = zone.bossColor;
-        circle.radius = 36.0f;
+        circle.radius = 36.0f; // 直径72px
 
+        // CreateEnemy's default collider offset (10px/side) was tuned for its 40px visual
+        // -- left un-recalculated here, the boss's much bigger 72px circle would visually
+        // "めり込む"(sink) into walls by up to 22px on one side. Recompute for the new size
+        // with the same 3px-gap policy used everywhere else (see CreatePlayer/CreateEnemy).
         auto& collider = boss.GetComponent<BoxColliderComponent>();
-        collider.width = 48.0f;
-        collider.height = 48.0f;
+        collider.width = 66.0f;
+        collider.height = 66.0f;
+        collider.offsetX = 3.0f;
+        collider.offsetY = 3.0f;
 
         boss.AddComponent(TagComponent{ zone.bossName });
         boss.AddComponent(BossTag{});

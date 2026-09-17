@@ -81,8 +81,10 @@ public:
         circleVis.isVisible = true;
         entity.AddComponent(circleVis);
 
-        // �����蔻��
-        float colliderSize = 20.0f;
+        // 当たり判定。見た目の円(直径32px)よりだいぶ小さい判定(20px、片側6pxの
+        // 隙間)だと、円のフチが壁テクスチャへ視覚的に「めり込んで」見えるため、
+        // 隙間をpx単位(片側3px)まで詰めた("マップのめり込み"フィードバック対応)。
+        float colliderSize = 26.0f;
         float offset = (radius * 2.0f - colliderSize) / 2.0f;
         entity.AddComponent(BoxColliderComponent{ colliderSize, colliderSize, offset, offset, false, false });
 
@@ -134,8 +136,10 @@ public:
         registry.AddComponent<TransformComponent>(entity, TransformComponent{ position, {1.f, 1.f} });
         registry.AddComponent<CircleComponent>(entity, CircleComponent{ 20.0f, sf::Color::Red });
 
-        float colliderWidth = 20.0f;
-        float colliderHeight = 20.0f;
+        // Same "tighten the collider-to-visual gap to 3px" fix as the player (see
+        // CreatePlayer) -- was 20px collider vs. 40px visual (10px gap per side).
+        float colliderWidth = 34.0f;
+        float colliderHeight = 34.0f;
         float offsetX = (40.0f - colliderWidth) / 2.0f;
         float offsetY = (40.0f - colliderHeight) / 2.0f;
 
@@ -177,7 +181,8 @@ public:
         entity.AddComponent(TransformComponent{ position, {1.f, 1.f}, 0.f });
         entity.AddComponent(CircleComponent{ 18.0f, sf::Color(80, 220, 220), true });
 
-        float colliderSize = 20.0f;
+        // Same 3px collider-to-visual gap policy as the player/enemy (was 8px per side).
+        float colliderSize = 30.0f;
         float offset = (36.0f - colliderSize) / 2.0f;
         entity.AddComponent(BoxColliderComponent{ colliderSize, colliderSize, offset, offset, false, false });
 
