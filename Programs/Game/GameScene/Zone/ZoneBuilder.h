@@ -42,12 +42,14 @@ public:
         if (zone.kind == ZoneKind::Town) {
             SpawnPortal(registry, goalPos);
             result.hasPortal = true;
-            result.portalPos = goalPos;
+            // goalPos is the portal entity's top-left TransformComponent anchor (see
+            // RenderSystem, which always draws a CircleComponent centered at
+            // position + radius) -- offset by the same radius here so the click-range
+            // ring/proximity check GameScene does against portalPos actually lines up
+            // with where the portal is drawn, instead of sitting at its top-left corner.
+            result.portalPos = goalPos + sf::Vector2f(kPortalMarkerRadius, kPortalMarkerRadius);
 
-            result.townNpcs = PlaceTownNpcs(map, startPos, goalPos);
-            for (const auto& npc : result.townNpcs) {
-                SpawnNpcMarker(registry, npc.pos, npc.kind);
-            }
+            result.townNpcs = PlaceTownNpcs(registry, map, startPos, goalPos);
 
             return result;
         }
@@ -81,6 +83,18 @@ public:
     }
 
 private:
+    // RenderSystem draws every CircleComponent centered at transform.position + radius
+    // (position is the entity's top-left anchor, not its visual center -- see
+    // RenderSystem::Render). SpawnPortal/SpawnNpcMarker below spawn their entities with
+    // that same top-left convention, so ZoneBuildResult::portalPos/TownNpcSpawn::pos must
+    // add this same radius offset to actually line up with where the circle is drawn --
+    // otherwise the click-range ring GameScene draws (and the click/proximity checks
+    // themselves) end up centered on the shape's top-left corner instead of its visible
+    // center, which is what caused the reported "talk range doesn't line up with the NPC"
+    // misalignment.
+    static constexpr float kPortalMarkerRadius = 24.0f;
+    static constexpr float kTownNpcMarkerRadius = 20.0f;
+
     static float Distance(const sf::Vector2f& a, const sf::Vector2f& b) {
         float dx = a.x - b.x, dy = a.y - b.y;
         return std::sqrt(dx * dx + dy * dy);
@@ -264,7 +278,7 @@ private:
     static void SpawnPortal(Registry& registry, sf::Vector2f pos) {
         auto portal = registry.CreateEntityObject();
         portal.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
-        portal.AddComponent(CircleComponent{ 24.0f, sf::Color(255, 210, 60), true });
+        portal.AddComponent(CircleComponent{ kPortalMarkerRadius, sf::Color(255, 210, 60), true });
         portal.AddComponent(TagComponent{ "Portal" });
         portal.AddComponent(InteractableComponent{ InteractType::Portal, true, false, false, -1 });
     }
@@ -274,15 +288,15 @@ private:
         npc.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
         switch (kind) {
         case TownNpcKind::ItemVendor:
-            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(80, 200, 255), true });
+            npc.AddComponent(CircleComponent{ kTownNpcMarkerRadius, sf::Color(80, 200, 255), true });
             npc.AddComponent(TagComponent{ "Vendor" });
             break;
         case TownNpcKind::WaystoneVendor:
-            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(200, 150, 255), true });
+            npc.AddComponent(CircleComponent{ kTownNpcMarkerRadius, sf::Color(200, 150, 255), true });
             npc.AddComponent(TagComponent{ "Waystone Vendor" });
             break;
         case TownNpcKind::Stash:
-            npc.AddComponent(CircleComponent{ 20.0f, sf::Color(150, 110, 60), true });
+            npc.AddComponent(CircleComponent{ kTownNpcMarkerRadius, sf::Color(150, 110, 60), true });
             npc.AddComponent(TagComponent{ "Stash" });
             break;
         }
@@ -291,8 +305,11 @@ private:
     // Picks well-separated walkable spots for the town's NPCs (item Vendor, Waystone
     // Vendor, Stash), avoiding the player's spawn point and the portal so nothing spawns
     // on top of either. Falls back to the map center for any NPC that couldn't find a
-    // spread-out spot (e.g. a very small/cramped town layout).
-    static std::vector<TownNpcSpawn> PlaceTownNpcs(const MapComponent& map, sf::Vector2f avoidA, sf::Vector2f avoidB) {
+    // spread-out spot (e.g. a very small/cramped town layout). Spawns each marker here
+    // (rather than in a separate loop back in Build()) so it has both the raw top-left
+    // tile position (for the entity's TransformComponent) and can return the
+    // radius-adjusted center in the same place, instead of the two getting out of sync.
+    static std::vector<TownNpcSpawn> PlaceTownNpcs(Registry& registry, const MapComponent& map, sf::Vector2f avoidA, sf::Vector2f avoidB) {
         std::vector<sf::Vector2f> candidates = MapGenerator::GetWalkablePositions(map);
         float minAvoidDist = map.tileSize * 2.0f;
         candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](const sf::Vector2f& p) {
@@ -305,21 +322,25 @@ private:
 
         sf::Vector2f fallback(static_cast<float>(map.width / 2) * map.tileSize, static_cast<float>(map.height / 2) * map.tileSize);
         std::vector<TownNpcKind> kinds = { TownNpcKind::ItemVendor, TownNpcKind::WaystoneVendor, TownNpcKind::Stash };
+        std::vector<sf::Vector2f> chosenTopLefts; // separation check only, kept in the same (top-left) space as `candidates`
         std::vector<TownNpcSpawn> result;
         float minSeparation = map.tileSize * 2.5f;
+        sf::Vector2f centerOffset(kTownNpcMarkerRadius, kTownNpcMarkerRadius);
 
         for (TownNpcKind kind : kinds) {
             sf::Vector2f chosen = fallback;
             bool found = false;
             for (const auto& candidate : candidates) {
                 bool farEnough = true;
-                for (const auto& placed : result) {
-                    if (Distance(candidate, placed.pos) < minSeparation) { farEnough = false; break; }
+                for (const auto& placedTopLeft : chosenTopLefts) {
+                    if (Distance(candidate, placedTopLeft) < minSeparation) { farEnough = false; break; }
                 }
                 if (farEnough) { chosen = candidate; found = true; break; }
             }
             if (!found) chosen = fallback;
-            result.push_back({ kind, chosen });
+            chosenTopLefts.push_back(chosen);
+            SpawnNpcMarker(registry, chosen, kind);
+            result.push_back({ kind, chosen + centerOffset });
         }
         return result;
     }

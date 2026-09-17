@@ -30,16 +30,28 @@
 // Skill gems additionally have 2-5 support-gem sockets (Jeweller's Orb, spent from this
 // screen, expands them); Spirit/Aura gems don't, since their effect is a flat stat bonus
 // with nothing for a support gem's damage/cooldown/mana modifiers to act on.
+//
+// Visual language deliberately leans on PoE2's own conventions ("スキルジェムのUIを
+// POE2みたいに" -- colored gem icons instead of plain text rows, a card-style picker
+// instead of a thin text list) despite having no hand-drawn gem art: each gem's icon is
+// a plain circle tinted by its GemAttribute (Str/Dex/Int, same red/green/blue coding as
+// CharacterSheetSystem), and support sockets are tinted by SupportCategory. The picker
+// list is also now a clipped, mouse-wheel-scrollable viewport (see m_pickerScroll) --
+// previously it just kept drawing rows past the bottom of the panel with no way to reach
+// them once there were more than ~12 options, which was the main "追加しにくい" (hard to
+// add gems) complaint for the skill-gem list (17 entries).
 class SkillGemSystem {
 private:
     static constexpr int kSkillSlotCount = 5;
     static constexpr int kSpiritSlotCount = 5;
     static constexpr int kMaxPossibleSockets = 5;
-    static constexpr float kSocketBoxW = 82.0f;
-    static constexpr float kSocketBoxH = 16.0f;
-    static constexpr float kSocketGap = 4.0f;
-    static constexpr float kToggleBtnW = 46.0f;
-    static constexpr float kToggleBtnH = 18.0f;
+    static constexpr float kIconRadius = 15.0f;
+    static constexpr float kSocketBoxW = 88.0f;
+    static constexpr float kSocketBoxH = 18.0f;
+    static constexpr float kSocketGap = 5.0f;
+    static constexpr float kToggleBtnW = 48.0f;
+    static constexpr float kToggleBtnH = 20.0f;
+    static constexpr float kScrollBarW = 6.0f;
 
     // Shared row geometry, computed once so Update()'s click hit-testing and Render()'s
     // drawing can never drift apart. Declared this early (not just before ComputeLayout)
@@ -49,8 +61,8 @@ private:
     struct Layout {
         float uncutGemsRowY;
         float skillRowY;
-        float skillRowHeight;  // full row incl. the socket sub-line below the name/stats line
-        float skillMainLineH;  // click area for just the name/stats line
+        float skillRowHeight;  // full row incl. the socket sub-line below the icon/name line
+        float skillMainLineH;  // click area for just the icon/name line
         float socketLineOffsetY; // offset within a skill row where the socket line starts
         float spiritLabelY;
         float spiritRowY;
@@ -58,6 +70,7 @@ private:
         float pickerHeaderY;
         float pickerRowY;
         float pickerRowHeight;
+        float pickerViewportH; // clipped/scrollable picker area height
     };
 
     std::shared_ptr<sf::Font> m_font;
@@ -67,6 +80,7 @@ private:
     // the skill currently equipped in m_selectedSlot (only meaningful when m_selectedSlot
     // is a skill slot).
     int m_selectedSocket = -1;
+    float m_pickerScroll = 0.0f;
 
 public:
     bool isOpen = false;
@@ -77,7 +91,7 @@ public:
         m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     }
 
-    void Toggle() { isOpen = !isOpen; }
+    void Toggle() { isOpen = !isOpen; m_pickerScroll = 0.0f; }
     void Close() { isOpen = false; }
 
     // Used by GameScene to resolve click ownership between the non-pausing menus:
@@ -88,9 +102,10 @@ public:
     }
 
     // Selection and assignment are entirely mouse-driven: click a slot row to select it,
-    // then click a gem in the list below to socket it. The old Up/Down/Left/Right keyboard
-    // navigation was removed because this menu doesn't pause the world, so those arrow
-    // keys were simultaneously moving the player (see InputSystem's movement handling).
+    // then click a gem in the (scrollable) list below to socket it. The old Up/Down/
+    // Left/Right keyboard navigation was removed because this menu doesn't pause the
+    // world, so those arrow keys were simultaneously moving the player (see InputSystem's
+    // movement handling).
     void Update(Registry& registry, float dt, GemIdentifySystem& gemIdentifySystem) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
@@ -104,11 +119,27 @@ public:
         auto& equipment = registry.GetComponent<EquipmentComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
+        Layout L = ComputeLayout();
+        sf::Vector2f mouseAny = InputManager::Instance().GetMouseInput().GetMousePointF();
+
+        // Mouse-wheel scroll over the picker viewport -- independent of the left-click
+        // gate below, since scrolling shouldn't require holding/clicking anything.
+        float wheel = InputManager::Instance().GetMouseWheelDelta();
+        if (wheel != 0.0f) {
+            sf::FloatRect pickerClip({ kPanelX, L.pickerRowY }, { kPanelW, L.pickerViewportH });
+            if (pickerClip.contains(mouseAny)) {
+                int optCount = (m_selectedSocket >= 0)
+                    ? static_cast<int>(SupportOptions(HostSkillTags(skillComp), gemInventory).size())
+                    : static_cast<int>(Options(gemInventory, IsSpiritSlot()).size());
+                float contentH = static_cast<float>(optCount) * L.pickerRowHeight;
+                float maxScroll = (std::max)(0.0f, contentH - L.pickerViewportH);
+                m_pickerScroll = std::clamp(m_pickerScroll - wheel * L.pickerRowHeight, 0.0f, maxScroll);
+            }
+        }
+
         auto& mouseInput = InputManager::Instance().GetMouseInput();
         if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
         sf::Vector2f mouse = mouseInput.GetMousePointF();
-
-        Layout L = ComputeLayout();
 
         for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
             if (UncutGemRect(L, static_cast<int>(i)).contains(mouse)) {
@@ -120,13 +151,13 @@ public:
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             sf::FloatRect mainRect({ kPanelX + 12.0f, SkillRowY(L, i) }, { kPanelW - 24.0f, L.skillMainLineH });
-            if (mainRect.contains(mouse)) { m_selectedSlot = i; m_selectedSocket = -1; return; }
+            if (mainRect.contains(mouse)) { SelectSlot(i, -1); return; }
 
             if (skillComp.skills[i].isValid) {
                 OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skillComp.skills[i].gemId, false);
                 if (inst) {
                     for (int s = 0; s < inst->maxSockets && s < kMaxPossibleSockets; ++s) {
-                        if (SocketRect(L, i, s).contains(mouse)) { m_selectedSlot = i; m_selectedSocket = s; return; }
+                        if (SocketRect(L, i, s).contains(mouse)) { SelectSlot(i, s); return; }
                     }
                     if (inst->maxSockets < kMaxPossibleSockets && stats.jewellersOrbs > 0
                         && SocketRect(L, i, inst->maxSockets).contains(mouse)) {
@@ -149,13 +180,17 @@ public:
                 return;
             }
             sf::FloatRect rect({ kPanelX + 12.0f, SpiritRowY(L, i) }, { kPanelW - 24.0f, L.spiritRowHeight });
-            if (rect.contains(mouse)) { m_selectedSlot = kSkillSlotCount + i; m_selectedSocket = -1; return; }
+            if (rect.contains(mouse)) { SelectSlot(kSkillSlotCount + i, -1); return; }
         }
+
+        sf::FloatRect pickerClip({ kPanelX, L.pickerRowY }, { kPanelW, L.pickerViewportH });
+        if (!pickerClip.contains(mouse)) return;
 
         if (m_selectedSocket >= 0) {
             std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), gemInventory);
             for (size_t i = 0; i < opts.size(); ++i) {
-                sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
+                float rowY = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
+                sf::FloatRect rect({ kPanelX + 12.0f, rowY }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
                     AssignSupport(skillComp, gemInventory, stats, opts[i]);
                     return;
@@ -165,7 +200,8 @@ public:
             bool spiritSlot = IsSpiritSlot();
             std::vector<int> opts = Options(gemInventory, spiritSlot);
             for (size_t i = 0; i < opts.size(); ++i) {
-                sf::FloatRect rect({ kPanelX + 12.0f, L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight }, { kPanelW - 24.0f, L.pickerRowHeight });
+                float rowY = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
+                sf::FloatRect rect({ kPanelX + 12.0f, rowY }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
                     AssignSelected(registry, player, skillComp, loadout, gemInventory, equipment, stats, opts[i]);
                     return;
@@ -219,7 +255,7 @@ public:
         for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
             const PendingUncutGem& pending = gemInventory.pendingUncutGems[i];
             sf::FloatRect rect = UncutGemRect(L, static_cast<int>(i));
-            DrawButtonSmall(target, rect, KindAbbrev(pending.kind) + std::to_string(pending.level), sf::Color(90, 60, 90));
+            DrawButtonSmall(target, rect, KindAbbrev(pending.kind) + std::to_string(pending.level), UncutKindColor(pending.kind));
         }
         if (gemInventory.pendingUncutGems.empty()) {
             DrawText(target, panelX + 12.0f, L.uncutGemsRowY + 2.0f, "Uncut Gems: none", 11, sf::Color(120, 120, 120));
@@ -232,20 +268,30 @@ public:
             sf::RectangleShape highlight({ panelW - 24.0f, L.skillRowHeight - 2.0f });
             highlight.setPosition({ panelX + 12.0f, y });
             highlight.setFillColor(selected ? sf::Color(60, 60, 90, 180) : sf::Color(35, 35, 40, 140));
-            highlight.setOutlineColor(sf::Color(90, 90, 100));
-            highlight.setOutlineThickness(1.0f);
+            highlight.setOutlineColor(selected ? sf::Color(140, 140, 220) : sf::Color(90, 90, 100));
+            highlight.setOutlineThickness(selected ? 2.0f : 1.0f);
             target.draw(highlight);
 
             const SkillData& skill = skillComp.skills[i];
-            std::string line = "[" + kSlotKeys[i] + "] " + (skill.isValid ? skill.name : "-- Empty --");
-            if (skill.isValid) {
-                line += " Lv" + std::to_string(skill.level) + "  (cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp";
-                if (DealsElementalDamage(skill.behaviorType)) line += ", " + ElementName(skill.element);
-                line += ")";
-            }
+            const GemDefinition* def = skill.isValid ? SkillGemData::Find(skill.gemId) : nullptr;
+            sf::Vector2f iconCenter(panelX + 12.0f + 6.0f + kIconRadius, y + L.skillMainLineH / 2.0f);
+            DrawGemIcon(target, iconCenter, kIconRadius, def ? AttributeColor(def->primaryAttribute) : sf::Color(40, 40, 45),
+                skill.isValid, kSlotKeys[i]);
 
-            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth, 12), 12,
-                skill.isValid ? sf::Color(220, 220, 220) : sf::Color(120, 120, 120));
+            float textX = panelX + 12.0f + 6.0f + kIconRadius * 2.0f + 10.0f;
+            float textContentW = contentWidth - (textX - panelX);
+            std::string line = skill.isValid ? skill.name : "-- Empty --";
+            if (skill.isValid) {
+                line += " Lv" + std::to_string(skill.level);
+            }
+            DrawText(target, textX, y + 2.0f, Truncate(line, textContentW, 13), 13,
+                skill.isValid ? sf::Color(230, 230, 230) : sf::Color(120, 120, 120));
+
+            if (skill.isValid) {
+                std::string statLine = "cd " + FormatFloat(skill.cooldownTime) + "s, " + std::to_string(skill.mpCost) + " mp";
+                if (DealsElementalDamage(skill.behaviorType)) statLine += ", " + ElementName(skill.element);
+                DrawText(target, textX, y + 18.0f, Truncate(statLine, textContentW, 11), 11, sf::Color(170, 170, 175));
+            }
 
             if (skill.isValid) {
                 OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skill.gemId, false);
@@ -276,20 +322,35 @@ public:
             sf::RectangleShape highlight({ panelW - 24.0f, L.spiritRowHeight - 2.0f });
             highlight.setPosition({ panelX + 12.0f, y });
             highlight.setFillColor(selected ? sf::Color(60, 90, 90, 180) : sf::Color(35, 40, 40, 140));
-            highlight.setOutlineColor(sf::Color(90, 100, 100));
-            highlight.setOutlineThickness(1.0f);
+            highlight.setOutlineColor(selected ? sf::Color(120, 200, 200) : sf::Color(90, 100, 100));
+            highlight.setOutlineThickness(selected ? 2.0f : 1.0f);
             target.draw(highlight);
 
             int gemId = loadout.auraGemIds[i];
             const GemDefinition* def = gemId >= 0 ? SkillGemData::Find(gemId) : nullptr;
             bool active = def && loadout.active[i];
-            std::string line = "[Spirit " + std::to_string(i + 1) + "] " + (def ? def->skill.name : "-- Empty --");
+
+            sf::Vector2f iconCenter(panelX + 12.0f + 6.0f + kIconRadius, y + L.spiritRowHeight / 2.0f);
+            DrawGemIcon(target, iconCenter, kIconRadius, def ? AttributeColor(def->primaryAttribute) : sf::Color(40, 40, 45),
+                def != nullptr, "");
+            if (active) {
+                sf::CircleShape activeRing(kIconRadius + 3.0f);
+                activeRing.setOrigin({ kIconRadius + 3.0f, kIconRadius + 3.0f });
+                activeRing.setPosition(iconCenter);
+                activeRing.setFillColor(sf::Color::Transparent);
+                activeRing.setOutlineColor(sf::Color(120, 255, 160));
+                activeRing.setOutlineThickness(2.0f);
+                target.draw(activeRing);
+            }
+
+            float textX = panelX + 12.0f + 6.0f + kIconRadius * 2.0f + 10.0f;
+            float textContentW = contentWidth - (textX - panelX) - kToggleBtnW - 8.0f;
+            std::string line = def ? def->skill.name : "-- Empty --";
             if (def) {
                 int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
                 line += " Lv" + std::to_string(level) + "  (" + FormatFloat(SpiritAuraSystem::SpiritCostOf(gemId, gemInventory)) + " spirit)";
             }
-
-            DrawText(target, panelX + 16.0f, y + 2.0f, Truncate(line, contentWidth - kToggleBtnW - 8.0f, 12), 12,
+            DrawText(target, textX, y + L.spiritRowHeight / 2.0f - 7.0f, Truncate(line, textContentW, 12), 12,
                 def ? sf::Color(180, 230, 230) : sf::Color(120, 120, 120));
 
             if (def) {
@@ -299,19 +360,69 @@ public:
             }
         }
 
+        // Picker viewport: clipped to its own rect (via a scoped view, same technique as
+        // PassiveTreeSystem/AtlasSystem's tree/node-graph area) so a long option list
+        // scrolls within a fixed box instead of spilling past the panel with no way to
+        // reach the lower entries.
+        std::vector<int> pickerOpts = (m_selectedSocket >= 0)
+            ? SupportOptions(HostSkillTags(skillComp), gemInventory)
+            : Options(gemInventory, IsSpiritSlot());
+
+        DrawText(target, panelX + 12.0f, L.pickerHeaderY,
+            (m_selectedSocket >= 0)
+                ? "Support gems for socket " + std::to_string(m_selectedSocket + 1) + " (click to socket):"
+                : (IsSpiritSlot() ? "Available Spirit gems (click to socket):" : "Available skill gems (click to socket):"),
+            13, sf::Color(200, 200, 200));
+
+        sf::Vector2u winSize = target.getSize();
+        sf::View pickerView(sf::FloatRect({ panelX, L.pickerRowY }, { panelW, L.pickerViewportH }));
+        pickerView.setViewport(sf::FloatRect(
+            { panelX / static_cast<float>(winSize.x), L.pickerRowY / static_cast<float>(winSize.y) },
+            { panelW / static_cast<float>(winSize.x), L.pickerViewportH / static_cast<float>(winSize.y) }));
+        target.setView(pickerView);
+
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), gemInventory);
-            RenderSupportPicker(target, L, panelX, contentWidth, opts, skillComp, gemInventory, stats);
+            RenderSupportPicker(target, L, panelX, contentWidth, pickerOpts, skillComp, gemInventory, stats);
         } else {
-            bool spiritSlot = IsSpiritSlot();
-            std::vector<int> opts = Options(gemInventory, spiritSlot);
-            RenderGemPicker(target, L, panelX, contentWidth, opts, spiritSlot, skillComp, loadout, gemInventory, stats);
+            RenderGemPicker(target, L, panelX, contentWidth, pickerOpts, IsSpiritSlot(), skillComp, loadout, gemInventory, stats);
+        }
+
+        target.setView(target.getDefaultView());
+
+        // Scrollbar affordance -- only shown once content actually overflows the
+        // viewport, so it doesn't clutter short lists (Spirit gems, support options).
+        float contentH = static_cast<float>(pickerOpts.size()) * L.pickerRowHeight;
+        if (contentH > L.pickerViewportH) {
+            sf::FloatRect track({ panelX + panelW - kScrollBarW - 4.0f, L.pickerRowY }, { kScrollBarW, L.pickerViewportH });
+            sf::RectangleShape trackShape(track.size);
+            trackShape.setPosition(track.position);
+            trackShape.setFillColor(sf::Color(40, 40, 45));
+            target.draw(trackShape);
+
+            float thumbH = (std::max)(16.0f, L.pickerViewportH * (L.pickerViewportH / contentH));
+            float maxScroll = contentH - L.pickerViewportH;
+            float thumbY = track.position.y + (maxScroll > 0.0f ? (m_pickerScroll / maxScroll) * (L.pickerViewportH - thumbH) : 0.0f);
+            sf::RectangleShape thumb({ kScrollBarW, thumbH });
+            thumb.setPosition({ track.position.x, thumbY });
+            thumb.setFillColor(sf::Color(130, 130, 150));
+            target.draw(thumb);
+        }
+
+        if (messageTimer > 0.0f && !lastActionMessage.empty()) {
+            DrawText(target, panelX + 12.0f, L.pickerRowY + L.pickerViewportH + 8.0f,
+                Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
         }
 
         target.setView(oldView);
     }
 
 private:
+    void SelectSlot(int slot, int socket) {
+        m_selectedSlot = slot;
+        m_selectedSocket = socket;
+        m_pickerScroll = 0.0f;
+    }
+
     void RenderGemPicker(sf::RenderTarget& target, const Layout& L, float panelX, float contentWidth,
         const std::vector<int>& opts, bool spiritSlot, const PlayerSkill& skillComp,
         const SpiritGemLoadoutComponent& loadout, const SkillGemInventoryComponent& gemInventory,
@@ -320,44 +431,34 @@ private:
             ? loadout.auraGemIds[m_selectedSlot - kSkillSlotCount]
             : (skillComp.skills[m_selectedSlot].isValid ? skillComp.skills[m_selectedSlot].gemId : -1);
 
-        DrawText(target, panelX + 12.0f, L.pickerHeaderY,
-            spiritSlot ? "Available Spirit gems (click to socket):" : "Available skill gems (click to socket):",
-            13, sf::Color(200, 200, 200));
-
         for (size_t i = 0; i < opts.size(); ++i) {
             int gemId = opts[i];
-            float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight;
+            float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
             bool current = (gemId == currentId);
 
-            sf::RectangleShape highlight({ kPanelW - 24.0f, L.pickerRowHeight });
-            highlight.setPosition({ panelX + 12.0f, y });
-            highlight.setFillColor(current ? sf::Color(70, 100, 70, 180) : sf::Color(30, 30, 34, 120));
-            target.draw(highlight);
+            std::string name = "-- Empty --";
+            std::string reqLine;
+            sf::Color iconColor(60, 60, 65);
+            sf::Color statusColor(200, 220, 255);
+            bool hasIcon = false;
 
-            std::string label;
-            sf::Color color = sf::Color(200, 200, 200);
-            if (gemId < 0) {
-                label = "-- Empty --";
-            } else {
+            if (gemId >= 0) {
                 const GemDefinition* def = SkillGemData::Find(gemId);
                 if (!def) continue;
+                hasIcon = true;
+                iconColor = AttributeColor(def->primaryAttribute);
                 int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
-                label = def->skill.name + " Lv" + std::to_string(level);
-                if (DealsElementalDamage(def->skill.behaviorType)) {
-                    label += " (" + ElementName(def->skill.element) + ")";
-                }
+                name = def->skill.name + " Lv" + std::to_string(level);
+                if (DealsElementalDamage(def->skill.behaviorType)) name += " (" + ElementName(def->skill.element) + ")";
 
                 int required = SkillGemScaling::RequiredStat(def->baseRequirement, level);
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
-                label += "  [" + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute) + "]";
-                color = (have < required) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
+                reqLine = "Requires " + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
+                    + " (have " + std::to_string(have) + ")";
+                statusColor = (have < required) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
-            DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
-        }
 
-        float messageY = L.pickerRowY + static_cast<float>(opts.size()) * L.pickerRowHeight + 14.0f;
-        if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 12.0f, messageY, Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, current, statusColor);
         }
     }
 
@@ -370,56 +471,73 @@ private:
         int currentId = (inst && m_selectedSocket >= 0 && m_selectedSocket < kMaxPossibleSockets)
             ? inst->supportGemIds[m_selectedSocket] : -1;
 
-        DrawText(target, panelX + 12.0f, L.pickerHeaderY,
-            "Support gems for socket " + std::to_string(m_selectedSocket + 1) + " (click to socket):",
-            13, sf::Color(200, 200, 200));
-
         for (size_t i = 0; i < opts.size(); ++i) {
             int gemId = opts[i];
-            float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight;
+            float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
             bool current = (gemId == currentId);
 
-            sf::RectangleShape highlight({ kPanelW - 24.0f, L.pickerRowHeight });
-            highlight.setPosition({ panelX + 12.0f, y });
-            highlight.setFillColor(current ? sf::Color(70, 100, 70, 180) : sf::Color(30, 30, 34, 120));
-            target.draw(highlight);
+            std::string name = "-- Empty --";
+            std::string reqLine;
+            sf::Color iconColor(60, 60, 65);
+            sf::Color statusColor(200, 220, 255);
+            bool hasIcon = false;
 
-            std::string label;
-            sf::Color color = sf::Color(200, 200, 200);
-            if (gemId < 0) {
-                label = "-- Empty --";
-            } else {
+            if (gemId >= 0) {
                 const SupportGemDefinition* def = SupportGemData::Find(gemId);
                 if (!def) continue;
-                label = def->name;
+                hasIcon = true;
+                iconColor = CategoryColor(def->category);
+                name = def->name;
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
-                label += "  [" + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute) + "]";
                 bool categoryConflict = inst && HasCategoryConflict(*inst, m_selectedSocket, *def);
-                if (categoryConflict) label += " (category conflict)";
-                color = (have < def->requirement || categoryConflict) ? sf::Color(230, 100, 100) : sf::Color(220, 220, 255);
+                reqLine = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
+                    + " (have " + std::to_string(have) + ")";
+                if (categoryConflict) reqLine += " - category conflict";
+                statusColor = (have < def->requirement || categoryConflict) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
-            DrawText(target, panelX + 16.0f, y + L.pickerRowHeight / 2.0f - 7.0f, Truncate(label, contentWidth, 12), 12, color);
-        }
 
-        float messageY = L.pickerRowY + static_cast<float>(opts.size()) * L.pickerRowHeight + 14.0f;
-        if (messageTimer > 0.0f && !lastActionMessage.empty()) {
-            DrawText(target, panelX + 12.0f, messageY, Truncate(lastActionMessage, contentWidth, 12), 12, sf::Color(255, 230, 120));
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, current, statusColor);
+        }
+    }
+
+    // One picker option, PoE2-style: a colored gem icon + two-line text block (name on
+    // top, requirement/status below) inside a bordered card, instead of the old single
+    // line of dense text. `current` highlights whatever's already socketed there.
+    void DrawPickerCard(sf::RenderTarget& target, float panelX, float contentWidth, float y, float rowHeight,
+        const std::string& name, const std::string& reqLine, sf::Color iconColor, bool hasIcon, bool current, sf::Color statusColor) {
+        sf::RectangleShape card({ kPanelW - 24.0f, rowHeight - 4.0f });
+        card.setPosition({ panelX + 12.0f, y });
+        card.setFillColor(current ? sf::Color(55, 80, 60, 200) : sf::Color(28, 28, 33, 190));
+        card.setOutlineColor(current ? sf::Color(140, 220, 150) : sf::Color(80, 80, 90));
+        card.setOutlineThickness(current ? 2.0f : 1.0f);
+        target.draw(card);
+
+        float iconR = kIconRadius * 0.8f;
+        sf::Vector2f iconCenter(panelX + 12.0f + 10.0f + iconR, y + (rowHeight - 4.0f) / 2.0f);
+        DrawGemIcon(target, iconCenter, iconR, iconColor, hasIcon, "");
+
+        float textX = panelX + 12.0f + 10.0f + iconR * 2.0f + 10.0f;
+        float textW = contentWidth - (textX - panelX) - 8.0f;
+        DrawText(target, textX, y + 6.0f, Truncate(name, textW, 13), 13, sf::Color(225, 225, 230));
+        if (!reqLine.empty()) {
+            DrawText(target, textX, y + rowHeight - 20.0f, Truncate(reqLine, textW, 11), 11, statusColor);
         }
     }
 
     Layout ComputeLayout() const {
         Layout L;
         L.uncutGemsRowY = kPanelY + 22.0f;
-        L.skillRowY = L.uncutGemsRowY + 24.0f;
-        L.skillRowHeight = 40.0f;
-        L.skillMainLineH = 20.0f;
-        L.socketLineOffsetY = 20.0f;
-        L.spiritLabelY = L.skillRowY + static_cast<float>(kSkillSlotCount) * L.skillRowHeight + 6.0f;
-        L.spiritRowY = L.spiritLabelY + 16.0f;
-        L.spiritRowHeight = 22.0f;
+        L.skillRowY = L.uncutGemsRowY + 26.0f;
+        L.skillRowHeight = 54.0f;
+        L.skillMainLineH = 34.0f;
+        L.socketLineOffsetY = 34.0f;
+        L.spiritLabelY = L.skillRowY + static_cast<float>(kSkillSlotCount) * L.skillRowHeight + 8.0f;
+        L.spiritRowY = L.spiritLabelY + 18.0f;
+        L.spiritRowHeight = 36.0f;
         L.pickerHeaderY = L.spiritRowY + static_cast<float>(kSpiritSlotCount) * L.spiritRowHeight + 16.0f;
-        L.pickerRowY = L.pickerHeaderY + 20.0f;
-        L.pickerRowHeight = 20.0f;
+        L.pickerRowY = L.pickerHeaderY + 22.0f;
+        L.pickerRowHeight = 46.0f;
+        L.pickerViewportH = (std::max)(60.0f, (kPanelY + kPanelH) - L.pickerRowY - 34.0f);
         return L;
     }
 
@@ -449,11 +567,8 @@ private:
         return sf::FloatRect({ x, y }, { kToggleBtnW, kToggleBtnH });
     }
 
-    // Shared with CharacterSheetSystem's identical constants: the two panels are
-    // tab-switched (mutually exclusive, last one toggled wins) so they occupy the
-    // same screen slot.
-    static constexpr float kPanelW = 460.0f;
-    static constexpr float kPanelH = 680.0f;
+    static constexpr float kPanelW = 520.0f;
+    static constexpr float kPanelH = 720.0f;
     static constexpr float kPanelX = 20.0f;
     static constexpr float kPanelY = 20.0f;
 
@@ -514,6 +629,38 @@ private:
         case GemPickupKind::Support: return "Su";
         case GemPickupKind::Spirit: return "Sp";
         default: return "Sk";
+        }
+    }
+
+    // Uncut Gem chips get a color per kind (Skill/Support/Spirit) so they read as three
+    // visually distinct groups at a glance instead of a uniform-colored row.
+    static sf::Color UncutKindColor(GemPickupKind kind) {
+        switch (kind) {
+        case GemPickupKind::Support: return sf::Color(100, 70, 110);
+        case GemPickupKind::Spirit: return sf::Color(60, 100, 100);
+        default: return sf::Color(120, 85, 50);
+        }
+    }
+
+    // Same red/green/blue coding CharacterSheetSystem already uses for STR/DEX/INT, reused
+    // here so a gem's primary attribute reads consistently across both panels.
+    static sf::Color AttributeColor(GemAttribute attr) {
+        switch (attr) {
+        case GemAttribute::Str: return sf::Color(220, 90, 90);
+        case GemAttribute::Dex: return sf::Color(120, 200, 90);
+        case GemAttribute::Int: return sf::Color(100, 160, 230);
+        default: return sf::Color(160, 160, 160);
+        }
+    }
+
+    static sf::Color CategoryColor(SupportCategory category) {
+        switch (category) {
+        case SupportCategory::DamageMult: return sf::Color(210, 120, 60);
+        case SupportCategory::Speed: return sf::Color(120, 190, 120);
+        case SupportCategory::Utility: return sf::Color(110, 150, 210);
+        case SupportCategory::AreaMod: return sf::Color(170, 110, 200);
+        case SupportCategory::Duration: return sf::Color(90, 170, 170);
+        default: return sf::Color(150, 150, 150);
         }
     }
 
@@ -695,21 +842,42 @@ private:
         target.draw(text);
     }
 
+    // PoE2-style colored gem icon: a filled circle tinted by attribute/category (see
+    // AttributeColor/CategoryColor) when occupied, a dim outlined circle when empty, with
+    // an optional short badge (keybind letter) centered inside it.
+    void DrawGemIcon(sf::RenderTarget& target, sf::Vector2f center, float radius, sf::Color color, bool filled, const std::string& badge) {
+        sf::CircleShape circle(radius);
+        circle.setOrigin({ radius, radius });
+        circle.setPosition(center);
+        circle.setFillColor(filled ? color : sf::Color(30, 30, 34));
+        circle.setOutlineColor(filled ? sf::Color(240, 240, 245) : sf::Color(80, 80, 88));
+        circle.setOutlineThickness(filled ? 1.5f : 1.0f);
+        target.draw(circle);
+
+        if (!badge.empty()) {
+            sf::Text text(*m_font, sf::String::fromUtf8(badge.begin(), badge.end()), 10);
+            text.setFillColor(sf::Color(20, 20, 20));
+            sf::FloatRect b = text.getLocalBounds();
+            text.setPosition({ center.x - b.size.x / 2.0f - b.position.x, center.y - b.size.y / 2.0f - b.position.y - 1.0f });
+            target.draw(text);
+        }
+    }
+
     void DrawSocketBox(sf::RenderTarget& target, sf::FloatRect rect, int supportGemId, bool selected) {
+        const SupportGemDefinition* def = supportGemId >= 0 ? SupportGemData::Find(supportGemId) : nullptr;
+        sf::Color tint = def ? CategoryColor(def->category) : sf::Color(30, 30, 34);
+
         sf::RectangleShape box(rect.size);
         box.setPosition(rect.position);
-        box.setFillColor(supportGemId >= 0 ? sf::Color(45, 55, 70) : sf::Color(30, 30, 34));
-        box.setOutlineColor(selected ? sf::Color::Yellow : sf::Color(90, 90, 100));
+        box.setFillColor(def ? sf::Color(tint.r / 3, tint.g / 3, tint.b / 3) : sf::Color(30, 30, 34));
+        box.setOutlineColor(selected ? sf::Color::Yellow : (def ? tint : sf::Color(90, 90, 100)));
         box.setOutlineThickness(selected ? 2.0f : 1.0f);
         target.draw(box);
 
         std::string label = "+ Empty";
-        if (supportGemId >= 0) {
-            const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
-            label = def ? def->name : "?";
-        }
+        if (def) label = def->name;
         DrawText(target, rect.position.x + 3.0f, rect.position.y + 1.0f, Truncate(label, rect.size.x - 6.0f, 9), 9,
-            supportGemId >= 0 ? sf::Color(200, 220, 255) : sf::Color(140, 140, 140));
+            def ? sf::Color(230, 230, 240) : sf::Color(140, 140, 140));
     }
 
     void DrawButtonSmall(sf::RenderTarget& target, sf::FloatRect rect, const std::string& label, sf::Color fillColor) {
