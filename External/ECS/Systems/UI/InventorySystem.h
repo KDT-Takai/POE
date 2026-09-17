@@ -199,7 +199,7 @@ public:
 
         int occupiedCells = 0;
         for (const auto& item : inventory.items) {
-            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
             occupiedCells += sz.x * sz.y;
         }
         DrawText(target, panelX + 20.0f, panelY + 40.0f,
@@ -234,7 +234,7 @@ public:
             if (hasItem && !draggingAway) {
                 const ItemComponent& item = *equipment.slots[static_cast<size_t>(def.slot)];
                 DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, 7), 11, ItemUIHelpers::RarityColor(item.rarity));
-                DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+                DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, ItemUIHelpers::CompactLevelLabel(item), 10, sf::Color(190, 190, 190));
                 ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
                 if (hovered && !m_dragging) hoveredItem = &item;
             } else if (!hasItem) {
@@ -274,15 +274,17 @@ public:
             box.setOutlineThickness(hovered ? 2.5f : 1.5f);
             target.draw(box);
 
-            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 11, rc);
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, ItemUIHelpers::CompactLevelLabel(item), 10, sf::Color(190, 190, 190));
             ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
 
             if (hovered && !m_dragging) {
                 hoveredItem = &item;
-                size_t slotIdx = static_cast<size_t>(item.slot);
-                if (equipment.slots[slotIdx].has_value()) hoveredCompare = &(*equipment.slots[slotIdx]);
+                if (item.category == ItemCategory::Gear) {
+                    size_t slotIdx = static_cast<size_t>(item.slot);
+                    if (equipment.slots[slotIdx].has_value()) hoveredCompare = &(*equipment.slots[slotIdx]);
+                }
             }
         }
 
@@ -292,7 +294,7 @@ public:
 
         // ドラッグ中のゴースト(カーソルに追従、アイテムの実サイズで表示)
         if (m_dragging) {
-            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(m_dragItemCache.slot);
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(m_dragItemCache);
             float gw = static_cast<float>(sz.x) * kCellW + static_cast<float>(sz.x - 1) * kCellGap;
             float gh = static_cast<float>(sz.y) * kCellH + static_cast<float>(sz.y - 1) * kCellGap;
             sf::RectangleShape ghost({ gw, gh });
@@ -339,7 +341,7 @@ private:
 
     // アイテムのグリッド座標+サイズから、複数マスにまたがりうる実際の描画/当たり判定矩形を返す。
     sf::FloatRect ItemRect(const PanelLayout& layout, const ItemComponent& item) const {
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
         sf::FloatRect topLeft = CellRect(layout, item.gridCol, item.gridRow);
         float w = static_cast<float>(sz.x) * kCellW + static_cast<float>(sz.x - 1) * kCellGap;
         float h = static_cast<float>(sz.y) * kCellH + static_cast<float>(sz.y - 1) * kCellGap;
@@ -437,7 +439,7 @@ private:
     void TryMoveBagItem(int dragIndex, int targetCol, int targetRow, InventoryComponent& inventory) {
         if (dragIndex < 0 || dragIndex >= static_cast<int>(inventory.items.size())) return;
         ItemComponent& dragItem = inventory.items[dragIndex];
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(dragItem.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(dragItem);
 
         if (targetCol == dragItem.gridCol && targetRow == dragItem.gridRow) return; // 元の位置のまま
 
@@ -451,7 +453,7 @@ private:
             if (static_cast<int>(i) == dragIndex) continue;
             ItemComponent& other = inventory.items[i];
             if (other.gridCol != targetCol || other.gridRow != targetRow) continue;
-            sf::Vector2i otherSz = ItemUIHelpers::ItemGridSize(other.slot);
+            sf::Vector2i otherSz = ItemUIHelpers::ItemGridSize(other);
             if (otherSz.x == sz.x && otherSz.y == sz.y) {
                 std::swap(dragItem.gridCol, other.gridCol);
                 std::swap(dragItem.gridRow, other.gridRow);
@@ -496,6 +498,7 @@ private:
     void QuickEquip(int bagIndex, InventoryComponent& inventory, EquipmentComponent& equipment, CharacterStatsComponent& stats) {
         if (bagIndex < 0 || bagIndex >= static_cast<int>(inventory.items.size())) return;
         ItemComponent picked = inventory.items[bagIndex];
+        if (picked.category != ItemCategory::Gear) return; // Waystones aren't equippable
         size_t slotIdx = static_cast<size_t>(picked.slot);
         auto& currentSlot = equipment.slots[slotIdx];
 
@@ -568,10 +571,14 @@ private:
         std::vector<Line> lines;
 
         lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
-        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
-            " - Lv" + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
-            sf::Color(190, 190, 190) });
+        if (item.category == ItemCategory::Waystone) {
+            lines.push_back({ "ウェイストーン - Tier " + std::to_string(item.waystoneTier), sf::Color(190, 190, 190) });
+        } else {
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
+            lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
+                " - Lv" + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
+                sf::Color(190, 190, 190) });
+        }
 
         int sockets = ItemUIHelpers::SocketCount(item);
         if (sockets > 0) {
@@ -580,6 +587,9 @@ private:
 
         for (const auto& affix : item.affixes) {
             lines.push_back({ ItemUIHelpers::FormatAffixLine(affix), sf::Color(150, 200, 255) });
+        }
+        for (const auto& mod : item.waystoneMods) {
+            lines.push_back({ ItemUIHelpers::FormatWaystoneModLine(mod), sf::Color(220, 160, 160) });
         }
 
         std::ostringstream sellSs;

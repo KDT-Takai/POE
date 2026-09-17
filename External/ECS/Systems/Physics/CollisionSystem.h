@@ -9,7 +9,6 @@
 #include "../../Components/Item/ItemPickup.h"
 #include "../../Components/Item/Currency.h"
 #include "../../Components/Item/SkillGem.h"
-#include "../../Components/Item/Waystone.h"
 #include "../../Components/Tags/Boss/Boss.h"
 #include "../../Components/Chara/Minion.h"
 #include <System/Campaign/CampaignManager.h>
@@ -294,6 +293,17 @@ private:
             TrySpawnWaystoneDrop(registry, deadEntity, trans.position, stats.rarity);
         }
 
+        // The Waystone that opened this map may roll "Increased Item Quantity/Rarity"
+        // (see Item.h / ItemFactory::WaystoneModPool) -- unlike the monster-stat mods
+        // (applied once at spawn time in ZoneBuilder), these describe loot itself, so
+        // they're read here at drop time instead.
+        float quantityBonus = 0.0f;
+        float rarityBonus = 0.0f;
+        for (const auto& mod : CampaignManager::Instance().GetActiveMapMods()) {
+            if (mod.stat == WaystoneModStat::IncreasedItemQuantity) quantityBonus += mod.value;
+            else if (mod.stat == WaystoneModStat::IncreasedItemRarity) rarityBonus += mod.value;
+        }
+
         float dropChance = 0.15f;
         ItemRarity minRarity = ItemRarity::Normal;
         switch (stats.rarity) {
@@ -302,6 +312,7 @@ private:
         case MonsterRarity::Unique: dropChance = 1.0f; minRarity = ItemRarity::Rare; break;
         default: break;
         }
+        dropChance = (std::min)(1.0f, dropChance * (1.0f + quantityBonus / 100.0f));
 
         if (chanceRoll(rng) > dropChance) return;
 
@@ -339,7 +350,7 @@ private:
             return;
         }
 
-        ItemRarity itemRarity = ItemFactory::RollRarity(rng);
+        ItemRarity itemRarity = ItemFactory::RollRarity(rng, rarityBonus);
         if (static_cast<int>(itemRarity) < static_cast<int>(minRarity)) itemRarity = minRarity;
 
         EquipSlot slot = ItemFactory::RollSlot(rng);
@@ -357,25 +368,31 @@ private:
     // Endgame-only: map bosses guarantee a Waystone one tier higher than the map just
     // run (matches real PoE2), and Rare monsters have a chance to drop one at the same
     // tier so mapping can be sustained without always needing a higher-tier stash.
+    // Waystones are a normal ItemPickupComponent (ItemCategory::Waystone, see Item.h) --
+    // held in the bag exactly like gear, so they compete for inventory space too and use
+    // the exact same pickup/full-bag-sells-it path (ItemPickupSystem) as everything else.
     void TrySpawnWaystoneDrop(Registry& registry, Entity deadEntity, sf::Vector2f pos, MonsterRarity rarity) {
         int currentTier = CampaignManager::Instance().GetEndgameMapTier();
         bool isBoss = registry.HasComponent<BossTag>(deadEntity);
 
+        static std::random_device rd;
+        static std::mt19937 rng(rd());
+
         int dropTier = 0;
         if (isBoss) {
-            dropTier = (std::min)(currentTier + 1, WaystoneInventoryComponent::kMaxTier);
+            dropTier = (std::min)(currentTier + 1, kMaxWaystoneTier);
         } else if (rarity == MonsterRarity::Rare) {
-            static std::random_device rd;
-            static std::mt19937 rng(rd());
             std::uniform_real_distribution<float> roll(0.0f, 1.0f);
             if (roll(rng) < 0.35f) dropTier = currentTier;
         }
         if (dropTier <= 0) return;
 
+        ItemComponent waystone = ItemFactory::GenerateWaystone(dropTier, rng);
+
         auto pickup = registry.CreateEntityObject();
         pickup.AddComponent(TransformComponent{ pos, {1.f, 1.f}, 0.f });
         pickup.AddComponent(CircleComponent{ 10.0f, sf::Color(0, 210, 255), true });
-        pickup.AddComponent(WaystonePickupComponent{ dropTier });
+        pickup.AddComponent(ItemPickupComponent{ waystone });
     }
 
     sf::FloatRect GetBounds(const sf::Vector2f& pos, const BoxColliderComponent& col) {

@@ -24,7 +24,8 @@ struct ZoneBuildResult {
 
 class ZoneBuilder {
 public:
-    static ZoneBuildResult Build(Registry& registry, const ZoneDefinition& zone, int endgameMapTier, bool isEndgame) {
+    static ZoneBuildResult Build(Registry& registry, const ZoneDefinition& zone, int endgameMapTier, bool isEndgame,
+        const std::vector<WaystoneMod>& mapMods = {}) {
         ZoneBuildResult result;
 
         auto worldObj = (zone.kind == ZoneKind::Town)
@@ -69,11 +70,11 @@ public:
 
         int trashCount = zone.enemyCount;
         for (int i = 0; i < trashCount && i < static_cast<int>(freeSlots.size()); ++i) {
-            SpawnTrash(registry, freeSlots[i], zone, tierScale, endgameMapTier, i < guaranteedRares);
+            SpawnTrash(registry, freeSlots[i], zone, tierScale, endgameMapTier, i < guaranteedRares, mapMods);
         }
 
         if (zone.isBossZone) {
-            SpawnBoss(registry, goalPos, zone, tierScale, endgameMapTier);
+            SpawnBoss(registry, goalPos, zone, tierScale, endgameMapTier, mapMods);
         }
 
         return result;
@@ -97,7 +98,7 @@ private:
     }
 
     static void SpawnTrash(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale,
-        int endgameMapTier, bool forceRare) {
+        int endgameMapTier, bool forceRare, const std::vector<WaystoneMod>& mapMods) {
         auto enemy = EntitySpawner::CreateEnemy(registry, pos);
 
         auto& stats = enemy.GetComponent<CharacterStatsComponent>();
@@ -106,6 +107,7 @@ private:
         stats.atk *= zone.enemyAtkMult * tierScale;
         stats.contactDamageType = zone.enemyContactType;
         ApplyTierResistance(stats, endgameMapTier);
+        ApplyMapMods(stats, mapMods);
 
         auto& circle = enemy.GetComponent<CircleComponent>();
         circle.color = zone.enemyColor;
@@ -194,7 +196,8 @@ private:
         enemy.AddComponent(TagComponent{ stats.name });
     }
 
-    static void SpawnBoss(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale, int endgameMapTier) {
+    static void SpawnBoss(Registry& registry, sf::Vector2f pos, const ZoneDefinition& zone, float tierScale, int endgameMapTier,
+        const std::vector<WaystoneMod>& mapMods) {
         auto boss = EntitySpawner::CreateEnemy(registry, pos);
 
         auto& stats = boss.GetComponent<CharacterStatsComponent>();
@@ -204,6 +207,7 @@ private:
         stats.rarity = MonsterRarity::Unique;
         stats.contactDamageType = zone.enemyContactType;
         ApplyTierResistance(stats, endgameMapTier);
+        ApplyMapMods(stats, mapMods);
         stats.currentHP = stats.maxHP;
 
         auto& circle = boss.GetComponent<CircleComponent>();
@@ -228,6 +232,33 @@ private:
         stats.iceRes = (std::min)(0.9f, stats.iceRes + bonus);
         stats.lightningRes = (std::min)(0.9f, stats.lightningRes + bonus);
         stats.chaosRes = (std::min)(0.9f, stats.chaosRes + bonus);
+    }
+
+    // Monster-affecting mods rolled onto the Waystone that opened this map (see Item.h /
+    // ItemFactory::WaystoneModPool). The player-affecting mod (reduced player elemental
+    // resistance) is applied separately in GameScene, not here -- this only ever touches
+    // monster stats. Item find mods (rarity/quantity) are applied in CollisionSystem at
+    // drop time instead, since they don't describe a monster stat at all.
+    static void ApplyMapMods(CharacterStatsComponent& stats, const std::vector<WaystoneMod>& mods) {
+        for (const auto& mod : mods) {
+            switch (mod.stat) {
+            case WaystoneModStat::MonsterIncreasedLife:
+                stats.maxHP *= (1.0f + mod.value / 100.0f);
+                break;
+            case WaystoneModStat::MonsterIncreasedDamage:
+                stats.atk *= (1.0f + mod.value / 100.0f);
+                break;
+            case WaystoneModStat::MonsterIncreasedElementalResistance: {
+                float bonus = mod.value / 100.0f;
+                stats.fireRes = (std::min)(0.9f, stats.fireRes + bonus);
+                stats.iceRes = (std::min)(0.9f, stats.iceRes + bonus);
+                stats.lightningRes = (std::min)(0.9f, stats.lightningRes + bonus);
+                break;
+            }
+            default:
+                break; // player/item-find mods handled elsewhere, see comment above
+            }
+        }
     }
 
     static void SpawnPortal(Registry& registry, sf::Vector2f pos) {

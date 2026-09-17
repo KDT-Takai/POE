@@ -59,7 +59,7 @@ GameScene::GameScene() {
     const ZoneDefinition& zone = campaign.CurrentZone();
     m_zoneKind = zone.kind;
 
-    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame);
+    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame, campaign.GetActiveMapMods());
     m_hasPortal = built.hasPortal;
     m_portalPos = built.portalPos;
     m_townNpcs = built.townNpcs;
@@ -111,8 +111,24 @@ GameScene::GameScene() {
             auto& spiritLoadout = player.GetComponent<SpiritGemLoadoutComponent>();
             spiritLoadout.auraGemIds = campaign.GetSavedAuraLoadout();
             spiritLoadout.active = campaign.GetSavedAuraActive();
-            player.GetComponent<WaystoneInventoryComponent>().counts = campaign.GetSavedWaystones();
         }
+
+        // A Waystone's "Players have reduced Elemental Resistances" mod (see Item.h /
+        // ItemFactory::WaystoneModPool) only applies while physically inside that map --
+        // applied directly to the live stats (not baseStats) since this whole registry/
+        // GameScene gets torn down and rebuilt fresh from baseStats on the next zone
+        // load, so there's nothing to explicitly revert.
+        if (zone.kind == ZoneKind::Combat) {
+            auto& liveStats = player.GetComponent<CharacterStatsComponent>();
+            for (const auto& mod : campaign.GetActiveMapMods()) {
+                if (mod.stat == WaystoneModStat::PlayerReducedElementalResistance) {
+                    liveStats.fireRes += mod.value / 100.0f;
+                    liveStats.iceRes += mod.value / 100.0f;
+                    liveStats.lightningRes += mod.value / 100.0f;
+                }
+            }
+        }
+
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
 }
@@ -151,25 +167,29 @@ void GameScene::AdvanceToNextZone() {
         campaign.SaveAuraLoadout(spiritLoadout.auraGemIds);
         campaign.SaveAuraActive(spiritLoadout.active);
     }
-    if (registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) {
-        campaign.SaveWaystones(registry->GetComponent<WaystoneInventoryComponent>(playerEntity).counts);
-    }
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
 }
 
-// "T3x2 T1x1" style summary of held Waystones for the hub's HUD prompt.
+// "T3x2 T1x1" style summary of held Waystones (now a normal inventory item, see Item.h)
+// for the hub's HUD prompt.
 std::string GameScene::HeldWaystoneSummary() const {
-    if (!registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) return "none";
-    const auto& waystones = registry->GetComponent<WaystoneInventoryComponent>(playerEntity);
+    if (!registry->HasComponent<InventoryComponent>(playerEntity)) return "none";
+    const auto& inventory = registry->GetComponent<InventoryComponent>(playerEntity);
+
+    std::array<int, kMaxWaystoneTier> counts{};
+    for (const auto& item : inventory.items) {
+        if (item.category != ItemCategory::Waystone) continue;
+        if (item.waystoneTier < 1 || item.waystoneTier > kMaxWaystoneTier) continue;
+        counts[item.waystoneTier - 1]++;
+    }
 
     std::string summary;
-    for (int t = WaystoneInventoryComponent::kMaxTier; t >= 1; --t) {
-        int count = waystones.counts[t - 1];
-        if (count <= 0) continue;
+    for (int t = kMaxWaystoneTier; t >= 1; --t) {
+        if (counts[t - 1] <= 0) continue;
         if (!summary.empty()) summary += " ";
-        summary += "T" + std::to_string(t) + "x" + std::to_string(count);
+        summary += "T" + std::to_string(t) + "x" + std::to_string(counts[t - 1]);
     }
     return summary.empty() ? "none" : summary;
 }
@@ -192,26 +212,44 @@ std::string GameScene::NpcHudHint(TownNpcKind kind) {
     }
 }
 
-// Endgame hub's map device: spends the player's highest-tier held Waystone to open a
-// map at that tier (matches PoE2's advice to always run your best Waystone). Refuses
-// (with a message, no zone change) if the player holds none.
+// Endgame hub's map device. If a map attempt is still open (<=6 deaths used, see
+// CampaignManager::HasActiveMapAttempt), re-enters that same tier/mods for free -- one
+// of the up-to-6 portals real PoE2 grants per Waystone, letting the player try again
+// after dying without needing another Waystone. Otherwise spends the player's
+// highest-tier held Waystone (matches PoE2's advice to always run your best one),
+// consuming it and rolling a fresh 6-portal attempt. Refuses (with a message, no zone
+// change) if the player holds none.
 void GameScene::TryOpenEndgameMapFromHub() {
-    if (!registry->HasComponent<WaystoneInventoryComponent>(playerEntity)) return;
-    auto& waystones = registry->GetComponent<WaystoneInventoryComponent>(playerEntity);
+    auto& campaign = CampaignManager::Instance();
 
-    int highestTier = -1;
-    for (int t = WaystoneInventoryComponent::kMaxTier; t >= 1; --t) {
-        if (waystones.counts[t - 1] > 0) { highestTier = t; break; }
+    if (campaign.HasActiveMapAttempt()) {
+        AdvanceToNextZone();
+        return;
     }
 
-    if (highestTier < 0) {
+    if (!registry->HasComponent<InventoryComponent>(playerEntity)) return;
+    auto& inventory = registry->GetComponent<InventoryComponent>(playerEntity);
+
+    int bestIndex = -1;
+    int highestTier = -1;
+    for (size_t i = 0; i < inventory.items.size(); ++i) {
+        const auto& item = inventory.items[i];
+        if (item.category != ItemCategory::Waystone) continue;
+        if (item.waystoneTier > highestTier) {
+            highestTier = item.waystoneTier;
+            bestIndex = static_cast<int>(i);
+        }
+    }
+
+    if (bestIndex < 0) {
         itemPickupSystem->lastMessage = "Need a Waystone to open a map";
         itemPickupSystem->messageTimer = 2.5f;
         return;
     }
 
-    waystones.counts[highestTier - 1]--;
-    CampaignManager::Instance().OpenEndgameMap(highestTier);
+    std::vector<WaystoneMod> mods = inventory.items[bestIndex].waystoneMods;
+    inventory.items.erase(inventory.items.begin() + bestIndex);
+    campaign.OpenEndgameMap(highestTier, mods);
     spdlog::info("Opening endgame map at tier {}.", highestTier);
     AdvanceToNextZone();
 }
@@ -395,6 +433,13 @@ void GameScene::Update() {
     if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
         auto& state = registry->GetComponent<CharacterStatsComponent>(playerEntity);
         if (state.currentHP <= 0) {
+            // Dying inside a map consumes one of its up to 6 portals instead of just
+            // ending the run outright -- softcore's existing ResultScene "Continue"
+            // already sends the player back to the hub either way, this only tracks how
+            // many more times that's still free before the map attempt closes for good.
+            if (m_zoneKind == ZoneKind::Combat) {
+                CampaignManager::Instance().ConsumeMapDeath();
+            }
 			spdlog::info("Player has died. Ending game.");
 			SceneManager::Instance().ChangeScene("ResultScene");
             return;
@@ -477,7 +522,13 @@ void GameScene::Render(sf::RenderTarget& target) {
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
         if (m_playerNearPortal) {
-            hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
+            auto& campaign = CampaignManager::Instance();
+            if (campaign.HasActiveMapAttempt()) {
+                hudLine = "Press Enter to re-enter your Tier " + std::to_string(campaign.GetEndgameMapTier())
+                    + " map (" + std::to_string(campaign.GetMapDeathsRemaining()) + " portals left)";
+            } else {
+                hudLine = "Press Enter to open a map with your highest Waystone (" + HeldWaystoneSummary() + ")";
+            }
         }
         else if (m_nearNpcIndex >= 0) hudLine = NpcHudHint(m_townNpcs[m_nearNpcIndex].kind);
     } else {

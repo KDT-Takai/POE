@@ -287,9 +287,9 @@ public:
             box.setOutlineThickness(hovered ? 2.0f : 1.5f);
             target.draw(box);
 
-            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item);
             DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 10, rc);
-            DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, ItemUIHelpers::CompactLevelLabel(item), 9, sf::Color(190, 190, 190));
             ItemUIHelpers::DrawSocketPips(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 24.0f, ItemUIHelpers::SocketCount(item));
 
             if (hovered) hoveredBagItem = &item;
@@ -360,7 +360,7 @@ private:
     }
 
     sf::FloatRect BagItemRect(const Layout& layout, const ItemComponent& item) const {
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
         sf::FloatRect topLeft = BagCellRect(layout, item.gridCol, item.gridRow);
         float w = static_cast<float>(sz.x) * kCellSize + static_cast<float>(sz.x - 1) * kCellGap;
         float h = static_cast<float>(sz.y) * kCellSize + static_cast<float>(sz.y - 1) * kCellGap;
@@ -394,10 +394,12 @@ private:
         return sf::FloatRect(topLeft.position, { w, h });
     }
 
-    // Slot + size for the i-th entry of whichever tab is active, so packing/hit-testing/
+    // Item + size for the i-th entry of whichever tab is active, so packing/hit-testing/
     // drawing all agree on the same shape without duplicating the Buy-vs-Buyback branch.
-    EquipSlot ActiveTabSlot(int index) const {
-        return (m_activeTab == VendorTab::Buy) ? m_stock[index].slot : m_buyback[index].item.slot;
+    // A full item (not just its EquipSlot) since Buyback can hold a sold Waystone, whose
+    // size comes from its category rather than `slot`.
+    const ItemComponent& ActiveTabItem(int index) const {
+        return (m_activeTab == VendorTab::Buy) ? m_stock[index] : m_buyback[index].item;
     }
 
     int ActiveTabCount() const {
@@ -407,7 +409,7 @@ private:
     std::vector<sf::Vector2i> ActiveTabPositions() const {
         int count = ActiveTabCount();
         std::vector<sf::Vector2i> sizes(count);
-        for (int i = 0; i < count; ++i) sizes[i] = ItemUIHelpers::ItemGridSize(ActiveTabSlot(i));
+        for (int i = 0; i < count; ++i) sizes[i] = ItemUIHelpers::ItemGridSize(ActiveTabItem(i));
         return ItemUIHelpers::ShelfPack(sizes, kShopGridCols);
     }
 
@@ -415,7 +417,7 @@ private:
         int count = ActiveTabCount();
         std::vector<sf::Vector2i> positions = ActiveTabPositions();
         for (int i = 0; i < count; ++i) {
-            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(ActiveTabSlot(i));
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(ActiveTabItem(i));
             if (ShopItemRect(layout, positions[i], sz).contains(mouse)) return i;
         }
         return -1;
@@ -440,7 +442,7 @@ private:
         for (int i = 0; i < count; ++i) {
             const ItemComponent& item = (m_activeTab == VendorTab::Buy) ? m_stock[i] : m_buyback[i].item;
             int price = (m_activeTab == VendorTab::Buy) ? BuyPrice(item) : m_buyback[i].price;
-            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
             sf::FloatRect rect = ShopItemRect(layout, positions[i], sz);
             bool selected = (i == m_selectedIndex);
             bool hovered = rect.contains(mouse);
@@ -454,9 +456,9 @@ private:
             box.setOutlineThickness(selected ? 2.5f : 1.5f);
             target.draw(box);
 
-            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item);
             DrawText(target, rect.position.x + 4.0f, rect.position.y + 4.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 11, rc);
-            DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, "Lv" + std::to_string(item.itemLevel), 10, sf::Color(190, 190, 190));
+            DrawText(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 16.0f, ItemUIHelpers::CompactLevelLabel(item), 10, sf::Color(190, 190, 190));
             ItemUIHelpers::DrawSocketPips(target, rect.position.x + 4.0f, rect.position.y + rect.size.y - 26.0f, ItemUIHelpers::SocketCount(item));
 
             if (hovered) {
@@ -483,10 +485,7 @@ private:
         std::vector<Line> lines;
 
         lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
-        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
-            " - iLvl " + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
-            sf::Color(190, 190, 190) });
+        lines.push_back({ ItemUIHelpers::ItemTypeLine(item), sf::Color(190, 190, 190) });
 
         int sockets = ItemUIHelpers::SocketCount(item);
         if (sockets > 0) {
@@ -495,6 +494,9 @@ private:
 
         for (const auto& affix : item.affixes) {
             lines.push_back({ ItemUIHelpers::FormatAffixLine(affix), sf::Color(150, 200, 255) });
+        }
+        for (const auto& mod : item.waystoneMods) {
+            lines.push_back({ ItemUIHelpers::FormatWaystoneModLine(mod), sf::Color(220, 160, 160) });
         }
 
         if (price >= 0) {
@@ -556,7 +558,7 @@ private:
             messageTimer = 2.0f;
             return;
         }
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
         int col, row;
         if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, sz.x, sz.y, col, row)) {
             lastActionMessage = "Inventory full";
@@ -605,7 +607,7 @@ private:
             messageTimer = 2.0f;
             return;
         }
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(entry.item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(entry.item);
         int col, row;
         if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, sz.x, sz.y, col, row)) {
             lastActionMessage = "Inventory full";

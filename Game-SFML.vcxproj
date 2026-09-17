@@ -76,7 +76,6 @@
     <ClInclude Include="External\ECS\Components\Item\SkillGem.h" />
     <ClInclude Include="External\ECS\Components\Item\Inventory.h" />
     <ClInclude Include="External\ECS\Components\Item\Stash.h" />
-    <ClInclude Include="External\ECS\Components\Item\Waystone.h" />
     <ClInclude Include="External\ECS\Components\Progression\PassiveTree.h" />
     <ClInclude Include="External\ECS\Systems\Item\CurrencySystem.h" />
     <ClInclude Include="External\ECS\Systems\Item\ItemFactory.h" />

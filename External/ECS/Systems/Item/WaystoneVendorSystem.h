@@ -2,22 +2,28 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <random>
 #include <algorithm>
 #include "../../Registry/Registry.h"
-#include "../../Components/Item/Waystone.h"
+#include "../../Components/Item/Item.h"
+#include "../../Components/Item/Inventory.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/Tags/Player/Player.h"
+#include "ItemFactory.h"
+#include "../UI/ItemUIHelpers.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 
 // A separate NPC from the general item Vendor (see VendorSystem/ZoneBuilder): sells only
-// Waystones, one tier per row, gold-only, buy-only (no Buyback/no accepting Waystones
-// back -- the general Vendor's bag-drag sell flow doesn't apply here since Waystones
-// aren't ItemComponents, just per-tier counts on WaystoneInventoryComponent). All 15
-// tiers are listed from the start; Tier 1 is free, and tiers beyond the player's current
-// character level are locked (shown greyed out with the level requirement, never hidden --
-// matches this project's existing "always show why, never just grey out silently"
-// convention, e.g. SkillGemSystem's requirement display).
+// Waystones, one tier per row, gold-only, buy-only (no Buyback -- selling one back is
+// still possible through the general Vendor's bag-drag flow, since a purchased Waystone
+// is a normal inventory item like any other). All 15 tiers are listed from the start;
+// Tier 1 is free, and tiers beyond the player's current character level are locked (shown
+// greyed out with the level requirement, never hidden -- matches this project's existing
+// "always show why, never just grey out silently" convention, e.g. SkillGemSystem's
+// requirement display). A purchase is rejected if the bag has no room, exactly like
+// picking one up off the ground would be (see ItemPickupSystem) -- "アイテムがいっぱいの
+// 時は買えない".
 class WaystoneVendorSystem {
 private:
     std::shared_ptr<sf::Font> m_font;
@@ -45,11 +51,21 @@ public:
     // to have earned yet.
     static int PriceForTier(int tier) { return tier <= 1 ? 0 : 20 + tier * 20; }
 
-    // Tier N unlocks at character level N (1:1) -- simplest possible reading of "自分の
-    // レベルで行けるウェイストーンの上限解放" for this project's compressed level range,
-    // no separate Atlas-progression system to track.
+    // Custom early curve (tier2 unlocks at Lv5, tier3 at Lv15, per user request), then a
+    // gentler linear ramp out to tier15 at Lv99 so the whole 1-15 range stays reachable
+    // within this project's compressed level range instead of accelerating forever.
+    static int RequiredLevelForTier(int tier) {
+        static constexpr int kTable[15] = { 1, 5, 15, 22, 29, 36, 43, 50, 57, 64, 71, 78, 85, 92, 99 };
+        int idx = std::clamp(tier, 1, 15) - 1;
+        return kTable[idx];
+    }
+
     static int MaxTierForLevel(int level) {
-        return std::clamp(level, 1, WaystoneInventoryComponent::kMaxTier);
+        int maxTier = 1;
+        for (int tier = 1; tier <= kMaxWaystoneTier; ++tier) {
+            if (level >= RequiredLevelForTier(tier)) maxTier = tier;
+        }
+        return maxTier;
     }
 
     bool IsPointInPanel(sf::Vector2f point, sf::Vector2u winSize) const {
@@ -62,10 +78,10 @@ public:
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
 
-        auto players = registry.View<PlayerTag, WaystoneInventoryComponent, CharacterStatsComponent>();
+        auto players = registry.View<PlayerTag, InventoryComponent, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity player = players[0];
-        auto& waystones = registry.GetComponent<WaystoneInventoryComponent>(player);
+        auto& inventory = registry.GetComponent<InventoryComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         auto& mouseInput = InputManager::Instance().GetMouseInput();
@@ -79,9 +95,9 @@ public:
         sf::FloatRect closeBtn = CloseButtonRect(panel);
         if (closeBtn.contains(mouse)) { Close(); return; }
 
-        for (int tier = 1; tier <= WaystoneInventoryComponent::kMaxTier; ++tier) {
+        for (int tier = 1; tier <= kMaxWaystoneTier; ++tier) {
             if (RowRect(panel, tier).contains(mouse)) {
-                TryBuy(waystones, stats, tier);
+                TryBuy(inventory, stats, tier);
                 return;
             }
         }
@@ -94,10 +110,10 @@ public:
     void Render(Registry& registry, sf::RenderTarget& target) {
         if (!isOpen || !m_font) return;
 
-        auto players = registry.View<PlayerTag, WaystoneInventoryComponent, CharacterStatsComponent>();
+        auto players = registry.View<PlayerTag, InventoryComponent, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity player = players[0];
-        const auto& waystones = registry.GetComponent<WaystoneInventoryComponent>(player);
+        const auto& inventory = registry.GetComponent<InventoryComponent>(player);
         const auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         sf::View oldView = target.getView();
@@ -127,12 +143,13 @@ public:
 
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
         int maxTier = MaxTierForLevel(stats.level);
-        for (int tier = 1; tier <= WaystoneInventoryComponent::kMaxTier; ++tier) {
+        for (int tier = 1; tier <= kMaxWaystoneTier; ++tier) {
             sf::FloatRect rowRect = RowRect(panel, tier);
             bool hovered = rowRect.contains(mouse);
             int price = PriceForTier(tier);
             bool unlocked = tier <= maxTier;
             bool canAfford = unlocked && stats.gold >= price;
+            int owned = CountOwned(inventory, tier);
 
             sf::RectangleShape row(rowRect.size);
             row.setPosition(rowRect.position);
@@ -142,8 +159,8 @@ public:
             target.draw(row);
 
             std::string label = "Tier " + std::to_string(tier) + "  -  " + (price == 0 ? std::string("Free") : std::to_string(price) + "g")
-                + "  (owned: " + std::to_string(waystones.counts[tier - 1]) + ")";
-            if (!unlocked) label += "  [Requires Lv" + std::to_string(tier) + "]";
+                + "  (owned: " + std::to_string(owned) + ")";
+            if (!unlocked) label += "  [Requires Lv" + std::to_string(RequiredLevelForTier(tier)) + "]";
             DrawText(target, rowRect.position.x + 8.0f, rowRect.position.y + 6.0f, label, 13,
                 !unlocked ? sf::Color(150, 90, 90) : (canAfford ? sf::Color(220, 220, 220) : sf::Color(150, 120, 100)));
         }
@@ -171,9 +188,17 @@ private:
         return sf::FloatRect({ panel.position.x + 12.0f, y }, { panel.size.x - 24.0f, kRowH - 3.0f });
     }
 
-    void TryBuy(WaystoneInventoryComponent& waystones, CharacterStatsComponent& stats, int tier) {
+    static int CountOwned(const InventoryComponent& inventory, int tier) {
+        int count = 0;
+        for (const auto& item : inventory.items) {
+            if (item.category == ItemCategory::Waystone && item.waystoneTier == tier) count++;
+        }
+        return count;
+    }
+
+    void TryBuy(InventoryComponent& inventory, CharacterStatsComponent& stats, int tier) {
         if (!IsUnlocked(tier, stats.level)) {
-            lastActionMessage = "Requires level " + std::to_string(tier);
+            lastActionMessage = "Requires level " + std::to_string(RequiredLevelForTier(tier));
             messageTimer = 2.0f;
             return;
         }
@@ -183,8 +208,21 @@ private:
             messageTimer = 2.0f;
             return;
         }
+
+        static std::random_device rd;
+        static std::mt19937 rng(rd());
+        ItemComponent waystone = ItemFactory::GenerateWaystone(tier, rng);
+        int col, row;
+        if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, 1, 1, col, row)) {
+            lastActionMessage = "Inventory full";
+            messageTimer = 2.0f;
+            return;
+        }
+
         stats.gold -= price;
-        waystones.counts[tier - 1]++;
+        waystone.gridCol = col;
+        waystone.gridRow = row;
+        inventory.items.push_back(waystone);
         lastActionMessage = "Bought Tier " + std::to_string(tier) + " Waystone";
         messageTimer = 2.0f;
     }

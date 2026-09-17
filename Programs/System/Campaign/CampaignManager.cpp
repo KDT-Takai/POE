@@ -66,6 +66,7 @@ namespace {
     }
 
     void WriteItem(std::ofstream& out, const std::string& prefix, const ItemComponent& item) {
+        out << prefix << "category=" << static_cast<int>(item.category) << "\n";
         out << prefix << "slot=" << static_cast<int>(item.slot) << "\n";
         out << prefix << "baseName=" << item.baseName << "\n";
         out << prefix << "rarity=" << static_cast<int>(item.rarity) << "\n";
@@ -80,10 +81,21 @@ namespace {
             out << aprefix << "tier=" << affix.tier << "\n";
             out << aprefix << "isPrefix=" << (affix.isPrefix ? 1 : 0) << "\n";
         }
+        out << prefix << "waystoneTier=" << item.waystoneTier << "\n";
+        out << prefix << "waystoneModCount=" << item.waystoneMods.size() << "\n";
+        for (size_t m = 0; m < item.waystoneMods.size(); ++m) {
+            std::string mprefix = prefix + "waystoneMod" + std::to_string(m) + ".";
+            const WaystoneMod& mod = item.waystoneMods[m];
+            out << mprefix << "stat=" << static_cast<int>(mod.stat) << "\n";
+            out << mprefix << "value=" << mod.value << "\n";
+        }
     }
 
     ItemComponent ReadItem(const std::unordered_map<std::string, std::string>& kv, const std::string& prefix, EquipSlot defaultSlot) {
         ItemComponent item;
+        // Pre-Waystone-item saves have no "category" key -- defaults to Gear, same
+        // fallback convention as every other post-launch field addition.
+        item.category = static_cast<ItemCategory>(GetI(kv, prefix + "category", static_cast<int>(ItemCategory::Gear)));
         item.slot = static_cast<EquipSlot>(GetI(kv, prefix + "slot", static_cast<int>(defaultSlot)));
         item.baseName = GetS(kv, prefix + "baseName", "Item");
         item.rarity = static_cast<ItemRarity>(GetI(kv, prefix + "rarity", 0));
@@ -99,6 +111,16 @@ namespace {
             affix.tier = GetI(kv, aprefix + "tier", 1);
             affix.isPrefix = GetI(kv, aprefix + "isPrefix", 1) != 0;
             item.affixes.push_back(affix);
+        }
+
+        item.waystoneTier = GetI(kv, prefix + "waystoneTier", 0);
+        int modCount = GetI(kv, prefix + "waystoneModCount", 0);
+        for (int m = 0; m < modCount; ++m) {
+            std::string mprefix = prefix + "waystoneMod" + std::to_string(m) + ".";
+            WaystoneMod mod;
+            mod.stat = static_cast<WaystoneModStat>(GetI(kv, mprefix + "stat", 0));
+            mod.value = GetF(kv, mprefix + "value", 0.0f);
+            item.waystoneMods.push_back(mod);
         }
         return item;
     }
@@ -228,10 +250,17 @@ std::string CampaignManager::GetProgressLabel() const {
     return label;
 }
 
-bool CampaignManager::OpenEndgameMap(int tier) {
-    if (tier < 1 || tier > WaystoneInventoryComponent::kMaxTier) return false;
+bool CampaignManager::OpenEndgameMap(int tier, const std::vector<WaystoneMod>& mods) {
+    if (tier < 1 || tier > kMaxWaystoneTier) return false;
     m_endgameMapTier = tier;
-    m_zoneIndex = 1; // the endgame act's single map zone (index 0 is always the hub town)
+    m_activeMapMods = mods;
+    m_mapAttemptActive = true;
+    m_mapDeathsRemaining = 6;
+    // Deliberately does NOT touch m_zoneIndex here -- this is always called from the hub
+    // (index 0), and the caller follows up with CompleteCurrentZoneAndAdvance's 0<->1
+    // toggle to actually move into the map. Setting it directly here used to fight that
+    // same toggle (both ran back-to-back and cancelled out, leaving the player stuck at
+    // the hub instead of entering the map -- fixed while adding the portal-attempt system).
     return true;
 }
 
@@ -241,6 +270,23 @@ void CampaignManager::CompleteCurrentZoneAndAdvance() {
     // device (see OpenEndgameMap), not by an auto-incrementing counter here. Only one
     // Act (the endgame loop) exists, so this always just toggles hub(0)<->map(1).
     m_zoneIndex = (m_zoneIndex + 1) % static_cast<int>(act.zones.size());
+
+    // Arriving back at the hub this way only ever happens by clearing the map (see
+    // GameScene's "Zone cleared!" check) -- a death goes through ReturnToLastTown
+    // instead, which doesn't call this. So this is always "the attempt is over,
+    // successfully" -- close it out so a free re-entry isn't offered for a map that's
+    // already been cleared.
+    if (m_zoneIndex == 0) {
+        m_mapAttemptActive = false;
+    }
+}
+
+void CampaignManager::ConsumeMapDeath() {
+    if (m_mapDeathsRemaining <= 0) return;
+    m_mapDeathsRemaining--;
+    if (m_mapDeathsRemaining <= 0) {
+        m_mapAttemptActive = false;
+    }
 }
 
 void CampaignManager::ReturnToLastTown() {
@@ -261,7 +307,9 @@ void CampaignManager::ResetCampaign() {
     m_savedInventory.clear();
     for (auto& tab : m_savedStash) tab.clear();
     m_savedPassiveTree.clear();
-    m_savedWaystones.fill(0);
+    m_mapAttemptActive = false;
+    m_mapDeathsRemaining = 0;
+    m_activeMapMods.clear();
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -349,9 +397,6 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         out << "auraLoadout.active" << i << "=" << (m_savedAuraActive[i] ? 1 : 0) << "\n";
     }
 
-    for (size_t i = 0; i < m_savedWaystones.size(); ++i) {
-        out << "waystones.tier" << i << "=" << m_savedWaystones[i] << "\n";
-    }
 }
 
 bool CampaignManager::LoadFromDisk(const std::string& path) {
@@ -454,10 +499,6 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
         m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
         m_savedAuraActive[i] = GetI(kv, "auraLoadout.active" + std::to_string(i), 0) != 0;
-    }
-
-    for (size_t i = 0; i < m_savedWaystones.size(); ++i) {
-        m_savedWaystones[i] = GetI(kv, "waystones.tier" + std::to_string(i), 0);
     }
 
     return true;

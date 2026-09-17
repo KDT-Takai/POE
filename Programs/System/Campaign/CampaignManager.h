@@ -6,7 +6,6 @@
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
-#include "Components/Item/Waystone.h"
 #include "Components/Item/Stash.h"
 #include "Components/Item/SkillGem.h"
 #include "../Singleton/Singleton.h"
@@ -51,6 +50,15 @@ class CampaignManager : public Singleton<CampaignManager> {
     int m_zoneIndex = 0;
     int m_endgameMapTier = 1;
 
+    // Current map "attempt" state (see spec: opening a map grants up to 6 portals --
+    // i.e. up to 6 deaths recoverable without losing the map -- and the mods rolled on
+    // the Waystone that opened it). Not persisted to disk: an in-progress map attempt
+    // doesn't survive a full save/quit/reload (matches this project's existing "a zone's
+    // live entity state isn't persisted" behavior, only the character/inventory/etc is).
+    bool m_mapAttemptActive = false;
+    int m_mapDeathsRemaining = 0;
+    std::vector<WaystoneMod> m_activeMapMods;
+
     bool m_hasSavedPlayer = false;
     CharacterStatsComponent m_savedStats;
     EquipmentComponent m_savedEquipment;
@@ -62,7 +70,6 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::array<int, 5> m_savedSkillLoadout = { -1, -1, -1, -1, -1 };
     std::array<int, 5> m_savedAuraLoadout = { -1, -1, -1, -1, -1 };
     std::array<bool, 5> m_savedAuraActive = { false, false, false, false, false };
-    std::array<int, WaystoneInventoryComponent::kMaxTier> m_savedWaystones{};
     bool m_isHardcore = false;
 
     void BuildActs();
@@ -74,14 +81,27 @@ public:
     const ZoneDefinition& CurrentZone() const { return CurrentAct().zones[m_zoneIndex]; }
     int GetEndgameMapTier() const { return m_endgameMapTier; }
 
-    // Spends a held Waystone (tier chosen by the caller, see WaystoneInventoryComponent)
-    // to open the endgame map zone at that tier. Returns false for an out-of-range tier.
-    bool OpenEndgameMap(int tier);
+    // Spends a held Waystone item (tier + rolled mods, see ItemCategory::Waystone) to
+    // open the endgame map zone at that tier, granting a fresh 6-portal attempt. Returns
+    // false for an out-of-range tier.
+    bool OpenEndgameMap(int tier, const std::vector<WaystoneMod>& mods);
 
     std::string GetProgressLabel() const;
 
     // 現在ゾーンをクリアして次へ進める(タウン↔マップの往復、常にエンドゲームループ)
     void CompleteCurrentZoneAndAdvance();
+
+    // True while a map attempt (opened via OpenEndgameMap) still has portals left --
+    // i.e. the hub's map device should let the player step back into THIS map for free
+    // instead of requiring another Waystone (see GameScene::TryOpenEndgameMapFromHub).
+    bool HasActiveMapAttempt() const { return m_mapAttemptActive; }
+    int GetMapDeathsRemaining() const { return m_mapDeathsRemaining; }
+    const std::vector<WaystoneMod>& GetActiveMapMods() const { return m_activeMapMods; }
+
+    // Call when the player dies inside a map (not the hub). Consumes one of the 6
+    // portals; once none remain, the attempt closes (HasActiveMapAttempt() becomes
+    // false) and the next map requires a fresh Waystone.
+    void ConsumeMapDeath();
 
     // 死亡時: エンドゲームハブへ戻す
     void ReturnToLastTown();
@@ -118,9 +138,6 @@ public:
 
     void SaveAuraActive(const std::array<bool, 5>& active) { m_savedAuraActive = active; }
     const std::array<bool, 5>& GetSavedAuraActive() const { return m_savedAuraActive; }
-
-    void SaveWaystones(const std::array<int, WaystoneInventoryComponent::kMaxTier>& counts) { m_savedWaystones = counts; }
-    const std::array<int, WaystoneInventoryComponent::kMaxTier>& GetSavedWaystones() const { return m_savedWaystones; }
 
     void SaveToDisk(const std::string& path = "save.dat") const;
     bool LoadFromDisk(const std::string& path = "save.dat");

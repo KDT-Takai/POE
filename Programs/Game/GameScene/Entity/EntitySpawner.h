@@ -19,9 +19,10 @@
 #include "../ECS/Components/Item/Stash.h"
 #include "../ECS/Components/Progression/PassiveTree.h"
 #include "../ECS/Components/Item/SkillGem.h"
-#include "../ECS/Components/Item/Waystone.h"
 #include "../ECS/Components/Chara/Minion.h"
 #include "../ECS/Systems/Skill/SkillGemScaling.h"
+#include "../ECS/Systems/Item/ItemFactory.h"
+#include <random>
 
 class EntitySpawner {
 public:
@@ -100,12 +101,19 @@ public:
         entity.AddComponent(gemInventory);
         entity.AddComponent(SpiritGemLoadoutComponent{});
 
-        // Starting Tier 1 Waystone so the endgame is reachable right after the campaign
-        // (real PoE2 grants this as a campaign-completion quest reward; we simplify by
-        // just starting new characters with one, since it's otherwise unusable early on).
-        WaystoneInventoryComponent waystones;
-        waystones.counts[0] = 1;
-        entity.AddComponent(waystones);
+        // Starting Tier 1 Waystone so the endgame is reachable right away (real PoE2
+        // grants this as a campaign-completion quest reward; we simplify by just
+        // starting new characters with one). Waystones are a normal inventory item
+        // (ItemCategory::Waystone, see Item.h), so this just places one in the empty
+        // starting bag rather than needing a separate "waystone count" component.
+        {
+            std::random_device rd;
+            std::mt19937 rng(rd());
+            ItemComponent starterWaystone = ItemFactory::GenerateWaystone(1, rng);
+            starterWaystone.gridCol = 0;
+            starterWaystone.gridRow = 0;
+            entity.GetComponent<InventoryComponent>().items.push_back(starterWaystone);
+        }
 
         return entity;
     }

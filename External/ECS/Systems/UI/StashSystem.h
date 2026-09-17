@@ -240,7 +240,7 @@ private:
     }
 
     sf::FloatRect ItemRect(const Layout& layout, bool stash, const ItemComponent& item) const {
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
         sf::FloatRect topLeft = CellRect(layout, stash, item.gridCol, item.gridRow);
         float w = static_cast<float>(sz.x) * kCellSize + static_cast<float>(sz.x - 1) * kCellGap;
         float h = static_cast<float>(sz.y) * kCellSize + static_cast<float>(sz.y - 1) * kCellGap;
@@ -281,9 +281,9 @@ private:
             box.setOutlineThickness(hovered ? 2.0f : 1.5f);
             target.draw(box);
 
-            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item.slot);
+            sf::Vector2i itemSz = ItemUIHelpers::ItemGridSize(item);
             DrawText(target, rect.position.x + 3.0f, rect.position.y + 3.0f, Truncate(item.baseName, static_cast<size_t>(itemSz.x) * 9), 10, rc);
-            DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, "Lv" + std::to_string(item.itemLevel), 9, sf::Color(190, 190, 190));
+            DrawText(target, rect.position.x + 3.0f, rect.position.y + rect.size.y - 14.0f, ItemUIHelpers::CompactLevelLabel(item), 9, sf::Color(190, 190, 190));
 
             if (hovered) outHovered = &item;
         }
@@ -303,7 +303,7 @@ private:
         const std::string& targetName) {
         if (index < 0 || index >= static_cast<int>(from.size())) return;
         ItemComponent item = from[index];
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
+        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
         int col, row;
         if (!ItemUIHelpers::FindBagFreeSpace(to, sz.x, sz.y, col, row, targetCols, targetRows)) {
             lastActionMessage = targetName + " full";
@@ -328,13 +328,13 @@ private:
         std::vector<Line> lines;
 
         lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
-        sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item.slot);
-        lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +
-            " - iLvl " + std::to_string(item.itemLevel) + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y),
-            sf::Color(190, 190, 190) });
+        lines.push_back({ ItemUIHelpers::ItemTypeLine(item), sf::Color(190, 190, 190) });
 
         for (const auto& affix : item.affixes) {
             lines.push_back({ ItemUIHelpers::FormatAffixLine(affix), sf::Color(150, 200, 255) });
+        }
+        for (const auto& mod : item.waystoneMods) {
+            lines.push_back({ ItemUIHelpers::FormatWaystoneModLine(mod), sf::Color(220, 160, 160) });
         }
 
         float lineH = 18.0f;

@@ -49,11 +49,50 @@ public:
         return item;
     }
 
-    static ItemRarity RollRarity(std::mt19937& rng) {
+    // Waystone-category item (see Item.h) -- itemLevel is repurposed purely to feed
+    // SellValue's existing formula (no separate Waystone sell-price formula needed).
+    // rarity reuses RollRarity purely to gate how many map mods roll (Normal=0/Magic=1/
+    // Rare=2-3), the same convention gear's prefix/suffix counts already use.
+    static ItemComponent GenerateWaystone(int tier, std::mt19937& rng) {
+        ItemComponent item;
+        item.category = ItemCategory::Waystone;
+        item.waystoneTier = tier;
+        item.itemLevel = tier * 6;
+        item.rarity = RollRarity(rng);
+        item.baseName = "Waystone (Tier " + std::to_string(tier) + ")";
+
+        int modCount = 0;
+        switch (item.rarity) {
+        case ItemRarity::Normal: modCount = 0; break;
+        case ItemRarity::Magic: modCount = 1; break;
+        case ItemRarity::Rare:
+        case ItemRarity::Unique: {
+            std::uniform_int_distribution<int> pick(2, 3);
+            modCount = pick(rng);
+            break;
+        }
+        }
+
+        auto pool = WaystoneModPool();
+        std::shuffle(pool.begin(), pool.end(), rng);
+        std::uniform_real_distribution<float> variance(0.85f, 1.15f);
+        for (int i = 0; i < modCount && i < static_cast<int>(pool.size()); ++i) {
+            WaystoneMod mod = pool[i];
+            mod.value *= (1.0f + tier * 0.02f) * variance(rng);
+            item.waystoneMods.push_back(mod);
+        }
+        return item;
+    }
+
+    // bonusPercent shifts both thresholds proportionally (e.g. a Waystone's "Increased
+    // Item Rarity" map mod, see CollisionSystem::TrySpawnItemDrop) -- 0 (the default)
+    // matches every other existing caller exactly.
+    static ItemRarity RollRarity(std::mt19937& rng, float bonusPercent = 0.0f) {
+        float scale = 1.0f + bonusPercent / 100.0f;
         std::uniform_real_distribution<float> roll(0.0f, 1.0f);
         float r = roll(rng);
-        if (r < 0.08f) return ItemRarity::Rare;
-        if (r < 0.30f) return ItemRarity::Magic;
+        if (r < 0.08f * scale) return ItemRarity::Rare;
+        if (r < 0.30f * scale) return ItemRarity::Magic;
         return ItemRarity::Normal;
     }
 
@@ -149,6 +188,20 @@ private:
             { AffixStat::FlatAccuracy, 20.0f, 1, false, "命中率" },
             { AffixStat::BlockChance, 4.0f, 1, false, "ブロック率" },
             { AffixStat::FlatSpirit, 10.0f, 1, false, "スピリット" },
+        };
+    }
+
+    // PoE2-style map modifiers: some make the map harder (monster life/damage/resistance,
+    // player resistance debuff), some make it more rewarding (item rarity/quantity) --
+    // applied when the Waystone is consumed to open a map, see ZoneBuilder/GameScene.
+    static std::vector<WaystoneMod> WaystoneModPool() {
+        return {
+            { WaystoneModStat::MonsterIncreasedLife, 30.0f, "" },
+            { WaystoneModStat::MonsterIncreasedDamage, 25.0f, "" },
+            { WaystoneModStat::MonsterIncreasedElementalResistance, 20.0f, "" },
+            { WaystoneModStat::PlayerReducedElementalResistance, -12.0f, "" },
+            { WaystoneModStat::IncreasedItemRarity, 20.0f, "" },
+            { WaystoneModStat::IncreasedItemQuantity, 20.0f, "" },
         };
     }
 };

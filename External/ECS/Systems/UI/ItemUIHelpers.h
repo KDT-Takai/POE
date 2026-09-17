@@ -24,6 +24,15 @@ namespace ItemUIHelpers {
         }
     }
 
+    // Category-aware entry point -- prefer this one everywhere an actual ItemComponent
+    // (not just a bare EquipSlot) is at hand, so Waystones (which don't have a meaningful
+    // `slot`) always get their own compact footprint instead of whatever `slot` happens to
+    // be left at.
+    inline sf::Vector2i ItemGridSize(const ItemComponent& item) {
+        if (item.category == ItemCategory::Waystone) return { 1, 1 };
+        return ItemGridSize(item.slot);
+    }
+
     // Short label for a cramped grid cell. A whole short word, not a substr() of
     // SlotName()/RarityName() -- those are UTF-8 multibyte strings, so byte-slicing
     // them (e.g. .substr(0, 2)) cuts a character in half and renders as tofu boxes.
@@ -56,7 +65,7 @@ namespace ItemUIHelpers {
             if (static_cast<int>(i) == ignoreIndex) continue;
             const ItemComponent& other = items[i];
             if (other.gridCol < 0 || other.gridRow < 0) continue;
-            sf::Vector2i sz = ItemGridSize(other.slot);
+            sf::Vector2i sz = ItemGridSize(other);
             bool overlapX = col < other.gridCol + sz.x && col + w > other.gridCol;
             bool overlapY = row < other.gridRow + sz.y && row + h > other.gridRow;
             if (overlapX && overlapY) return false;
@@ -86,7 +95,7 @@ namespace ItemUIHelpers {
     inline void NormalizeBagPlacement(std::vector<ItemComponent>& items, int cols = kBagGridCols, int rows = kBagGridRows) {
         for (auto& item : items) {
             if (item.gridCol >= 0 && item.gridRow >= 0) continue;
-            sf::Vector2i sz = ItemGridSize(item.slot);
+            sf::Vector2i sz = ItemGridSize(item);
             int col, row;
             if (FindBagFreeSpace(items, sz.x, sz.y, col, row, cols, rows)) {
                 item.gridCol = col;
@@ -195,6 +204,45 @@ namespace ItemUIHelpers {
         return AffixLabel(affix.stat) + " " + sign + std::to_string(rounded) + unit;
     }
 
+    inline std::string WaystoneModStatLabel(WaystoneModStat stat) {
+        switch (stat) {
+        case WaystoneModStat::MonsterIncreasedLife: return "Monsters have increased Life";
+        case WaystoneModStat::MonsterIncreasedDamage: return "Monsters deal increased Damage";
+        case WaystoneModStat::MonsterIncreasedElementalResistance: return "Monsters have increased Elemental Resistance";
+        case WaystoneModStat::PlayerReducedElementalResistance: return "Players have reduced Elemental Resistances";
+        case WaystoneModStat::IncreasedItemRarity: return "Increased Rarity of Items found in this Area";
+        case WaystoneModStat::IncreasedItemQuantity: return "Increased Quantity of Items found in this Area";
+        default: return "?";
+        }
+    }
+
+    // "+25% Monsters deal increased Damage" style line, matching FormatAffixLine's
+    // sign-then-label convention for Waystone map mods instead of player-stat affixes.
+    inline std::string FormatWaystoneModLine(const WaystoneMod& mod) {
+        long rounded = std::lround(mod.value);
+        std::string sign = (rounded >= 0) ? "+" : "";
+        return sign + std::to_string(rounded) + "% " + WaystoneModStatLabel(mod.stat);
+    }
+
+    // Compact grid-cell label: gear shows "Lv{itemLevel}", Waystones show "T{tier}"
+    // instead (itemLevel is repurposed on a Waystone purely for its SellValue formula,
+    // not a meaningful "level" to show the player).
+    inline std::string CompactLevelLabel(const ItemComponent& item) {
+        if (item.category == ItemCategory::Waystone) return "T" + std::to_string(item.waystoneTier);
+        return "Lv" + std::to_string(item.itemLevel);
+    }
+
+    // Tooltip header line: gear shows "Slot - Rarity - iLvl N - WxH", Waystones show
+    // their tier instead (slot/rarity/size are all meaningless for a Waystone).
+    inline std::string ItemTypeLine(const ItemComponent& item) {
+        if (item.category == ItemCategory::Waystone) {
+            return "Waystone - Tier " + std::to_string(item.waystoneTier);
+        }
+        sf::Vector2i sz = ItemGridSize(item);
+        return SlotName(item.slot) + " - " + RarityName(item.rarity) + " - iLvl " + std::to_string(item.itemLevel)
+            + " - " + std::to_string(sz.x) + "x" + std::to_string(sz.y);
+    }
+
     inline sf::Color RarityColor(ItemRarity rarity) {
         switch (rarity) {
         case ItemRarity::Normal: return sf::Color(220, 220, 220);
@@ -209,6 +257,7 @@ namespace ItemUIHelpers {
     // jewelry never does). There's no rune/gem-in-socket mechanic implemented yet -- this
     // is purely a visual indicator of the item derived from its rarity, not a system.
     inline int SocketCount(const ItemComponent& item) {
+        if (item.category != ItemCategory::Gear) return 0;
         switch (item.slot) {
         case EquipSlot::Weapon:
         case EquipSlot::BodyArmour:
