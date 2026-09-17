@@ -157,8 +157,8 @@ namespace {
         z.id = std::move(id);
         z.displayName = std::move(name);
         z.kind = ZoneKind::Town;
-        z.mapWidth = 30;
-        z.mapHeight = 30;
+        z.mapWidth = 16;
+        z.mapHeight = 12;
         z.enemyCount = 0;
         return z;
     }
@@ -259,7 +259,7 @@ void CampaignManager::ResetCampaign() {
     m_hasSavedPlayer = false;
     m_savedEquipment = EquipmentComponent{};
     m_savedInventory.clear();
-    m_savedStash.clear();
+    for (auto& tab : m_savedStash) tab.clear();
     m_savedPassiveTree.clear();
     m_savedWaystones.fill(0);
 }
@@ -305,10 +305,13 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         WriteItem(out, prefix, m_savedInventory[i]);
     }
 
-    out << "stash.count=" << m_savedStash.size() << "\n";
-    for (size_t i = 0; i < m_savedStash.size(); ++i) {
-        std::string prefix = "stash.item" + std::to_string(i) + ".";
-        WriteItem(out, prefix, m_savedStash[i]);
+    for (size_t t = 0; t < m_savedStash.size(); ++t) {
+        const auto& tab = m_savedStash[t];
+        out << "stash.tab" << t << ".count=" << tab.size() << "\n";
+        for (size_t i = 0; i < tab.size(); ++i) {
+            std::string prefix = "stash.tab" + std::to_string(t) + ".item" + std::to_string(i) + ".";
+            WriteItem(out, prefix, tab[i]);
+        }
     }
 
     out << "passiveTree.count=" << m_savedPassiveTree.size() << "\n";
@@ -392,13 +395,18 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
         m_savedInventory.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
     }
 
-    // Pre-stash saves have no "stash.count" key -- defaults to an empty stash, same
-    // fallback convention as the other post-launch additions above.
-    m_savedStash.clear();
-    int stashCount = GetI(kv, "stash.count", 0);
-    for (int i = 0; i < stashCount; ++i) {
-        std::string prefix = "stash.item" + std::to_string(i) + ".";
-        m_savedStash.push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
+    // Pre-stash saves have no "stash.tab{t}.count" key -- defaults to an empty stash,
+    // same fallback convention as the other post-launch additions above. Pre-multi-tab
+    // saves (single "stash.count"/"stash.item{i}.*") are treated the same way: they fall
+    // back to empty tabs rather than being migrated, since the stash was brand new and
+    // very unlikely to hold anything yet at that point.
+    for (size_t t = 0; t < m_savedStash.size(); ++t) {
+        m_savedStash[t].clear();
+        int count = GetI(kv, "stash.tab" + std::to_string(t) + ".count", 0);
+        for (int i = 0; i < count; ++i) {
+            std::string prefix = "stash.tab" + std::to_string(t) + ".item" + std::to_string(i) + ".";
+            m_savedStash[t].push_back(ReadItem(kv, prefix, EquipSlot::Weapon));
+        }
     }
 
     m_savedPassiveTree.clear();

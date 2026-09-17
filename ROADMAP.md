@@ -4,6 +4,12 @@
 
 ## 済 (Done)
 
+**町のサイズ縮小+Stashを4タブ構成へ拡張**。「まず町がひろすぎるのと、スタッシュタブは4ページ用意しよう」というフィードバックに対応。
+- 町(エンドゲームハブ)のマップサイズを`CampaignManager`の`MakeTown`で30x30→16x12タイルへ縮小(1920x1920px→1024x768px)。`ZoneBuilder::PlaceTownNpcs`のNPC同士/スポーン地点・ポータルとの回避距離もタイルサイズ×3→×2、×4→×2.5へ詰めて、小さくなった町でも自然に配置されるようにした。
+- `StashComponent`を単一の10x8グリッド(`items`)から、独立した10x8グリッド4ページ(`tabs`、`kTabCount=4`)へ変更。`StashSystem`の左パネル上部にタブ切替ボタン(1-4)を追加し、アクティブなタブのグリッドとバッグの間でドラッグ移動する(タブ間の直接移動は今回は無し、いったんバッグを経由する)。
+- `CampaignManager`の永続化形式も`stash.count`/`stash.item{i}.*`から`stash.tab{t}.count`/`stash.tab{t}.item{i}.*`(t=0-3)へ変更。
+- ビルド確認済み(`/t:Build`、0エラー)。起動確認(クラッシュなし)も実施。
+
 **町(エンドゲームハブ)にNPCを複数配置し、Waystone専売NPCとStash(アイテム保管庫)を新設**。「町を豪華にしていこう。NPCを複数設置。現在のアイテムを売るタイプと、ウェイストーンだけを売るタイプ、あとスタッシュタブを用意しよう」という指示を受けて実装。
 - `ZoneBuilder::SpawnVendor`(単一位置)を`PlaceTownNpcs`へ汎用化し、`MapGenerator::GetWalkablePositions`から互いに距離を取った3箇所(アイテムVendor/Waystone Vendor/Stash)を選んで配置するように変更(`TownNpcKind`+座標、新規`Programs/Game/GameScene/Zone/TownNpc.h`)。`GameScene`側も単数の`m_hasVendor/m_vendorPos/m_playerNearVendor`等を`m_townNpcs`(vector)+`m_nearNpcIndex`へ汎用化し、近接リング表示・クリック判定・該当UIの開閉(既存の`vendorSystem`に加え`waystoneVendorSystem`/`stashSystem`)を3種共通ロジックで処理するようにした。
 - 新規`WaystoneVendorSystem`: Waystoneはアイテムではなくティア別カウント(`WaystoneInventoryComponent`)なので、既存の装備アイテム前提の`VendorSystem`とは別実装にした。全15ティアを一覧表示し、ゴールド(`20+tier*20`)のみで購入(Buyback無し、アンロック制ではなく価格でティアをゲート)。

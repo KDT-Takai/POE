@@ -1,15 +1,19 @@
 #pragma once
 #include "Item.h"
+#include <array>
 #include <vector>
 
 // Persistent item storage, separate from the carried InventoryComponent, accessible via
 // the Stash NPC in town (see StashSystem/ZoneBuilder). Bigger than the bag since its only
 // purpose is holding overflow loot, not being carried into combat. Reuses ItemComponent's
 // gridCol/gridRow exactly like InventoryComponent does, just against this grid's own
-// (larger) dimensions instead of ItemUIHelpers::kBagGridCols/Rows.
+// (larger) dimensions instead of ItemUIHelpers::kBagGridCols/Rows. Split into kTabCount
+// independent pages/tabs (PoE-style stash tabs) -- each tab is its own kCols x kRows grid,
+// coordinates aren't shared across tabs.
 struct StashComponent {
     static constexpr int kCols = 10;
     static constexpr int kRows = 8;
     static constexpr size_t kCapacity = static_cast<size_t>(kCols) * static_cast<size_t>(kRows);
-    std::vector<ItemComponent> items;
+    static constexpr int kTabCount = 4;
+    std::array<std::vector<ItemComponent>, kTabCount> tabs;
 };

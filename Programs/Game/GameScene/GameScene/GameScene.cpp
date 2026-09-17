@@ -74,7 +74,7 @@ GameScene::GameScene() {
             equipment.baseStats = campaign.GetSavedEquipment().baseStats;
             EquipmentSystem::RecalculateStats(player.GetComponent<CharacterStatsComponent>(), equipment);
             player.GetComponent<InventoryComponent>().items = campaign.GetSavedInventory();
-            player.GetComponent<StashComponent>().items = campaign.GetSavedStash();
+            player.GetComponent<StashComponent>().tabs = campaign.GetSavedStash();
             player.GetComponent<PassiveTreeComponent>().allocatedNodeIds = campaign.GetSavedPassiveTree();
 
             // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
@@ -129,7 +129,7 @@ void GameScene::AdvanceToNextZone() {
         campaign.SaveInventory(registry->GetComponent<InventoryComponent>(playerEntity).items);
     }
     if (registry->HasComponent<StashComponent>(playerEntity)) {
-        campaign.SaveStash(registry->GetComponent<StashComponent>(playerEntity).items);
+        campaign.SaveStash(registry->GetComponent<StashComponent>(playerEntity).tabs);
     }
     if (registry->HasComponent<PassiveTreeComponent>(playerEntity)) {
         campaign.SavePassiveTree(registry->GetComponent<PassiveTreeComponent>(playerEntity).allocatedNodeIds);

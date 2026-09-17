@@ -263,7 +263,7 @@ private:
     // spread-out spot (e.g. a very small/cramped town layout).
     static std::vector<TownNpcSpawn> PlaceTownNpcs(const MapComponent& map, sf::Vector2f avoidA, sf::Vector2f avoidB) {
         std::vector<sf::Vector2f> candidates = MapGenerator::GetWalkablePositions(map);
-        float minAvoidDist = map.tileSize * 3.0f;
+        float minAvoidDist = map.tileSize * 2.0f;
         candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](const sf::Vector2f& p) {
             return Distance(p, avoidA) < minAvoidDist || Distance(p, avoidB) < minAvoidDist;
             }), candidates.end());
@@ -275,7 +275,7 @@ private:
         sf::Vector2f fallback(static_cast<float>(map.width / 2) * map.tileSize, static_cast<float>(map.height / 2) * map.tileSize);
         std::vector<TownNpcKind> kinds = { TownNpcKind::ItemVendor, TownNpcKind::WaystoneVendor, TownNpcKind::Stash };
         std::vector<TownNpcSpawn> result;
-        float minSeparation = map.tileSize * 4.0f;
+        float minSeparation = map.tileSize * 2.5f;
 
         for (TownNpcKind kind : kinds) {
             sf::Vector2f chosen = fallback;

@@ -11,13 +11,14 @@
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 
-// Persistent item storage separate from the carried bag (see StashComponent). Two boxes
-// side by side like VendorSystem's own-panel + player-bag layout: left = the larger Stash
-// grid, right = the player's bag (same 6x4 grid InventorySystem/VendorSystem render).
-// Dragging an item from one box and releasing over the other moves it there (first free
-// slot in the target grid, not the exact drop position -- same simplification
-// VendorSystem's bag-to-shop sell drag already uses). No gold/trading involved, purely
-// storage.
+// Persistent item storage separate from the carried bag (see StashComponent), split into
+// StashComponent::kTabCount independent pages (PoE-style stash tabs, switched via tab
+// buttons at the top of the left box). Two boxes side by side like VendorSystem's
+// own-panel + player-bag layout: left = the active Stash tab's grid, right = the player's
+// bag (same 6x4 grid InventorySystem/VendorSystem render). Dragging an item from one box
+// and releasing over the other moves it there (first free slot in the target grid, not
+// the exact drop position -- same simplification VendorSystem's bag-to-shop sell drag
+// already uses). No gold/trading involved, purely storage.
 class StashSystem {
 private:
     static constexpr float kBoxGap = 24.0f;
@@ -31,10 +32,14 @@ private:
     static constexpr float kLeftW = kStashGridW + 40.0f;
     static constexpr float kRightW = kBagGridW + 40.0f;
     static constexpr float kPanelW = kLeftW + kBoxGap + kRightW;
-    static constexpr float kPanelH = 90.0f + kStashGridH + 30.0f;
-    static constexpr float kGridTopY = 90.0f;
+    static constexpr float kGridTopY = 96.0f; // leaves room for the tab row above the grid
+    static constexpr float kPanelH = kGridTopY + kStashGridH + 30.0f;
+    static constexpr float kTabBtnW = 60.0f;
+    static constexpr float kTabBtnH = 24.0f;
+    static constexpr float kTabRowY = 56.0f;
 
     std::shared_ptr<sf::Font> m_font;
+    int m_activeTab = 0;
 
     bool m_dragging = false;
     bool m_dragFromStash = false;
@@ -69,7 +74,8 @@ public:
         auto& inventory = registry.GetComponent<InventoryComponent>(player);
         auto& stash = registry.GetComponent<StashComponent>(player);
         ItemUIHelpers::NormalizeBagPlacement(inventory.items);
-        ItemUIHelpers::NormalizeBagPlacement(stash.items, StashComponent::kCols, StashComponent::kRows);
+        for (auto& tab : stash.tabs) ItemUIHelpers::NormalizeBagPlacement(tab, StashComponent::kCols, StashComponent::kRows);
+        auto& activeTabItems = stash.tabs[m_activeTab];
 
         sf::RenderWindow* window = InputManager::Instance().GetWindow();
         if (!window) return;
@@ -80,34 +86,38 @@ public:
         if (m_dragging) {
             if (!mouseInput.GetMouse(sf::Mouse::Button::Left)) {
                 if (!m_dragFromStash && layout.leftBox.contains(mouse)) {
-                    MoveItem(inventory.items, stash.items, m_dragIndex, StashComponent::kCols, StashComponent::kRows, "Stash");
+                    MoveItem(inventory.items, activeTabItems, m_dragIndex, StashComponent::kCols, StashComponent::kRows, "Stash");
                 } else if (m_dragFromStash && layout.rightBox.contains(mouse)) {
-                    MoveItem(stash.items, inventory.items, m_dragIndex, ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows, "Bag");
+                    MoveItem(activeTabItems, inventory.items, m_dragIndex, ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows, "Bag");
                 }
                 m_dragging = false;
             }
             return;
         }
 
-        if (layout.closeBtnRect.contains(mouse) && mouseInput.IsGetMouse(sf::Mouse::Button::Left)) { Close(); return; }
+        if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
 
-        if (mouseInput.IsGetMouse(sf::Mouse::Button::Left)) {
-            int stashHit = HitTestGrid(layout, mouse, stash.items, true);
-            if (stashHit >= 0) {
-                m_dragging = true;
-                m_dragFromStash = true;
-                m_dragIndex = stashHit;
-                m_dragItemCache = stash.items[stashHit];
-                return;
-            }
-            int bagHit = HitTestGrid(layout, mouse, inventory.items, false);
-            if (bagHit >= 0) {
-                m_dragging = true;
-                m_dragFromStash = false;
-                m_dragIndex = bagHit;
-                m_dragItemCache = inventory.items[bagHit];
-                return;
-            }
+        if (layout.closeBtnRect.contains(mouse)) { Close(); return; }
+
+        for (int t = 0; t < StashComponent::kTabCount; ++t) {
+            if (TabRect(layout, t).contains(mouse)) { m_activeTab = t; return; }
+        }
+
+        int stashHit = HitTestGrid(layout, mouse, activeTabItems, true);
+        if (stashHit >= 0) {
+            m_dragging = true;
+            m_dragFromStash = true;
+            m_dragIndex = stashHit;
+            m_dragItemCache = activeTabItems[stashHit];
+            return;
+        }
+        int bagHit = HitTestGrid(layout, mouse, inventory.items, false);
+        if (bagHit >= 0) {
+            m_dragging = true;
+            m_dragFromStash = false;
+            m_dragIndex = bagHit;
+            m_dragItemCache = inventory.items[bagHit];
+            return;
         }
     }
 
@@ -119,6 +129,7 @@ public:
         Entity player = players[0];
         const auto& inventory = registry.GetComponent<InventoryComponent>(player);
         const auto& stash = registry.GetComponent<StashComponent>(player);
+        const auto& activeTabItems = stash.tabs[m_activeTab];
 
         sf::View oldView = target.getView();
         target.setView(target.getDefaultView());
@@ -131,20 +142,33 @@ public:
         DrawText(target, layout.leftBox.position.x + 16.0f, layout.leftBox.position.y + 10.0f, "Stash", 14, sf::Color(255, 220, 120));
         DrawText(target, layout.rightBox.position.x + 16.0f, layout.rightBox.position.y + 10.0f, "Your Bag", 14, sf::Color(220, 220, 220));
 
+        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+
+        for (int t = 0; t < StashComponent::kTabCount; ++t) {
+            sf::FloatRect tabRect = TabRect(layout, t);
+            bool active = (t == m_activeTab);
+            sf::RectangleShape tabBtn(tabRect.size);
+            tabBtn.setPosition(tabRect.position);
+            tabBtn.setFillColor(active ? sf::Color(70, 70, 110) : sf::Color(35, 35, 40));
+            tabBtn.setOutlineColor(sf::Color(150, 150, 160));
+            tabBtn.setOutlineThickness(1.0f);
+            target.draw(tabBtn);
+            DrawText(target, tabRect.position.x + 14.0f, tabRect.position.y + 5.0f, std::to_string(t + 1), 13, sf::Color::White);
+        }
+
         sf::RectangleShape closeBox(layout.closeBtnRect.size);
         closeBox.setPosition(layout.closeBtnRect.position);
-        bool closeHovered = layout.closeBtnRect.contains(InputManager::Instance().GetMouseInput().GetMousePointF());
+        bool closeHovered = layout.closeBtnRect.contains(mouse);
         closeBox.setFillColor(closeHovered ? sf::Color(140, 50, 50) : sf::Color(90, 35, 35));
         closeBox.setOutlineColor(sf::Color(200, 150, 150));
         closeBox.setOutlineThickness(1.0f);
         target.draw(closeBox);
         DrawText(target, layout.closeBtnRect.position.x + 18.0f, layout.closeBtnRect.position.y + 5.0f, "Close", 13, sf::Color::White);
 
-        sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
         const ItemComponent* hovered = nullptr;
 
         DrawGridCells(target, layout, true, StashComponent::kCols, StashComponent::kRows);
-        DrawItems(target, layout, stash.items, true, mouse, hovered);
+        DrawItems(target, layout, activeTabItems, true, mouse, hovered);
 
         DrawGridCells(target, layout, false, ItemUIHelpers::kBagGridCols, ItemUIHelpers::kBagGridRows);
         DrawItems(target, layout, inventory.items, false, mouse, hovered);
@@ -191,6 +215,12 @@ private:
         layout.rightBox = sf::FloatRect({ bounds.position.x + kLeftW + kBoxGap, bounds.position.y }, { kRightW, kPanelH });
         layout.closeBtnRect = sf::FloatRect({ layout.rightBox.position.x + kRightW - 90.0f, bounds.position.y + 10.0f }, { 70.0f, 24.0f });
         return layout;
+    }
+
+    sf::FloatRect TabRect(const Layout& layout, int tab) const {
+        float x = layout.leftBox.position.x + 20.0f + static_cast<float>(tab) * (kTabBtnW + 6.0f);
+        float y = layout.leftBox.position.y + kTabRowY;
+        return sf::FloatRect({ x, y }, { kTabBtnW, kTabBtnH });
     }
 
     void DrawBox(sf::RenderTarget& target, sf::FloatRect box) {
