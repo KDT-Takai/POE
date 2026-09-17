@@ -77,20 +77,22 @@ public:
         if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
         sf::Vector2f mouse = mouseInput.GetMousePointF();
 
-        if (L.CancelRect().contains(mouse)) {
-            Close(); // item stays uncut in the bag -- player can cut it later
-            return;
-        }
-
-        if (!listClip.contains(mouse)) return;
-        for (size_t i = 0; i < opts.size(); ++i) {
-            float y = L.listTopY + static_cast<float>(i) * L.rowHeight - m_scroll;
-            sf::FloatRect rect({ kPanelX + 12.0f, y }, { kPanelW - 24.0f, L.rowHeight });
-            if (rect.contains(mouse)) {
-                Identify(inventory, opts[i]);
-                return;
+        if (listClip.contains(mouse)) {
+            for (size_t i = 0; i < opts.size(); ++i) {
+                float y = L.listTopY + static_cast<float>(i) * L.rowHeight - m_scroll;
+                sf::FloatRect rect({ kPanelX + 12.0f, y }, { kPanelW - 24.0f, L.rowHeight });
+                if (rect.contains(mouse)) {
+                    Identify(inventory, opts[i]);
+                    return;
+                }
             }
         }
+
+        // Any click that isn't a valid gem option -- the Cancel button, empty panel
+        // background, or anywhere outside the panel entirely -- dismisses the screen
+        // (item stays uncut in the bag). Matches the usual "click elsewhere closes the
+        // popup" convention instead of forcing the player to hit the small Cancel button.
+        Close();
     }
 
     void Render(Registry& registry, sf::RenderTarget& target) {
