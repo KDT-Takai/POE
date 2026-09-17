@@ -141,6 +141,45 @@ public:
 
         spdlog::info("Map Generated: RandomWalk ({}x{})", width, height);
     }
+    // Finds the Dirt tile farthest (Euclidean, in tile space) from `fromWorldPos`, then
+    // carves a square room of Dirt tiles centered there (side length 2*halfSize+1) --
+    // used so a boss always fights in an open room instead of wherever the random walk's
+    // 1-tile-wide corridor happened to end ("ボスはボス部屋を作って"). The farthest point
+    // was already reachable Dirt, so the carved room is guaranteed connected to the rest
+    // of the map without needing a separate corridor. Returns the room's center in WORLD
+    // (pixel) coordinates, for use as the boss's spawn position.
+    static sf::Vector2f CarveBossRoom(MapComponent& map, sf::Vector2f fromWorldPos, int halfSize = 6) {
+        sf::Vector2i fromTile = map.WorldToTile(fromWorldPos.x, fromWorldPos.y);
+
+        int bestX = fromTile.x, bestY = fromTile.y;
+        long long bestDistSq = -1;
+        for (int y = 0; y < map.height; ++y) {
+            for (int x = 0; x < map.width; ++x) {
+                if (map.GetTile(x, y) != TileType::Dirt) continue;
+                long long dx = x - fromTile.x, dy = y - fromTile.y;
+                long long distSq = dx * dx + dy * dy;
+                if (distSq > bestDistSq) {
+                    bestDistSq = distSq;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+
+        int minX = std::clamp(bestX - halfSize, 1, map.width - 2);
+        int maxX = std::clamp(bestX + halfSize, 1, map.width - 2);
+        int minY = std::clamp(bestY - halfSize, 1, map.height - 2);
+        int maxY = std::clamp(bestY + halfSize, 1, map.height - 2);
+        for (int y = minY; y <= maxY; ++y) {
+            for (int x = minX; x <= maxX; ++x) {
+                map.SetTile(x, y, TileType::Dirt);
+            }
+        }
+
+        return sf::Vector2f((static_cast<float>(minX + maxX) / 2.0f) * map.tileSize,
+                             (static_cast<float>(minY + maxY) / 2.0f) * map.tileSize);
+    }
+
     // �G�l�~�[�����p�Ɉʒu���肷���
     static std::vector<sf::Vector2f> GetWalkablePositions(const MapComponent& map) {
         std::vector<sf::Vector2f> positions;

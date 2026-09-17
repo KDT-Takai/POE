@@ -8,6 +8,7 @@
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/Components.h"
 #include "../Combat/CombatMath.h"
+#include "../Combat/ImpactVfx.h"
 #include <System/CameraManager/CameraManager.h>
 #include <cmath>
 #include <algorithm>
@@ -74,6 +75,7 @@ public:
                     registry.AddComponent(playerEntity, HitFlashComponent{ 0.08f });
                     float shakeStrength = std::clamp(dealt / pStats.maxHP, 0.0f, 1.0f) * 16.0f;
                     CameraManager::Instance().Shake(shakeStrength, 0.25f);
+                    ImpactVfx::SpawnHitBurst(registry, trans.position, ImpactVfx::ElementColor(stats.contactDamageType), true);
                 }
 
                 if (hasStatus) {

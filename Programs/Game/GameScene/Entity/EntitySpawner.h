@@ -21,6 +21,7 @@
 #include "../ECS/Components/Progression/Atlas.h"
 #include "../ECS/Components/Item/SkillGem.h"
 #include "../ECS/Components/Chara/Minion.h"
+#include "../ECS/Components/Chara/EnemyAIState.h"
 #include "../ECS/Systems/Skill/SkillGemScaling.h"
 #include "../ECS/Systems/Item/ItemFactory.h"
 #include <random>
@@ -164,6 +165,7 @@ public:
         registry.AddComponent<StatusEffectsComponent>(entity, StatusEffectsComponent{});
 
         registry.AddComponent<VelocityComponent>(entity, VelocityComponent{ {0.0f, 0.0f} });
+        registry.AddComponent<EnemyAIStateComponent>(entity, EnemyAIStateComponent{});
 
         return EntityObject(entity , &registry);
     }

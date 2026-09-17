@@ -68,6 +68,7 @@
     <ClInclude Include="External\ECS\Components\Combat\DamageType.h" />
     <ClInclude Include="External\ECS\Components\Combat\StatusEffects.h" />
     <ClInclude Include="External\ECS\Systems\Combat\CombatMath.h" />
+    <ClInclude Include="External\ECS\Systems\Combat\ImpactVfx.h" />
     <ClInclude Include="External\ECS\Systems\Combat\StatusEffectSystem.h" />
     <ClInclude Include="External\ECS\Components\Item\Item.h" />
     <ClInclude Include="External\ECS\Components\Item\Equipment.h" />
@@ -110,6 +111,7 @@
     <ClInclude Include="External\ECS\Components\Chara\RangedAttacker.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemyAreaAttackSystem.h" />
     <ClInclude Include="External\ECS\Components\Chara\AreaAttacker.h" />
+    <ClInclude Include="External\ECS\Components\Chara\EnemyAIState.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemySummonSystem.h" />
     <ClInclude Include="External\ECS\Components\Chara\Summoner.h" />
     <ClInclude Include="External\ECS\Systems\Chara\EnemyChargeSystem.h" />

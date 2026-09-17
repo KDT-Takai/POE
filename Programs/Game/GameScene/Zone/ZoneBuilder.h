@@ -54,9 +54,20 @@ public:
             return result;
         }
 
+        // Bosses fight in a dedicated carved-out room (see MapGenerator::CarveBossRoom)
+        // instead of wherever the random walk happened to end -- goalPos becomes that
+        // room's center, which is also this zone's only other use of goalPos (SpawnBoss
+        // below).
+        if (zone.isBossZone) {
+            goalPos = MapGenerator::CarveBossRoom(map, startPos, kBossRoomHalfSize);
+        }
+
         std::vector<sf::Vector2f> freeSlots = MapGenerator::GetWalkablePositions(map);
+        float bossRoomExclusion = (static_cast<float>(kBossRoomHalfSize) + 1.5f) * map.tileSize;
         freeSlots.erase(std::remove_if(freeSlots.begin(), freeSlots.end(), [&](const sf::Vector2f& p) {
-            return Distance(p, startPos) < map.tileSize * 3.0f;
+            bool nearStart = Distance(p, startPos) < map.tileSize * 3.0f;
+            bool inBossRoom = zone.isBossZone && Distance(p, goalPos) < bossRoomExclusion;
+            return nearStart || inBossRoom;
             }), freeSlots.end());
 
         std::random_device rd;
@@ -94,6 +105,8 @@ private:
     // misalignment.
     static constexpr float kPortalMarkerRadius = 24.0f;
     static constexpr float kTownNpcMarkerRadius = 20.0f;
+    // Boss room half-size in tiles (room is a (2*N+1) square) -- see MapGenerator::CarveBossRoom.
+    static constexpr int kBossRoomHalfSize = 6;
 
     static float Distance(const sf::Vector2f& a, const sf::Vector2f& b) {
         float dx = a.x - b.x, dy = a.y - b.y;

@@ -14,6 +14,7 @@
 #include <System/Campaign/CampaignManager.h>
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
+#include "../Combat/ImpactVfx.h"
 #include <System/CameraManager/CameraManager.h>
 #include "../Combat/CombatMath.h"
 #include "../Item/ItemFactory.h"
@@ -77,6 +78,11 @@ public:
 
                         if (dealt > 0.0f) {
                             registry.AddComponent(enemyEntity, HitFlashComponent{ 0.08f });
+                            ImpactVfx::SpawnHitBurst(registry, pTrans.position, ImpactVfx::ElementColor(proj.damageType), isCrit);
+                            // A small punch of feedback on landing a crit -- taking damage
+                            // already shakes the camera (below), dealing damage previously
+                            // didn't at all.
+                            if (isCrit) CameraManager::Instance().Shake(5.0f, 0.15f);
                         }
 
                         if (registry.HasComponent<StatusEffectsComponent>(enemyEntity)) {
@@ -188,6 +194,7 @@ public:
                         registry.AddComponent(playerEntity, HitFlashComponent{ 0.08f });
                         float shakeStrength = std::clamp(dealt / pStats.maxHP, 0.0f, 1.0f) * 12.0f;
                         CameraManager::Instance().Shake(shakeStrength, 0.2f);
+                        ImpactVfx::SpawnHitBurst(registry, pTrans.position, ImpactVfx::ElementColor(eStats.contactDamageType), isCrit);
                     }
 
                     if (hasStatus) {
@@ -226,6 +233,7 @@ public:
                         registry.AddComponent(playerEntity, HitFlashComponent{ 0.08f });
                         float shakeStrength = std::clamp(dealt / pStats.maxHP, 0.0f, 1.0f) * 12.0f;
                         CameraManager::Instance().Shake(shakeStrength, 0.2f);
+                        ImpactVfx::SpawnHitBurst(registry, pTrans2.position, ImpactVfx::ElementColor(proj.damageType), isCrit);
                     }
 
                     if (hasStatus) {
