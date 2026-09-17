@@ -3,6 +3,7 @@
 #include <cmath>
 #include "../../Registry/Registry.h"
 #include "../../Components/World/Map.h"
+#include "TileTextureFactory.h"
 
 class MapRenderSystem {
 public:
@@ -31,38 +32,21 @@ public:
         int endY = std::min(map.height, static_cast<int>(viewBottom / map.tileSize) + 1);
 
         sf::RectangleShape rect(sf::Vector2f(map.tileSize, map.tileSize));
+        rect.setFillColor(sf::Color::White); // texture shows through undimmed
+        int tileSizeInt = static_cast<int>(map.tileSize);
 
         for (int y = startY; y < endY; ++y) {
             for (int x = startX; x < endX; ++x) {
                 TileType type = map.GetTile(x, y);
 
-                // 空気
-//                if (type == TileType::Air) continue;
-
                 // 座標設定
                 rect.setPosition(sf::Vector2{ x * map.tileSize, y * map.tileSize });
 
-                // 色設定（テクスチャがない間の仮の色分け）
-                switch (type) {
-                case TileType::Dirt:
-                    rect.setFillColor(sf::Color(70, 70, 70)); // 床：濃いグレー（ダンジョンっぽく）
-                    break;
-                case TileType::Stone:
-                    rect.setFillColor(sf::Color(20, 20, 20)); // 壁：ほぼ黒
-                    break;
-                case TileType::Wood:
-                    rect.setFillColor(sf::Color::Green);      // スタート地点：緑
-                    break;
-                case TileType::Grass:
-                    rect.setFillColor(sf::Color::Red);        // ゴール地点：赤
-                    break;
-                case TileType::Bedrock:
-                    rect.setFillColor(sf::Color::Black);      // 外枠
-                    break;
-                default:
-                    rect.setFillColor(sf::Color::Magenta);
-                    break;
-                }
+                // procedurally-painted texture per tile type (see TileTextureFactory --
+                // no hand-authored tile art exists yet). A different window of the same
+                // noise atlas is sampled per cell so same-type tiles don't visibly repeat.
+                rect.setTexture(&TileTextureFactory::Get(type));
+                rect.setTextureRect(TileTextureFactory::TextureRectFor(x, y, tileSizeInt));
 
                 target.draw(rect);
             }

@@ -234,7 +234,9 @@ void CampaignManager::BuildActs() {
         act.displayName = "エンドゲーム：地図の狭間";
         act.isEndgame = true;
         act.zones.push_back(MakeTown("endgame_hub", "地図の間"));
-        act.zones.push_back(MakeBoss("endgame_map", "歪んだ地図", 70, 70, 18, 3.2f, 3.0f, "歪みの落とし子", sf::Color(200, 40, 160),
+        // 90x90(旧70x70から拡張、「マップをもう少し広くして」の指示対応)。敵数は
+        // 面積比(8100/4900)に合わせて18→30へ増やし、広くなった分だけ間延びしないようにした。
+        act.zones.push_back(MakeBoss("endgame_map", "歪んだ地図", 90, 90, 30, 3.2f, 3.0f, "歪みの落とし子", sf::Color(200, 40, 160),
             "地図の歪みの化身", 14.0f, 3.5f, sf::Color(255, 0, 120), DamageElement::Lightning));
         m_acts.push_back(act);
     }

@@ -141,6 +141,7 @@
     <ClInclude Include="External\ECS\Systems\UI\KeyBindSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />
+    <ClInclude Include="External\ECS\Systems\World\TileTextureFactory.h" />
     <ClInclude Include="External\ECS\Components\Physics\Transform\Transform.h" />
     <ClInclude Include="Programs\Game\GameScene\Character\Enemy\EnemyFactory.h" />
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />
