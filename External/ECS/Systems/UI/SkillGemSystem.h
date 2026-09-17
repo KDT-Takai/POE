@@ -2,11 +2,13 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <optional>
 #include <algorithm>
 #include <cstdio>
 #include "../../Registry/Registry.h"
 #include "../../Components/PlayerSkill/PlayerSkill.h"
 #include "../../Components/Item/SkillGem.h"
+#include "../../Components/Item/Inventory.h"
 #include "../../Components/Item/Equipment.h"
 #include "../../Components/Tags/Player/Player.h"
 #include "../Skill/SkillGemData.h"
@@ -15,7 +17,7 @@
 #include "../Skill/SkillGemScaling.h"
 #include "../Skill/SkillTags.h"
 #include "../Skill/SpiritAuraSystem.h"
-#include "GemIdentifySystem.h"
+#include "ItemUIHelpers.h"
 #include "System/Resource/ResourceManager/ResourceManager.h"
 #include "System/Input/InputManager.h"
 #include "System/Input/InputUtils/InputUtils.h"
@@ -23,23 +25,27 @@
 
 // Lets the player freely reassign any of the 5 skill slots (keybound Skill1-5) or 5
 // Spirit slots (no keybind, always-on like a passive node, budget-limited by
-// CharacterStatsComponent::maxSpirit) to any gem they own (SkillGemInventoryComponent).
-// The 10 slots are the shared equip pool the gem system's design calls for: skill and
-// Spirit gems can't duplicate within their own category, and each draws from the same
-// underlying "owned gems" list (SkillGemInventoryComponent::ownedGems).
+// CharacterStatsComponent::maxSpirit) to any identified SkillGem-category item sitting in
+// their bag (InventoryComponent::items) -- gems live in the item grid exactly like
+// Waystones do (see AI/DECISIONS.md "スキルジェムもウェイストーンみたいにアイテム欄に置く").
+// Equipping physically moves the item out of the bag into PlayerSkill::equippedItems[i] /
+// SpiritGemLoadoutComponent::items[i]; unequipping moves it back (rejected if the bag has
+// no room, same as unequipping gear). Uncut Gems are identified separately, via
+// right-click in InventorySystem (see GemIdentifySystem) -- this screen only ever shows
+// already-identified gems in its picker.
 // Skill gems additionally have 2-5 support-gem sockets (Jeweller's Orb, spent from this
-// screen, expands them); Spirit/Aura gems don't, since their effect is a flat stat bonus
-// with nothing for a support gem's damage/cooldown/mana modifiers to act on.
+// screen, expands them); socketing a support gem likewise consumes the physical support
+// item from the bag, and unsocketing hands one back. Spirit/Aura gems don't have sockets,
+// since their effect is a flat stat bonus with nothing for a support gem's damage/
+// cooldown/mana modifiers to act on.
 //
-// Visual language deliberately leans on PoE2's own conventions ("スキルジェムのUIを
-// POE2みたいに" -- colored gem icons instead of plain text rows, a card-style picker
-// instead of a thin text list) despite having no hand-drawn gem art: each gem's icon is
-// a plain circle tinted by its GemAttribute (Str/Dex/Int, same red/green/blue coding as
-// CharacterSheetSystem), and support sockets are tinted by SupportCategory. The picker
-// list is also now a clipped, mouse-wheel-scrollable viewport (see m_pickerScroll) --
-// previously it just kept drawing rows past the bottom of the panel with no way to reach
-// them once there were more than ~12 options, which was the main "追加しにくい" (hard to
-// add gems) complaint for the skill-gem list (17 entries).
+// Visual language leans on PoE2's own conventions (colored gem icons instead of plain
+// text rows, a card-style picker instead of a thin text list) despite having no
+// hand-drawn gem art: each gem's icon is a plain circle tinted by its GemAttribute (Str/
+// Dex/Int, same red/green/blue coding as CharacterSheetSystem), and support sockets are
+// tinted by SupportCategory. The picker list is a clipped, mouse-wheel-scrollable
+// viewport (see m_pickerScroll) so a long bag doesn't spill options past the panel with no
+// way to reach them.
 class SkillGemSystem {
 private:
     static constexpr int kSkillSlotCount = 5;
@@ -59,7 +65,6 @@ private:
     // and a member function's parameter types (unlike its body) aren't deferred to
     // "complete-class context" -- the type must already be visible at that point.
     struct Layout {
-        float uncutGemsRowY;
         float skillRowY;
         float skillRowHeight;  // full row incl. the socket sub-line below the icon/name line
         float skillMainLineH;  // click area for just the icon/name line
@@ -102,20 +107,20 @@ public:
     }
 
     // Selection and assignment are entirely mouse-driven: click a slot row to select it,
-    // then click a gem in the (scrollable) list below to socket it. The old Up/Down/
-    // Left/Right keyboard navigation was removed because this menu doesn't pause the
-    // world, so those arrow keys were simultaneously moving the player (see InputSystem's
-    // movement handling).
-    void Update(Registry& registry, float dt, GemIdentifySystem& gemIdentifySystem) {
+    // then click a gem in the (scrollable) list below to equip it (moving it out of the
+    // bag). The old Up/Down/Left/Right keyboard navigation was removed because this menu
+    // doesn't pause the world, so those arrow keys were simultaneously moving the player
+    // (see InputSystem's movement handling).
+    void Update(Registry& registry, float dt) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
 
-        auto players = registry.View<PlayerTag, PlayerSkill, SkillGemInventoryComponent, SpiritGemLoadoutComponent, EquipmentComponent, CharacterStatsComponent>();
+        auto players = registry.View<PlayerTag, PlayerSkill, SpiritGemLoadoutComponent, InventoryComponent, EquipmentComponent, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity player = players[0];
         auto& skillComp = registry.GetComponent<PlayerSkill>(player);
-        auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
         auto& loadout = registry.GetComponent<SpiritGemLoadoutComponent>(player);
+        auto& inventory = registry.GetComponent<InventoryComponent>(player);
         auto& equipment = registry.GetComponent<EquipmentComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
@@ -129,8 +134,8 @@ public:
             sf::FloatRect pickerClip({ kPanelX, L.pickerRowY }, { kPanelW, L.pickerViewportH });
             if (pickerClip.contains(mouseAny)) {
                 int optCount = (m_selectedSocket >= 0)
-                    ? static_cast<int>(SupportOptions(HostSkillTags(skillComp), gemInventory).size())
-                    : static_cast<int>(Options(gemInventory, IsSpiritSlot()).size());
+                    ? static_cast<int>(SupportOptions(HostSkillTags(skillComp), inventory).size())
+                    : static_cast<int>(Options(inventory, IsSpiritSlot()).size());
                 float contentH = static_cast<float>(optCount) * L.pickerRowHeight;
                 float maxScroll = (std::max)(0.0f, contentH - L.pickerViewportH);
                 m_pickerScroll = std::clamp(m_pickerScroll - wheel * L.pickerRowHeight, 0.0f, maxScroll);
@@ -141,40 +146,30 @@ public:
         if (!mouseInput.IsGetMouse(sf::Mouse::Button::Left)) return;
         sf::Vector2f mouse = mouseInput.GetMousePointF();
 
-        for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
-            if (UncutGemRect(L, static_cast<int>(i)).contains(mouse)) {
-                const PendingUncutGem& pending = gemInventory.pendingUncutGems[i];
-                gemIdentifySystem.Open(static_cast<int>(i), pending.level, pending.kind);
-                return;
-            }
-        }
-
         for (int i = 0; i < kSkillSlotCount; ++i) {
             sf::FloatRect mainRect({ kPanelX + 12.0f, SkillRowY(L, i) }, { kPanelW - 24.0f, L.skillMainLineH });
             if (mainRect.contains(mouse)) { SelectSlot(i, -1); return; }
 
-            if (skillComp.skills[i].isValid) {
-                OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skillComp.skills[i].gemId, false);
-                if (inst) {
-                    for (int s = 0; s < inst->maxSockets && s < kMaxPossibleSockets; ++s) {
-                        if (SocketRect(L, i, s).contains(mouse)) { SelectSlot(i, s); return; }
-                    }
-                    if (inst->maxSockets < kMaxPossibleSockets && stats.jewellersOrbs > 0
-                        && SocketRect(L, i, inst->maxSockets).contains(mouse)) {
-                        inst->maxSockets++;
-                        stats.jewellersOrbs--;
-                        lastActionMessage = "Socket added (" + std::to_string(inst->maxSockets) + "/5)";
-                        messageTimer = 2.0f;
-                        return;
-                    }
+            if (skillComp.equippedItems[i]) {
+                ItemComponent& item = *skillComp.equippedItems[i];
+                for (int s = 0; s < item.skillGemMaxSockets && s < kMaxPossibleSockets; ++s) {
+                    if (SocketRect(L, i, s).contains(mouse)) { SelectSlot(i, s); return; }
+                }
+                if (item.skillGemMaxSockets < kMaxPossibleSockets && stats.jewellersOrbs > 0
+                    && SocketRect(L, i, item.skillGemMaxSockets).contains(mouse)) {
+                    item.skillGemMaxSockets++;
+                    stats.jewellersOrbs--;
+                    lastActionMessage = "Socket added (" + std::to_string(item.skillGemMaxSockets) + "/5)";
+                    messageTimer = 2.0f;
+                    return;
                 }
             }
         }
 
         for (int i = 0; i < kSpiritSlotCount; ++i) {
-            if (loadout.auraGemIds[i] >= 0 && SpiritToggleRect(L, i).contains(mouse)) {
+            if (loadout.items[i] && SpiritToggleRect(L, i).contains(mouse)) {
                 std::string message;
-                SpiritAuraSystem::TryToggleActive(registry, player, loadout, i, gemInventory, equipment, stats, message);
+                SpiritAuraSystem::TryToggleActive(registry, player, loadout, i, equipment, stats, message);
                 lastActionMessage = message;
                 messageTimer = 2.0f;
                 return;
@@ -187,23 +182,23 @@ public:
         if (!pickerClip.contains(mouse)) return;
 
         if (m_selectedSocket >= 0) {
-            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), gemInventory);
+            std::vector<int> opts = SupportOptions(HostSkillTags(skillComp), inventory);
             for (size_t i = 0; i < opts.size(); ++i) {
                 float rowY = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
                 sf::FloatRect rect({ kPanelX + 12.0f, rowY }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
-                    AssignSupport(skillComp, gemInventory, stats, opts[i]);
+                    AssignSupport(skillComp, inventory, stats, opts[i]);
                     return;
                 }
             }
         } else {
             bool spiritSlot = IsSpiritSlot();
-            std::vector<int> opts = Options(gemInventory, spiritSlot);
+            std::vector<int> opts = Options(inventory, spiritSlot);
             for (size_t i = 0; i < opts.size(); ++i) {
                 float rowY = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
                 sf::FloatRect rect({ kPanelX + 12.0f, rowY }, { kPanelW - 24.0f, L.pickerRowHeight });
                 if (rect.contains(mouse)) {
-                    AssignSelected(registry, player, skillComp, loadout, gemInventory, equipment, stats, opts[i]);
+                    AssignSelected(registry, player, skillComp, loadout, inventory, equipment, stats, opts[i]);
                     return;
                 }
             }
@@ -213,12 +208,12 @@ public:
     void Render(Registry& registry, sf::RenderTarget& target) {
         if (!isOpen || !m_font) return;
 
-        auto players = registry.View<PlayerTag, PlayerSkill, SkillGemInventoryComponent, SpiritGemLoadoutComponent, CharacterStatsComponent>();
+        auto players = registry.View<PlayerTag, PlayerSkill, SpiritGemLoadoutComponent, InventoryComponent, CharacterStatsComponent>();
         if (players.empty()) return;
         Entity player = players[0];
         auto& skillComp = registry.GetComponent<PlayerSkill>(player);
-        auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
         auto& loadout = registry.GetComponent<SpiritGemLoadoutComponent>(player);
+        auto& inventory = registry.GetComponent<InventoryComponent>(player);
         auto& stats = registry.GetComponent<CharacterStatsComponent>(player);
 
         sf::View oldView = target.getView();
@@ -240,7 +235,7 @@ public:
         auto& binds = KeyBindings::Instance();
         std::string closeKey = KeyToString(binds.Get(GameAction::ToggleSkillGems));
         DrawText(target, panelX + 12.0f, panelY + 6.0f,
-            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem", contentWidth, 12), 12, sf::Color(255, 220, 120));
+            Truncate("Skill Gems (" + closeKey + " to close) - click a slot, then a gem from your bag", contentWidth, 12), 12, sf::Color(255, 220, 120));
 
         const std::string kSlotKeys[kSkillSlotCount] = {
             KeyToString(binds.Get(GameAction::Skill1)),
@@ -251,15 +246,6 @@ public:
         };
 
         Layout L = ComputeLayout();
-
-        for (size_t i = 0; i < gemInventory.pendingUncutGems.size() && i < SkillGemInventoryComponent::kPendingCapacity; ++i) {
-            const PendingUncutGem& pending = gemInventory.pendingUncutGems[i];
-            sf::FloatRect rect = UncutGemRect(L, static_cast<int>(i));
-            DrawButtonSmall(target, rect, KindAbbrev(pending.kind) + std::to_string(pending.level), UncutKindColor(pending.kind));
-        }
-        if (gemInventory.pendingUncutGems.empty()) {
-            DrawText(target, panelX + 12.0f, L.uncutGemsRowY + 2.0f, "Uncut Gems: none", 11, sf::Color(120, 120, 120));
-        }
 
         for (int i = 0; i < kSkillSlotCount; ++i) {
             float y = SkillRowY(L, i);
@@ -273,7 +259,8 @@ public:
             target.draw(highlight);
 
             const SkillData& skill = skillComp.skills[i];
-            const GemDefinition* def = skill.isValid ? SkillGemData::Find(skill.gemId) : nullptr;
+            const std::optional<ItemComponent>& equipped = skillComp.equippedItems[i];
+            const GemDefinition* def = equipped ? SkillGemData::Find(equipped->skillGemId) : nullptr;
             sf::Vector2f iconCenter(panelX + 12.0f + 6.0f + kIconRadius, y + L.skillMainLineH / 2.0f);
             DrawGemIcon(target, iconCenter, kIconRadius, def ? AttributeColor(def->primaryAttribute) : sf::Color(40, 40, 45),
                 skill.isValid, kSlotKeys[i]);
@@ -293,19 +280,16 @@ public:
                 DrawText(target, textX, y + 18.0f, Truncate(statLine, textContentW, 11), 11, sf::Color(170, 170, 175));
             }
 
-            if (skill.isValid) {
-                OwnedGemInstance* inst = FindOwnedMutable(gemInventory, skill.gemId, false);
-                if (inst) {
-                    for (int s = 0; s < inst->maxSockets && s < kMaxPossibleSockets; ++s) {
-                        bool socketSelected = selected && (s == m_selectedSocket);
-                        DrawSocketBox(target, SocketRect(L, i, s), inst->supportGemIds[s], socketSelected);
-                    }
-                    if (inst->maxSockets < kMaxPossibleSockets) {
-                        bool canAfford = stats.jewellersOrbs > 0;
-                        sf::FloatRect btn = SocketRect(L, i, inst->maxSockets);
-                        DrawButtonSmall(target, btn, "+Jeweller(" + std::to_string(stats.jewellersOrbs) + ")",
-                            canAfford ? sf::Color(70, 90, 70) : sf::Color(50, 50, 55));
-                    }
+            if (equipped) {
+                for (int s = 0; s < equipped->skillGemMaxSockets && s < kMaxPossibleSockets; ++s) {
+                    bool socketSelected = selected && (s == m_selectedSocket);
+                    DrawSocketBox(target, SocketRect(L, i, s), equipped->skillGemSupportIds[s], socketSelected);
+                }
+                if (equipped->skillGemMaxSockets < kMaxPossibleSockets) {
+                    bool canAfford = stats.jewellersOrbs > 0;
+                    sf::FloatRect btn = SocketRect(L, i, equipped->skillGemMaxSockets);
+                    DrawButtonSmall(target, btn, "+Jeweller(" + std::to_string(stats.jewellersOrbs) + ")",
+                        canAfford ? sf::Color(70, 90, 70) : sf::Color(50, 50, 55));
                 }
             }
         }
@@ -326,9 +310,9 @@ public:
             highlight.setOutlineThickness(selected ? 2.0f : 1.0f);
             target.draw(highlight);
 
-            int gemId = loadout.auraGemIds[i];
-            const GemDefinition* def = gemId >= 0 ? SkillGemData::Find(gemId) : nullptr;
-            bool active = def && loadout.active[i];
+            const std::optional<ItemComponent>& item = loadout.items[i];
+            const GemDefinition* def = item ? SkillGemData::Find(item->skillGemId) : nullptr;
+            bool active = item && loadout.active[i];
 
             sf::Vector2f iconCenter(panelX + 12.0f + 6.0f + kIconRadius, y + L.spiritRowHeight / 2.0f);
             DrawGemIcon(target, iconCenter, kIconRadius, def ? AttributeColor(def->primaryAttribute) : sf::Color(40, 40, 45),
@@ -346,9 +330,8 @@ public:
             float textX = panelX + 12.0f + 6.0f + kIconRadius * 2.0f + 10.0f;
             float textContentW = contentWidth - (textX - panelX) - kToggleBtnW - 8.0f;
             std::string line = def ? def->skill.name : "-- Empty --";
-            if (def) {
-                int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
-                line += " Lv" + std::to_string(level) + "  (" + FormatFloat(SpiritAuraSystem::SpiritCostOf(gemId, gemInventory)) + " spirit)";
+            if (def && item) {
+                line += " Lv" + std::to_string(item->skillGemLevel) + "  (" + FormatFloat(SpiritAuraSystem::SpiritCostOf(*item)) + " spirit)";
             }
             DrawText(target, textX, y + L.spiritRowHeight / 2.0f - 7.0f, Truncate(line, textContentW, 12), 12,
                 def ? sf::Color(180, 230, 230) : sf::Color(120, 120, 120));
@@ -365,13 +348,13 @@ public:
         // scrolls within a fixed box instead of spilling past the panel with no way to
         // reach the lower entries.
         std::vector<int> pickerOpts = (m_selectedSocket >= 0)
-            ? SupportOptions(HostSkillTags(skillComp), gemInventory)
-            : Options(gemInventory, IsSpiritSlot());
+            ? SupportOptions(HostSkillTags(skillComp), inventory)
+            : Options(inventory, IsSpiritSlot());
 
         DrawText(target, panelX + 12.0f, L.pickerHeaderY,
             (m_selectedSocket >= 0)
-                ? "Support gems for socket " + std::to_string(m_selectedSocket + 1) + " (click to socket):"
-                : (IsSpiritSlot() ? "Available Spirit gems (click to socket):" : "Available skill gems (click to socket):"),
+                ? "Support gems in your bag for socket " + std::to_string(m_selectedSocket + 1) + " (click to socket):"
+                : (IsSpiritSlot() ? "Spirit gems in your bag (click to equip):" : "Skill gems in your bag (click to equip):"),
             13, sf::Color(200, 200, 200));
 
         sf::Vector2u winSize = target.getSize();
@@ -382,15 +365,15 @@ public:
         target.setView(pickerView);
 
         if (m_selectedSocket >= 0) {
-            RenderSupportPicker(target, L, panelX, contentWidth, pickerOpts, skillComp, gemInventory, stats);
+            RenderSupportPicker(target, L, panelX, contentWidth, pickerOpts, inventory, stats);
         } else {
-            RenderGemPicker(target, L, panelX, contentWidth, pickerOpts, IsSpiritSlot(), skillComp, loadout, gemInventory, stats);
+            RenderGemPicker(target, L, panelX, contentWidth, pickerOpts, inventory, stats);
         }
 
         target.setView(target.getDefaultView());
 
         // Scrollbar affordance -- only shown once content actually overflows the
-        // viewport, so it doesn't clutter short lists (Spirit gems, support options).
+        // viewport, so it doesn't clutter short lists.
         float contentH = static_cast<float>(pickerOpts.size()) * L.pickerRowHeight;
         if (contentH > L.pickerViewportH) {
             sf::FloatRect track({ panelX + panelW - kScrollBarW - 4.0f, L.pickerRowY }, { kScrollBarW, L.pickerViewportH });
@@ -423,18 +406,15 @@ private:
         m_pickerScroll = 0.0f;
     }
 
+    // opts holds BAG INDICES into inventory.items (-1 = Empty/unequip) -- equipping
+    // physically removes the item from the bag, so an equipped gem never appears in this
+    // list (it's simply not in the bag anymore), unlike the old gemId-based picker which
+    // needed a separate "current" highlight to show that.
     void RenderGemPicker(sf::RenderTarget& target, const Layout& L, float panelX, float contentWidth,
-        const std::vector<int>& opts, bool spiritSlot, const PlayerSkill& skillComp,
-        const SpiritGemLoadoutComponent& loadout, const SkillGemInventoryComponent& gemInventory,
-        const CharacterStatsComponent& stats) {
-        int currentId = spiritSlot
-            ? loadout.auraGemIds[m_selectedSlot - kSkillSlotCount]
-            : (skillComp.skills[m_selectedSlot].isValid ? skillComp.skills[m_selectedSlot].gemId : -1);
-
+        const std::vector<int>& opts, const InventoryComponent& inventory, const CharacterStatsComponent& stats) {
         for (size_t i = 0; i < opts.size(); ++i) {
-            int gemId = opts[i];
+            int bagIndex = opts[i];
             float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
-            bool current = (gemId == currentId);
 
             std::string name = "-- Empty --";
             std::string reqLine;
@@ -442,39 +422,31 @@ private:
             sf::Color statusColor(200, 220, 255);
             bool hasIcon = false;
 
-            if (gemId >= 0) {
-                const GemDefinition* def = SkillGemData::Find(gemId);
+            if (bagIndex >= 0) {
+                const ItemComponent& item = inventory.items[bagIndex];
+                const GemDefinition* def = SkillGemData::Find(item.skillGemId);
                 if (!def) continue;
                 hasIcon = true;
                 iconColor = AttributeColor(def->primaryAttribute);
-                int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
-                name = def->skill.name + " Lv" + std::to_string(level);
+                name = def->skill.name + " Lv" + std::to_string(item.skillGemLevel);
                 if (DealsElementalDamage(def->skill.behaviorType)) name += " (" + ElementName(def->skill.element) + ")";
 
-                int required = SkillGemScaling::RequiredStat(def->baseRequirement, level);
+                int required = SkillGemScaling::RequiredStat(def->baseRequirement, item.skillGemLevel);
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
                 reqLine = "Requires " + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
                     + " (have " + std::to_string(have) + ")";
                 statusColor = (have < required) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
 
-            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, current, statusColor);
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, statusColor);
         }
     }
 
     void RenderSupportPicker(sf::RenderTarget& target, const Layout& L, float panelX, float contentWidth,
-        const std::vector<int>& opts, const PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory,
-        const CharacterStatsComponent& stats) {
-        int hostGemId = (m_selectedSlot < kSkillSlotCount && skillComp.skills[m_selectedSlot].isValid)
-            ? skillComp.skills[m_selectedSlot].gemId : -1;
-        const OwnedGemInstance* inst = hostGemId >= 0 ? FindOwnedConst(gemInventory, hostGemId, false) : nullptr;
-        int currentId = (inst && m_selectedSocket >= 0 && m_selectedSocket < kMaxPossibleSockets)
-            ? inst->supportGemIds[m_selectedSocket] : -1;
-
+        const std::vector<int>& opts, const InventoryComponent& inventory, const CharacterStatsComponent& stats) {
         for (size_t i = 0; i < opts.size(); ++i) {
-            int gemId = opts[i];
+            int bagIndex = opts[i];
             float y = L.pickerRowY + static_cast<float>(i) * L.pickerRowHeight - m_pickerScroll;
-            bool current = (gemId == currentId);
 
             std::string name = "-- Empty --";
             std::string reqLine;
@@ -482,34 +454,33 @@ private:
             sf::Color statusColor(200, 220, 255);
             bool hasIcon = false;
 
-            if (gemId >= 0) {
-                const SupportGemDefinition* def = SupportGemData::Find(gemId);
+            if (bagIndex >= 0) {
+                const ItemComponent& item = inventory.items[bagIndex];
+                const SupportGemDefinition* def = SupportGemData::Find(item.skillGemId);
                 if (!def) continue;
                 hasIcon = true;
                 iconColor = CategoryColor(def->category);
                 name = def->name;
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
-                bool categoryConflict = inst && HasCategoryConflict(*inst, m_selectedSocket, *def);
                 reqLine = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
                     + " (have " + std::to_string(have) + ")";
-                if (categoryConflict) reqLine += " - category conflict";
-                statusColor = (have < def->requirement || categoryConflict) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
+                statusColor = (have < def->requirement) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
 
-            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, current, statusColor);
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, statusColor);
         }
     }
 
     // One picker option, PoE2-style: a colored gem icon + two-line text block (name on
     // top, requirement/status below) inside a bordered card, instead of the old single
-    // line of dense text. `current` highlights whatever's already socketed there.
+    // line of dense text.
     void DrawPickerCard(sf::RenderTarget& target, float panelX, float contentWidth, float y, float rowHeight,
-        const std::string& name, const std::string& reqLine, sf::Color iconColor, bool hasIcon, bool current, sf::Color statusColor) {
+        const std::string& name, const std::string& reqLine, sf::Color iconColor, bool hasIcon, sf::Color statusColor) {
         sf::RectangleShape card({ kPanelW - 24.0f, rowHeight - 4.0f });
         card.setPosition({ panelX + 12.0f, y });
-        card.setFillColor(current ? sf::Color(55, 80, 60, 200) : sf::Color(28, 28, 33, 190));
-        card.setOutlineColor(current ? sf::Color(140, 220, 150) : sf::Color(80, 80, 90));
-        card.setOutlineThickness(current ? 2.0f : 1.0f);
+        card.setFillColor(sf::Color(28, 28, 33, 190));
+        card.setOutlineColor(sf::Color(80, 80, 90));
+        card.setOutlineThickness(1.0f);
         target.draw(card);
 
         float iconR = kIconRadius * 0.8f;
@@ -526,8 +497,7 @@ private:
 
     Layout ComputeLayout() const {
         Layout L;
-        L.uncutGemsRowY = kPanelY + 22.0f;
-        L.skillRowY = L.uncutGemsRowY + 26.0f;
+        L.skillRowY = kPanelY + 46.0f;
         L.skillRowHeight = 54.0f;
         L.skillMainLineH = 34.0f;
         L.socketLineOffsetY = 34.0f;
@@ -541,15 +511,6 @@ private:
         return L;
     }
 
-    static constexpr float kUncutChipW = 48.0f;
-    static constexpr float kUncutChipH = 18.0f;
-    static constexpr float kUncutChipGap = 3.0f;
-
-    sf::FloatRect UncutGemRect(const Layout& L, int index) const {
-        float x = kPanelX + 12.0f + static_cast<float>(index) * (kUncutChipW + kUncutChipGap);
-        return sf::FloatRect({ x, L.uncutGemsRowY }, { kUncutChipW, kUncutChipH });
-    }
-
     float SkillRowY(const Layout& L, int index) const { return L.skillRowY + static_cast<float>(index) * L.skillRowHeight; }
     float SpiritRowY(const Layout& L, int index) const { return L.spiritRowY + static_cast<float>(index) * L.spiritRowHeight; }
 
@@ -559,7 +520,7 @@ private:
         return sf::FloatRect({ x, y }, { kSocketBoxW, kSocketBoxH });
     }
 
-    // ON/OFF button pinned to the right edge of a Spirit row (registering a gem there
+    // ON/OFF button pinned to the right edge of a Spirit row (equipping a gem there
     // does NOT activate it -- this is the separate toggle, see SpiritAuraSystem).
     sf::FloatRect SpiritToggleRect(const Layout& L, int rowIndex) const {
         float x = kPanelX + (kPanelW - 24.0f) + 12.0f - kToggleBtnW - 4.0f;
@@ -574,72 +535,68 @@ private:
 
     bool IsSpiritSlot() const { return m_selectedSlot >= kSkillSlotCount; }
 
-    const OwnedGemInstance* FindOwnedConst(const SkillGemInventoryComponent& inv, int gemId, bool isSupport) const {
-        return SkillGemScaling::FindOwnedGem(inv, gemId, isSupport);
-    }
-
     // True if `candidate` shares a SupportCategory with any OTHER socketed support on
-    // `inst` (excludeSocket is the socket being written to, not a conflict with itself).
-    static bool HasCategoryConflict(const OwnedGemInstance& inst, int excludeSocket, const SupportGemDefinition& candidate) {
+    // `hostItem` (excludeSocket is the socket being written to, not a conflict with itself).
+    static bool HasCategoryConflict(const ItemComponent& hostItem, int excludeSocket, const SupportGemDefinition& candidate) {
         for (int s = 0; s < kMaxPossibleSockets; ++s) {
-            if (s == excludeSocket || inst.supportGemIds[s] < 0) continue;
-            const SupportGemDefinition* other = SupportGemData::Find(inst.supportGemIds[s]);
+            if (s == excludeSocket || hostItem.skillGemSupportIds[s] < 0) continue;
+            const SupportGemDefinition* other = SupportGemData::Find(hostItem.skillGemSupportIds[s]);
             if (other && other->category == candidate.category) return true;
         }
         return false;
     }
 
-    OwnedGemInstance* FindOwnedMutable(SkillGemInventoryComponent& inv, int gemId, bool isSupport) const {
-        for (auto& owned : inv.ownedGems) {
-            if (owned.isSupport == isSupport && owned.gemId == gemId) return &owned;
-        }
-        return nullptr;
+    // Moves `item` into the first free 1x1 bag cell. Returns false (item untouched by the
+    // caller) if the bag has no room -- same "reject, never silently lose it" convention
+    // QuickUnequip already uses for gear.
+    bool ReturnToBag(InventoryComponent& inventory, ItemComponent item) const {
+        int col, row;
+        if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, 1, 1, col, row)) return false;
+        item.gridCol = col;
+        item.gridRow = row;
+        inventory.items.push_back(item);
+        return true;
     }
 
-    // Option list for the selected slot: -1 = Empty, followed by every owned gem
-    // matching the slot's category (activated skills for skill slots, Aura gems for
-    // Spirit slots).
-    std::vector<int> Options(const SkillGemInventoryComponent& gemInventory, bool auraOnly) const {
+    ItemComponent MakeSupportGemItem(int supportGemId) const {
+        ItemComponent item;
+        item.category = ItemCategory::SkillGem;
+        item.skillGemIdentified = true;
+        item.skillGemIsSupport = true;
+        item.skillGemId = supportGemId;
+        item.skillGemLevel = 1;
+        const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
+        item.baseName = def ? def->name : "Support Gem";
+        return item;
+    }
+
+    // Option list for the selected slot: -1 = Empty (unequip), followed by bag indices of
+    // every identified, non-support SkillGem item matching the slot's category (activated
+    // skills for skill slots, Aura gems for Spirit slots).
+    std::vector<int> Options(const InventoryComponent& inventory, bool auraOnly) const {
         std::vector<int> opts = { -1 };
-        for (const auto& owned : gemInventory.ownedGems) {
-            if (owned.isSupport) continue;
-            const GemDefinition* def = SkillGemData::Find(owned.gemId);
+        for (size_t i = 0; i < inventory.items.size(); ++i) {
+            const ItemComponent& item = inventory.items[i];
+            if (item.category != ItemCategory::SkillGem || !item.skillGemIdentified || item.skillGemIsSupport) continue;
+            const GemDefinition* def = SkillGemData::Find(item.skillGemId);
             if (!def) continue;
             bool isSpirit = SkillGemData::IsSpiritBehavior(def->skill.behaviorType);
-            if (isSpirit == auraOnly) opts.push_back(owned.gemId);
+            if (isSpirit == auraOnly) opts.push_back(static_cast<int>(i));
         }
         return opts;
     }
 
-    // Support gems are Uncut-Gem drops like Skill/Spirit gems (see GemIdentifySystem) --
-    // only ones the player has already cut are offered here, gated by whether the host
-    // skill has the support's required SkillTag (spec: only show compatible supports).
-    std::vector<int> SupportOptions(unsigned int hostSkillTags, const SkillGemInventoryComponent& gemInventory) const {
+    // Support gems in the bag, gated by whether the host skill has the support's required
+    // SkillTag (spec: only show compatible supports).
+    std::vector<int> SupportOptions(unsigned int hostSkillTags, const InventoryComponent& inventory) const {
         std::vector<int> opts = { -1 };
-        for (const auto& owned : gemInventory.ownedGems) {
-            if (!owned.isSupport) continue;
-            const SupportGemDefinition* def = SupportGemData::Find(owned.gemId);
-            if (def && SkillTags::IsCompatible(hostSkillTags, def->requiredTag)) opts.push_back(def->id);
+        for (size_t i = 0; i < inventory.items.size(); ++i) {
+            const ItemComponent& item = inventory.items[i];
+            if (item.category != ItemCategory::SkillGem || !item.skillGemIdentified || !item.skillGemIsSupport) continue;
+            const SupportGemDefinition* def = SupportGemData::Find(item.skillGemId);
+            if (def && SkillTags::IsCompatible(hostSkillTags, def->requiredTag)) opts.push_back(static_cast<int>(i));
         }
         return opts;
-    }
-
-    static std::string KindAbbrev(GemPickupKind kind) {
-        switch (kind) {
-        case GemPickupKind::Support: return "Su";
-        case GemPickupKind::Spirit: return "Sp";
-        default: return "Sk";
-        }
-    }
-
-    // Uncut Gem chips get a color per kind (Skill/Support/Spirit) so they read as three
-    // visually distinct groups at a glance instead of a uniform-colored row.
-    static sf::Color UncutKindColor(GemPickupKind kind) {
-        switch (kind) {
-        case GemPickupKind::Support: return sf::Color(100, 70, 110);
-        case GemPickupKind::Spirit: return sf::Color(60, 100, 100);
-        default: return sf::Color(120, 85, 50);
-        }
     }
 
     // Same red/green/blue coding CharacterSheetSystem already uses for STR/DEX/INT, reused
@@ -670,41 +627,47 @@ private:
         return SkillTags::TagsFor(skill.behaviorType, skill.element);
     }
 
-    void AssignSelected(Registry& registry, Entity player, PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, SkillGemInventoryComponent& gemInventory,
-        EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
+    void AssignSelected(Registry& registry, Entity player, PlayerSkill& skillComp, SpiritGemLoadoutComponent& loadout, InventoryComponent& inventory,
+        EquipmentComponent& equipment, CharacterStatsComponent& stats, int bagIndex) {
         if (IsSpiritSlot()) {
-            std::string message;
-            // Only registers the gem into the slot -- it stays OFF (no Spirit reserved,
-            // no effect applied) until separately toggled ON via SpiritToggleRect.
-            SpiritAuraSystem::TryRegister(registry, player, loadout, m_selectedSlot - kSkillSlotCount, gemId, gemInventory, equipment, stats, message);
-            lastActionMessage = message;
-            messageTimer = 2.0f;
+            AssignSpirit(registry, player, loadout, inventory, equipment, stats, bagIndex);
         } else {
-            AssignGem(skillComp, gemInventory, equipment, stats, gemId);
+            AssignGem(skillComp, inventory, equipment, stats, bagIndex);
         }
     }
 
-    void AssignGem(PlayerSkill& skillComp, const SkillGemInventoryComponent& gemInventory,
-        const EquipmentComponent& equipment, CharacterStatsComponent& stats, int gemId) {
-        if (gemId < 0) {
+    void AssignGem(PlayerSkill& skillComp, InventoryComponent& inventory,
+        const EquipmentComponent& equipment, CharacterStatsComponent& stats, int bagIndex) {
+        if (bagIndex < 0) {
+            if (skillComp.equippedItems[m_selectedSlot]) {
+                if (!ReturnToBag(inventory, *skillComp.equippedItems[m_selectedSlot])) {
+                    lastActionMessage = "Bag full - can't unequip";
+                    messageTimer = 2.0f;
+                    return;
+                }
+                skillComp.equippedItems[m_selectedSlot].reset();
+            }
             skillComp.skills[m_selectedSlot] = SkillData{};
             lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": Empty";
             messageTimer = 2.0f;
             return;
         }
 
+        if (bagIndex >= static_cast<int>(inventory.items.size())) return;
+        const ItemComponent& picked = inventory.items[bagIndex];
+        if (picked.category != ItemCategory::SkillGem || !picked.skillGemIdentified || picked.skillGemIsSupport) return;
+
         for (int i = 0; i < kSkillSlotCount; ++i) {
-            if (i != m_selectedSlot && skillComp.skills[i].isValid && skillComp.skills[i].gemId == gemId) {
+            if (i != m_selectedSlot && skillComp.equippedItems[i] && skillComp.equippedItems[i]->skillGemId == picked.skillGemId) {
                 lastActionMessage = "Already equipped in another skill slot";
                 messageTimer = 2.0f;
                 return;
             }
         }
 
-        const GemDefinition* def = SkillGemData::Find(gemId);
+        const GemDefinition* def = SkillGemData::Find(picked.skillGemId);
         if (!def) return;
-        int level = SpiritAuraSystem::LevelOf(gemInventory, gemId);
-        int required = SkillGemScaling::RequiredStat(def->baseRequirement, level);
+        int required = SkillGemScaling::RequiredStat(def->baseRequirement, picked.skillGemLevel);
         int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
         if (have < required) {
             lastActionMessage = "Requires " + std::to_string(required) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
@@ -722,63 +685,132 @@ private:
             return;
         }
 
-        BuildSkillData(skillComp.skills[m_selectedSlot], gemId, gemInventory);
+        ItemComponent newItem = picked; // snapshot before the erase below invalidates `picked`
+        newItem.gridCol = -1;
+        newItem.gridRow = -1;
+        std::optional<ItemComponent> displaced = skillComp.equippedItems[m_selectedSlot];
+        inventory.items.erase(inventory.items.begin() + bagIndex);
+        // The item we just erased was 1x1, so the cell it freed always fits the displaced
+        // gem (also 1x1) -- this can't fail in practice, but never silently drop an item.
+        if (displaced) ReturnToBag(inventory, *displaced);
+
+        skillComp.equippedItems[m_selectedSlot] = newItem;
+        BuildSkillData(skillComp.skills[m_selectedSlot], newItem);
         lastActionMessage = "Slot " + std::to_string(m_selectedSlot + 1) + ": " + skillComp.skills[m_selectedSlot].name;
         messageTimer = 2.0f;
     }
 
-    void AssignSupport(PlayerSkill& skillComp, SkillGemInventoryComponent& gemInventory, CharacterStatsComponent& stats, int supportGemId) {
-        if (m_selectedSlot >= kSkillSlotCount || !skillComp.skills[m_selectedSlot].isValid) return;
-        int hostGemId = skillComp.skills[m_selectedSlot].gemId;
-        OwnedGemInstance* inst = FindOwnedMutable(gemInventory, hostGemId, false);
-        if (!inst || m_selectedSocket < 0 || m_selectedSocket >= inst->maxSockets) return;
+    void AssignSpirit(Registry& registry, Entity player, SpiritGemLoadoutComponent& loadout, InventoryComponent& inventory,
+        EquipmentComponent& equipment, CharacterStatsComponent& stats, int bagIndex) {
+        int slotIndex = m_selectedSlot - kSkillSlotCount;
 
-        if (supportGemId >= 0) {
-            const SupportGemDefinition* def = SupportGemData::Find(supportGemId);
-            if (!def) return;
-
-            unsigned int hostTags = SkillTags::TagsFor(skillComp.skills[m_selectedSlot].behaviorType, skillComp.skills[m_selectedSlot].element);
-            if (!SkillTags::IsCompatible(hostTags, def->requiredTag)) {
-                lastActionMessage = "Not compatible with this skill";
-                messageTimer = 2.0f;
-                return;
-            }
-
-            int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
-            if (have < def->requirement) {
-                lastActionMessage = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
-                    + " (have " + std::to_string(have) + ")";
-                messageTimer = 2.0f;
-                return;
-            }
-            for (int s = 0; s < kMaxPossibleSockets; ++s) {
-                if (s == m_selectedSocket || inst->supportGemIds[s] < 0) continue;
-                if (inst->supportGemIds[s] == supportGemId) {
-                    lastActionMessage = "Already socketed in this skill";
+        if (bagIndex < 0) {
+            std::optional<ItemComponent> removed = SpiritAuraSystem::TryUnequip(registry, player, loadout, slotIndex, equipment, stats);
+            if (removed) {
+                if (!ReturnToBag(inventory, *removed)) {
+                    loadout.items[slotIndex] = removed; // put it back rather than losing it
+                    lastActionMessage = "Bag full - can't unequip";
                     messageTimer = 2.0f;
                     return;
                 }
             }
-            if (HasCategoryConflict(*inst, m_selectedSocket, *def)) {
-                lastActionMessage = "Support Category conflict";
+            lastActionMessage = "Spirit slot: Empty";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        if (bagIndex >= static_cast<int>(inventory.items.size())) return;
+        ItemComponent picked = inventory.items[bagIndex];
+        if (picked.category != ItemCategory::SkillGem || !picked.skillGemIdentified || picked.skillGemIsSupport) return;
+        picked.gridCol = -1;
+        picked.gridRow = -1;
+
+        std::optional<ItemComponent> displaced;
+        std::string message;
+        bool ok = SpiritAuraSystem::TryEquip(registry, player, loadout, slotIndex, picked, equipment, stats, displaced, message);
+        if (!ok) {
+            lastActionMessage = message;
+            messageTimer = 2.0f;
+            return;
+        }
+
+        inventory.items.erase(inventory.items.begin() + bagIndex);
+        if (displaced) ReturnToBag(inventory, *displaced);
+        lastActionMessage = message;
+        messageTimer = 2.0f;
+    }
+
+    void AssignSupport(PlayerSkill& skillComp, InventoryComponent& inventory, CharacterStatsComponent& stats, int bagIndex) {
+        if (m_selectedSlot >= kSkillSlotCount || !skillComp.equippedItems[m_selectedSlot]) return;
+        ItemComponent& hostItem = *skillComp.equippedItems[m_selectedSlot];
+        if (m_selectedSocket < 0 || m_selectedSocket >= hostItem.skillGemMaxSockets) return;
+
+        if (bagIndex < 0) {
+            int currentSupportId = hostItem.skillGemSupportIds[m_selectedSocket];
+            if (currentSupportId >= 0) {
+                if (!ReturnToBag(inventory, MakeSupportGemItem(currentSupportId))) {
+                    lastActionMessage = "Bag full";
+                    messageTimer = 2.0f;
+                    return;
+                }
+            }
+            hostItem.skillGemSupportIds[m_selectedSocket] = -1;
+            BuildSkillData(skillComp.skills[m_selectedSlot], hostItem);
+            lastActionMessage = "Socket " + std::to_string(m_selectedSocket + 1) + ": Empty";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        if (bagIndex >= static_cast<int>(inventory.items.size())) return;
+        const ItemComponent& picked = inventory.items[bagIndex];
+        if (picked.category != ItemCategory::SkillGem || !picked.skillGemIdentified || !picked.skillGemIsSupport) return;
+
+        const SupportGemDefinition* def = SupportGemData::Find(picked.skillGemId);
+        if (!def) return;
+
+        unsigned int hostTags = SkillTags::TagsFor(skillComp.skills[m_selectedSlot].behaviorType, skillComp.skills[m_selectedSlot].element);
+        if (!SkillTags::IsCompatible(hostTags, def->requiredTag)) {
+            lastActionMessage = "Not compatible with this skill";
+            messageTimer = 2.0f;
+            return;
+        }
+
+        int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
+        if (have < def->requirement) {
+            lastActionMessage = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
+                + " (have " + std::to_string(have) + ")";
+            messageTimer = 2.0f;
+            return;
+        }
+        for (int s = 0; s < kMaxPossibleSockets; ++s) {
+            if (s == m_selectedSocket || hostItem.skillGemSupportIds[s] < 0) continue;
+            if (hostItem.skillGemSupportIds[s] == picked.skillGemId) {
+                lastActionMessage = "Already socketed in this skill";
                 messageTimer = 2.0f;
                 return;
             }
         }
+        if (HasCategoryConflict(hostItem, m_selectedSocket, *def)) {
+            lastActionMessage = "Support Category conflict";
+            messageTimer = 2.0f;
+            return;
+        }
 
-        inst->supportGemIds[m_selectedSocket] = supportGemId;
-        BuildSkillData(skillComp.skills[m_selectedSlot], hostGemId, gemInventory);
+        int displacedSupportId = hostItem.skillGemSupportIds[m_selectedSocket];
+        inventory.items.erase(inventory.items.begin() + bagIndex);
+        if (displacedSupportId >= 0) ReturnToBag(inventory, MakeSupportGemItem(displacedSupportId));
 
-        const SupportGemDefinition* assigned = supportGemId >= 0 ? SupportGemData::Find(supportGemId) : nullptr;
-        lastActionMessage = "Socket " + std::to_string(m_selectedSocket + 1) + ": " + (assigned ? assigned->name : "Empty");
+        hostItem.skillGemSupportIds[m_selectedSocket] = def->id;
+        BuildSkillData(skillComp.skills[m_selectedSlot], hostItem);
+        lastActionMessage = "Socket " + std::to_string(m_selectedSocket + 1) + ": " + def->name;
         messageTimer = 2.0f;
     }
 
-    // Called on initial assignment and again whenever a socket on this same gem changes
-    // while it's equipped. See SkillGemScaling::BuildEquippedSkillData (shared with
-    // GameScene's save-load restore path, so both derive identical live stats).
-    void BuildSkillData(SkillData& out, int gemId, const SkillGemInventoryComponent& gemInventory) const {
-        SkillGemScaling::BuildEquippedSkillData(out, gemId, gemInventory);
+    // Called on initial equip and again whenever a socket on this same gem changes while
+    // it's equipped. See SkillGemScaling::BuildEquippedSkillData (shared with GameScene's
+    // save-load restore path, so both derive identical live stats).
+    void BuildSkillData(SkillData& out, const ItemComponent& gemItem) const {
+        SkillGemScaling::BuildEquippedSkillData(out, gemItem);
     }
 
     std::string FormatFloat(float value) const {

@@ -4,7 +4,6 @@
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
 #include "Components/Item/Currency.h"
-#include "Components/Item/SkillGem.h"
 #include "Components/Physics/Transform/Transform.h"
 #include "Components/Control/PlayerInput/PlayerInput.h"
 #include "Components/Stats/CharacterStats/CharacterStats.h"
@@ -17,11 +16,12 @@
 #include <random>
 #include <algorithm>
 
-// Ground items (Item/Currency/SkillGem pickups) are collected by clicking them, not
-// by walking near them. FindNearestPickup resolves what the cursor is over; GameScene
-// calls it once per frame to: (1) decide whether to suppress the left-click-casts-
-// Skill1 binding while hovering a pickup, (2) draw a name tooltip near the cursor,
-// and (3) tell Update() which entity (if any) a fresh click should collect.
+// Ground items (Item/Currency pickups -- gear, Waystones, and now Uncut Gems all flow
+// through the same ItemPickupComponent) are collected by clicking them, not by walking
+// near them. FindNearestPickup resolves what the cursor is over; GameScene calls it once
+// per frame to: (1) decide whether to suppress the left-click-casts-Skill1 binding while
+// hovering a pickup, (2) draw a name tooltip near the cursor, and (3) tell Update() which
+// entity (if any) a fresh click should collect.
 class ItemPickupSystem {
 public:
     static constexpr Entity kInvalidEntity = static_cast<Entity>(-1);
@@ -29,14 +29,6 @@ public:
 
     std::string lastMessage;
     float messageTimer = 0.0f;
-
-    static const char* KindLabel(GemPickupKind kind) {
-        switch (kind) {
-        case GemPickupKind::Support: return "Support";
-        case GemPickupKind::Spirit: return "Spirit";
-        default: return "Skill";
-        }
-    }
 
     // Closest ground pickup within radius of worldPos, or kInvalidEntity if none.
     static Entity FindNearestPickup(Registry& registry, sf::Vector2f worldPos, float radius) {
@@ -56,7 +48,6 @@ public:
 
         for (auto e : registry.View<ItemPickupComponent, TransformComponent>()) consider(e);
         for (auto e : registry.View<CurrencyPickupComponent, TransformComponent>()) consider(e);
-        for (auto e : registry.View<SkillGemPickupComponent, TransformComponent>()) consider(e);
         return best;
     }
 
@@ -66,19 +57,18 @@ public:
         if (!registry.IsValid(e)) return false;
         if (registry.HasComponent<ItemPickupComponent>(e)) {
             const auto& item = registry.GetComponent<ItemPickupComponent>(e).item;
-            outName = item.baseName;
-            outColor = ItemUIHelpers::RarityColor(item.rarity);
+            if (item.category == ItemCategory::SkillGem) {
+                outName = ItemUIHelpers::SkillGemDisplayName(item) + " (Lv" + std::to_string(item.skillGemLevel) + ")";
+                outColor = sf::Color(255, 90, 220);
+            } else {
+                outName = item.baseName;
+                outColor = ItemUIHelpers::RarityColor(item.rarity);
+            }
             return true;
         }
         if (registry.HasComponent<CurrencyPickupComponent>(e)) {
             outName = CurrencySystem::CurrencyLabel(registry.GetComponent<CurrencyPickupComponent>(e).type);
             outColor = sf::Color(255, 160, 220);
-            return true;
-        }
-        if (registry.HasComponent<SkillGemPickupComponent>(e)) {
-            const auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(e);
-            outName = "Uncut " + std::string(KindLabel(gemPickup.kind)) + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
-            outColor = sf::Color(255, 90, 220);
             return true;
         }
         return false;
@@ -123,23 +113,6 @@ public:
             static std::random_device rd;
             static std::mt19937 rng(rd());
             lastMessage = CurrencySystem::ApplyCurrency(equipment, stats, currency.type, stats.level, rng);
-            messageTimer = 2.5f;
-            registry.DestroyEntity(clickedPickup);
-        } else if (registry.HasComponent<SkillGemPickupComponent>(clickedPickup)) {
-            // Uncut gem: goes into the pending-uncut-gem queue (a lightweight stand-in
-            // for a real inventory slot) instead of resolving instantly -- the player
-            // later opens Gem Cutting (GemIdentifySystem) from SkillGemSystem's "Uncut
-            // Gems" row to actually pick which gem it becomes.
-            if (!registry.HasComponent<SkillGemInventoryComponent>(player)) return;
-            auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
-            auto& gemPickup = registry.GetComponent<SkillGemPickupComponent>(clickedPickup);
-            if (gemInventory.pendingUncutGems.size() >= SkillGemInventoryComponent::kPendingCapacity) {
-                lastMessage = "Uncut gem storage full";
-                messageTimer = 2.5f;
-                return;
-            }
-            gemInventory.pendingUncutGems.push_back(PendingUncutGem{ gemPickup.level, gemPickup.kind });
-            lastMessage = "Picked up: Uncut " + std::string(KindLabel(gemPickup.kind)) + " Gem (Lv" + std::to_string(gemPickup.level) + ")";
             messageTimer = 2.5f;
             registry.DestroyEntity(clickedPickup);
         }

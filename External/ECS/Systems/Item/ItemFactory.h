@@ -84,6 +84,25 @@ public:
         return item;
     }
 
+    // An Uncut Gem (SkillGem-category item, see Item.h) -- level/kind are rolled, but
+    // which specific skill/support/spirit it becomes is chosen later by the player
+    // (right-click in InventorySystem to identify, see GemIdentifySystem). Consumed in
+    // place on identification rather than replaced with a new item, so it keeps whatever
+    // bag slot it was picked up into.
+    static ItemComponent GenerateUncutSkillGem(int level, GemPickupKind kind) {
+        ItemComponent item;
+        item.category = ItemCategory::SkillGem;
+        item.skillGemIdentified = false;
+        item.skillGemIsSupport = (kind == GemPickupKind::Support);
+        item.skillGemUncutKind = kind;
+        item.skillGemLevel = level;
+        item.itemLevel = level;
+        item.rarity = ItemRarity::Magic;
+        item.baseName = std::string("Uncut ") +
+            (kind == GemPickupKind::Support ? "Support" : kind == GemPickupKind::Spirit ? "Spirit" : "Skill") + " Gem";
+        return item;
+    }
+
     // bonusPercent shifts both thresholds proportionally (e.g. a Waystone's "Increased
     // Item Rarity" map mod, see CollisionSystem::TrySpawnItemDrop) -- 0 (the default)
     // matches every other existing caller exactly.

@@ -36,7 +36,7 @@ struct SupportGemDefinition {
 };
 
 // Separate id space from SkillGemData (support gems are a distinct GemAttribute-tagged
-// catalog, referenced by OwnedGemInstance::isSupport, never mixed with skill/aura ids).
+// catalog, referenced by ItemComponent::skillGemIsSupport, never mixed with skill/aura ids).
 class SupportGemData {
 public:
     static const std::vector<SupportGemDefinition>& Gems() {

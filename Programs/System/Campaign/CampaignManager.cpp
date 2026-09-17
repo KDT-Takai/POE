@@ -89,6 +89,16 @@ namespace {
             out << mprefix << "stat=" << static_cast<int>(mod.stat) << "\n";
             out << mprefix << "value=" << mod.value << "\n";
         }
+
+        out << prefix << "skillGemIdentified=" << (item.skillGemIdentified ? 1 : 0) << "\n";
+        out << prefix << "skillGemIsSupport=" << (item.skillGemIsSupport ? 1 : 0) << "\n";
+        out << prefix << "skillGemUncutKind=" << static_cast<int>(item.skillGemUncutKind) << "\n";
+        out << prefix << "skillGemId=" << item.skillGemId << "\n";
+        out << prefix << "skillGemLevel=" << item.skillGemLevel << "\n";
+        out << prefix << "skillGemMaxSockets=" << item.skillGemMaxSockets << "\n";
+        for (size_t s = 0; s < item.skillGemSupportIds.size(); ++s) {
+            out << prefix << "skillGemSupport" << s << "=" << item.skillGemSupportIds[s] << "\n";
+        }
     }
 
     ItemComponent ReadItem(const std::unordered_map<std::string, std::string>& kv, const std::string& prefix, EquipSlot defaultSlot) {
@@ -121,6 +131,19 @@ namespace {
             mod.stat = static_cast<WaystoneModStat>(GetI(kv, mprefix + "stat", 0));
             mod.value = GetF(kv, mprefix + "value", 0.0f);
             item.waystoneMods.push_back(mod);
+        }
+
+        // Pre-SkillGem-item saves have no "skillGem*" keys -- defaults leave the item as a
+        // non-gem (category won't be SkillGem for those saves anyway), same fallback
+        // convention as every other post-launch field addition.
+        item.skillGemIdentified = GetI(kv, prefix + "skillGemIdentified", 0) != 0;
+        item.skillGemIsSupport = GetI(kv, prefix + "skillGemIsSupport", 0) != 0;
+        item.skillGemUncutKind = static_cast<GemPickupKind>(GetI(kv, prefix + "skillGemUncutKind", 0));
+        item.skillGemId = GetI(kv, prefix + "skillGemId", -1);
+        item.skillGemLevel = GetI(kv, prefix + "skillGemLevel", 1);
+        item.skillGemMaxSockets = GetI(kv, prefix + "skillGemMaxSockets", 2);
+        for (size_t s = 0; s < item.skillGemSupportIds.size(); ++s) {
+            item.skillGemSupportIds[s] = GetI(kv, prefix + "skillGemSupport" + std::to_string(s), -1);
         }
         return item;
     }
@@ -374,33 +397,20 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
         out << "passiveTree.node" << i << "=" << m_savedPassiveTree[i] << "\n";
     }
 
-    out << "ownedGems.count=" << m_savedOwnedGems.size() << "\n";
-    for (size_t i = 0; i < m_savedOwnedGems.size(); ++i) {
-        const OwnedGemInstance& g = m_savedOwnedGems[i];
-        std::string p = "ownedGems.gem" + std::to_string(i) + ".";
-        out << p << "id=" << g.gemId << "\n";
-        out << p << "isSupport=" << (g.isSupport ? 1 : 0) << "\n";
-        out << p << "level=" << g.level << "\n";
-        out << p << "maxSockets=" << g.maxSockets << "\n";
-        for (size_t s = 0; s < g.supportGemIds.size(); ++s) {
-            out << p << "support" << s << "=" << g.supportGemIds[s] << "\n";
-        }
-    }
-
-    out << "pendingUncutGems.count=" << m_savedPendingUncutGems.size() << "\n";
-    for (size_t i = 0; i < m_savedPendingUncutGems.size(); ++i) {
-        const PendingUncutGem& g = m_savedPendingUncutGems[i];
-        std::string p = "pendingUncutGems.gem" + std::to_string(i) + ".";
-        out << p << "level=" << g.level << "\n";
-        out << p << "kind=" << static_cast<int>(g.kind) << "\n";
-    }
-
+    // Skill/Spirit gems are equipped items now (see CampaignManager.h) -- each of the 5+5
+    // slots writes "present" + full item fields, same convention as equip.slot{i} above.
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
-        out << "skillLoadout.slot" << i << "=" << m_savedSkillLoadout[i] << "\n";
+        std::string prefix = "skillLoadout.slot" + std::to_string(i) + ".";
+        bool present = m_savedSkillLoadout[i].has_value();
+        out << prefix << "present=" << (present ? 1 : 0) << "\n";
+        if (present) WriteItem(out, prefix, *m_savedSkillLoadout[i]);
     }
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
-        out << "auraLoadout.slot" << i << "=" << m_savedAuraLoadout[i] << "\n";
+        std::string prefix = "auraLoadout.slot" + std::to_string(i) + ".";
+        bool present = m_savedAuraLoadout[i].has_value();
+        out << prefix << "present=" << (present ? 1 : 0) << "\n";
+        if (present) WriteItem(out, prefix, *m_savedAuraLoadout[i]);
         out << "auraLoadout.active" << i << "=" << (m_savedAuraActive[i] ? 1 : 0) << "\n";
     }
 
@@ -472,44 +482,30 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
         m_savedPassiveTree.push_back(GetI(kv, "passiveTree.node" + std::to_string(i), 0));
     }
 
-    // Pre-gem-overhaul saves have no "ownedGems.count" key at all (only the old flat
-    // "unlockedGems.count"/"unlockedGems.gem{i}" ids); GetI's default (0) makes this
-    // naturally resolve to an empty list for those saves, and GameScene falls back to
+    // Pre-gem-item-overhaul saves have no "skillLoadout.slot{i}.present" key (only the old
+    // flat "skillLoadout.slot{i}" gemId) -- GetI's default (0/absent -> present=false)
+    // naturally resolves to an empty loadout for those saves, and GameScene falls back to
     // EntitySpawner's starter loadout exactly like it already does for a totally fresh
-    // character (see the existing !GetSavedOwnedGems().empty() guard there).
-    m_savedOwnedGems.clear();
-    int ownedGemCount = GetI(kv, "ownedGems.count", 0);
-    for (int i = 0; i < ownedGemCount; ++i) {
-        std::string p = "ownedGems.gem" + std::to_string(i) + ".";
-        OwnedGemInstance g;
-        g.gemId = GetI(kv, p + "id", -1);
-        g.isSupport = GetI(kv, p + "isSupport", 0) != 0;
-        g.level = GetI(kv, p + "level", 1);
-        g.maxSockets = GetI(kv, p + "maxSockets", 2);
-        for (size_t s = 0; s < g.supportGemIds.size(); ++s) {
-            g.supportGemIds[s] = GetI(kv, p + "support" + std::to_string(s), -1);
-        }
-        if (g.gemId >= 0) m_savedOwnedGems.push_back(g);
-    }
-
-    // Pre-inventory-flow saves have no "pendingUncutGems.count" key -- defaults to an
-    // empty list, same fallback convention as m_savedOwnedGems above.
-    m_savedPendingUncutGems.clear();
-    int pendingUncutCount = GetI(kv, "pendingUncutGems.count", 0);
-    for (int i = 0; i < pendingUncutCount; ++i) {
-        std::string p = "pendingUncutGems.gem" + std::to_string(i) + ".";
-        PendingUncutGem g;
-        g.level = GetI(kv, p + "level", 1);
-        g.kind = static_cast<GemPickupKind>(GetI(kv, p + "kind", 0));
-        m_savedPendingUncutGems.push_back(g);
-    }
-
+    // character (see the existing !GetSavedSkillLoadout()... guard there). Same for
+    // "ownedGems"/"pendingUncutGems" from even older saves -- both keys are gone now, so
+    // any gems from a save that old are simply lost (accepted, pre-overhaul saves are not
+    // expected to round-trip perfectly across an architecture change this size).
     for (size_t i = 0; i < m_savedSkillLoadout.size(); ++i) {
-        m_savedSkillLoadout[i] = GetI(kv, "skillLoadout.slot" + std::to_string(i), -1);
+        std::string prefix = "skillLoadout.slot" + std::to_string(i) + ".";
+        if (GetI(kv, prefix + "present", 0) == 0) {
+            m_savedSkillLoadout[i].reset();
+            continue;
+        }
+        m_savedSkillLoadout[i] = ReadItem(kv, prefix, EquipSlot::Weapon);
     }
 
     for (size_t i = 0; i < m_savedAuraLoadout.size(); ++i) {
-        m_savedAuraLoadout[i] = GetI(kv, "auraLoadout.slot" + std::to_string(i), -1);
+        std::string prefix = "auraLoadout.slot" + std::to_string(i) + ".";
+        if (GetI(kv, prefix + "present", 0) == 0) {
+            m_savedAuraLoadout[i].reset();
+        } else {
+            m_savedAuraLoadout[i] = ReadItem(kv, prefix, EquipSlot::Weapon);
+        }
         m_savedAuraActive[i] = GetI(kv, "auraLoadout.active" + std::to_string(i), 0) != 0;
     }
 

@@ -332,10 +332,14 @@ private:
                 : kindRoll < 0.8f ? GemPickupKind::Support
                 : GemPickupKind::Spirit;
 
+            // Uncut Gem is a normal SkillGem-category item now (see Item.h/AI/DECISIONS.md
+            // "スキルジェムもウェイストーンみたいにアイテム欄に置く") -- picked up through
+            // the same ItemPickupComponent path as gear/Waystones, not a separate component.
+            ItemComponent gemItem = ItemFactory::GenerateUncutSkillGem(gemLevel, kind);
             auto gemPickup = registry.CreateEntityObject();
             gemPickup.AddComponent(TransformComponent{ trans.position, {1.f, 1.f}, 0.f });
             gemPickup.AddComponent(CircleComponent{ 9.0f, sf::Color(255, 90, 220), true });
-            gemPickup.AddComponent(SkillGemPickupComponent{ gemLevel, kind });
+            gemPickup.AddComponent(ItemPickupComponent{ gemItem });
             return;
         }
 

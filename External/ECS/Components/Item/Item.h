@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <array>
 
 enum class AffixStat {
     FlatLife, FlatMana, FlatES,
@@ -29,11 +30,17 @@ enum class EquipSlot : size_t { Weapon = 0, BodyArmour, Helmet, Gloves, Boots, R
 enum class ItemRarity { Normal, Magic, Rare, Unique };
 
 // Gear (equippable, uses `slot`/`affixes`) vs Waystone (map-opening item, uses
-// `waystoneTier`/`waystoneMods` instead -- `slot`/`affixes` are unused and left at their
-// defaults). Kept as one ItemComponent type rather than a separate component so Waystones
-// can live in the same InventoryComponent/StashComponent grids and flow through the same
-// pickup/sell/buyback code paths as gear, per the "held exactly like a normal item" request.
-enum class ItemCategory { Gear, Waystone };
+// `waystoneTier`/`waystoneMods` instead) vs SkillGem (uses the `skillGem*` fields instead)
+// -- each category leaves the other categories' fields unused/at their defaults. Kept as
+// one ItemComponent type rather than separate components so all three can live in the same
+// InventoryComponent/StashComponent grids and flow through the same pickup/sell/buyback
+// code paths as gear, per the "held exactly like a normal item" request (originally for
+// Waystones, later extended to skill gems -- see AI/DECISIONS.md).
+enum class ItemCategory { Gear, Waystone, SkillGem };
+
+// Which catalog an Uncut Gem (SkillGem-category item, skillGemIdentified == false) draws
+// its candidates from once identified (see GemIdentifySystem).
+enum class GemPickupKind { Skill, Support, Spirit };
 
 constexpr int kMaxWaystoneTier = 15;
 
@@ -69,6 +76,20 @@ struct ItemComponent {
 
     int waystoneTier = 0; // Waystone only, 1-15
     std::vector<WaystoneMod> waystoneMods; // Waystone only
+
+    // SkillGem only. An "Uncut Gem" (skillGemIdentified == false) only has
+    // skillGemUncutKind/skillGemLevel rolled -- skillGemId is meaningless until the player
+    // right-clicks it in their bag to identify it (see InventorySystem/GemIdentifySystem),
+    // which fills in skillGemId (and skillGemIsSupport) and flips this to true in place
+    // (the item stays the same bag slot, it just stops being "uncut"). Support gems have
+    // no level (skillGemLevel stays at its default) or sockets of their own.
+    bool skillGemIdentified = false;
+    bool skillGemIsSupport = false;
+    GemPickupKind skillGemUncutKind = GemPickupKind::Skill;
+    int skillGemId = -1;
+    int skillGemLevel = 1;
+    int skillGemMaxSockets = 2;
+    std::array<int, 5> skillGemSupportIds = { -1, -1, -1, -1, -1 }; // Skill gems only: socketed SupportGemData ids
 
     // Top-left cell this item occupies in the owning InventoryComponent's grid
     // (see ItemUIHelpers::ItemGridSize for the WxH footprint by slot). -1 means

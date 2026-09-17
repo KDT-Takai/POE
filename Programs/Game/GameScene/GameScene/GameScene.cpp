@@ -85,39 +85,38 @@ GameScene::GameScene() {
                 atlasComp.completedNodeKeys.push_back(AtlasData::PackKey(col, row));
             }
 
-            // Older saves (pre-gem-overhaul) have no owned-gem data; keep the
-            // EntitySpawner-seeded starter loadout in that case instead of blanking it out.
-            // pendingUncutGems restores independently of ownedGems -- a player who saves
-            // right after picking up their very first uncut gem (before identifying
-            // anything) would otherwise lose it on reload.
-            player.GetComponent<SkillGemInventoryComponent>().pendingUncutGems = campaign.GetSavedPendingUncutGems();
-
-            if (!campaign.GetSavedOwnedGems().empty()) {
-                auto& gemInventory = player.GetComponent<SkillGemInventoryComponent>();
-                gemInventory.ownedGems = campaign.GetSavedOwnedGems();
-
+            // Skill/Spirit gems are equipped items now (see CampaignManager.h) -- Uncut
+            // Gems and any identified-but-unequipped gems already came back for free above
+            // as part of InventoryComponent/StashComponent, no special handling needed.
+            // Older saves (pre-gem-item-overhaul) have no skillLoadout data at all; keep
+            // the EntitySpawner-seeded starter loadout in that case instead of blanking it out.
+            bool hasSavedSkillLoadout = false;
+            for (const auto& slot : campaign.GetSavedSkillLoadout()) {
+                if (slot) { hasSavedSkillLoadout = true; break; }
+            }
+            if (hasSavedSkillLoadout) {
                 auto& skillComp = player.GetComponent<PlayerSkill>();
                 const auto& loadout = campaign.GetSavedSkillLoadout();
                 for (size_t i = 0; i < loadout.size(); ++i) {
-                    int gemId = loadout[i];
-                    if (gemId < 0) {
+                    skillComp.equippedItems[i] = loadout[i];
+                    if (loadout[i]) {
+                        // Rebuilds level scaling + socketed supports from the item itself,
+                        // not just a raw catalog copy -- matches SkillGemSystem::AssignGem
+                        // so a saved character's skills come back exactly as they were.
+                        SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], *loadout[i]);
+                    } else {
                         skillComp.skills[i] = SkillData{};
-                        continue;
                     }
-                    // Rebuilds level scaling + socketed supports from gemInventory, not
-                    // just a raw catalog copy -- matches SkillGemSystem::AssignGem so a
-                    // saved character's skills come back exactly as they were.
-                    SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], gemId, gemInventory);
                 }
             }
 
             // The aura's stat bonus already lives in equipment.baseStats (restored above),
-            // so this only restores which gem each Spirit slot displays as equipped and
+            // so this only restores which item each Spirit slot displays as equipped and
             // whether it was toggled ON (for the UI's ON/OFF button state -- the actual
             // reserved amount is CharacterStatsComponent::currentSpirit, already restored
             // as part of the stats blob above).
             auto& spiritLoadout = player.GetComponent<SpiritGemLoadoutComponent>();
-            spiritLoadout.auraGemIds = campaign.GetSavedAuraLoadout();
+            spiritLoadout.items = campaign.GetSavedAuraLoadout();
             spiritLoadout.active = campaign.GetSavedAuraActive();
         }
 
@@ -167,21 +166,15 @@ void GameScene::AdvanceToNextZone() {
         }
         campaign.SaveAtlasNodes(nodes);
     }
-    if (registry->HasComponent<SkillGemInventoryComponent>(playerEntity)) {
-        campaign.SaveOwnedGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).ownedGems);
-        campaign.SavePendingUncutGems(registry->GetComponent<SkillGemInventoryComponent>(playerEntity).pendingUncutGems);
-    }
+    // Skill/Spirit gems are equipped items now (see CampaignManager.h) -- Uncut Gems and
+    // any identified-but-unequipped gems already save for free above as part of
+    // InventoryComponent/StashComponent, no separate owned-gems list to save.
     if (registry->HasComponent<PlayerSkill>(playerEntity)) {
-        auto& skillComp = registry->GetComponent<PlayerSkill>(playerEntity);
-        std::array<int, 5> loadout;
-        for (size_t i = 0; i < loadout.size(); ++i) {
-            loadout[i] = skillComp.skills[i].isValid ? skillComp.skills[i].gemId : -1;
-        }
-        campaign.SaveSkillLoadout(loadout);
+        campaign.SaveSkillLoadout(registry->GetComponent<PlayerSkill>(playerEntity).equippedItems);
     }
     if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
         auto& spiritLoadout = registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity);
-        campaign.SaveAuraLoadout(spiritLoadout.auraGemIds);
+        campaign.SaveAuraLoadout(spiritLoadout.items);
         campaign.SaveAuraActive(spiritLoadout.active);
     }
     campaign.CompleteCurrentZoneAndAdvance();
@@ -346,7 +339,7 @@ void GameScene::Update() {
         if (keyBindSystem->isOpen) { closeFreePanels(); passiveTreeSystem->Close(); atlasSystem->Close(); vendorSystem->Close(); gemIdentifySystem->Close(); waystoneVendorSystem->Close(); stashSystem->Close(); }
     }
     keyBindSystem->Update(*registry, dt);
-    inventorySystem->Update(*registry, dt);
+    inventorySystem->Update(*registry, dt, *gemIdentifySystem);
     passiveTreeSystem->Update(*registry, dt);
     atlasSystem->Update(*registry, dt);
     if (atlasSystem->ConsumeMapStartRequest()) {
@@ -356,7 +349,7 @@ void GameScene::Update() {
     vendorSystem->Update(*registry, dt);
     waystoneVendorSystem->Update(*registry, dt);
     stashSystem->Update(*registry, dt);
-    skillGemSystem->Update(*registry, dt, *gemIdentifySystem);
+    skillGemSystem->Update(*registry, dt);
     gemIdentifySystem->Update(*registry, dt);
 
     // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
@@ -412,11 +405,10 @@ void GameScene::Update() {
         // last call (equip swap, level up, passive spend) -- see SpiritAuraSystem::
         // ReevaluateReservations. Not gated by isPaused since it's pure data consistency,
         // not world simulation.
-        if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity) && registry->HasComponent<SkillGemInventoryComponent>(playerEntity)
+        if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)
             && registry->HasComponent<EquipmentComponent>(playerEntity) && registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
             SpiritAuraSystem::ReevaluateReservations(*registry, playerEntity,
                 registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity),
-                registry->GetComponent<SkillGemInventoryComponent>(playerEntity),
                 registry->GetComponent<EquipmentComponent>(playerEntity),
                 registry->GetComponent<CharacterStatsComponent>(playerEntity));
         }
@@ -728,10 +720,10 @@ void GameScene::RenderImGui(const sf::Texture* renderTexture)
 // truth" principle).
 void GameScene::RenderGemDebugTools() {
     if (!registry->IsValid(playerEntity)) return;
-    if (!registry->HasComponent<SkillGemInventoryComponent>(playerEntity) || !registry->HasComponent<CharacterStatsComponent>(playerEntity)
+    if (!registry->HasComponent<InventoryComponent>(playerEntity) || !registry->HasComponent<CharacterStatsComponent>(playerEntity)
         || !registry->HasComponent<EquipmentComponent>(playerEntity)) return;
 
-    auto& gemInventory = registry->GetComponent<SkillGemInventoryComponent>(playerEntity);
+    auto& inventory = registry->GetComponent<InventoryComponent>(playerEntity);
     auto& stats = registry->GetComponent<CharacterStatsComponent>(playerEntity);
     auto& equipment = registry->GetComponent<EquipmentComponent>(playerEntity);
 
@@ -739,14 +731,23 @@ void GameScene::RenderGemDebugTools() {
 
     static int debugGemLevel = 1;
     ImGui::SliderInt("Gem Level", &debugGemLevel, 1, 20);
-    bool full = gemInventory.pendingUncutGems.size() >= SkillGemInventoryComponent::kPendingCapacity;
-    if (full) ImGui::TextDisabled("Uncut Gem storage full");
+    int col, row;
+    bool full = !ItemUIHelpers::FindBagFreeSpace(inventory.items, 1, 1, col, row);
+    if (full) ImGui::TextDisabled("Bag full");
     ImGui::BeginDisabled(full);
-    if (ImGui::Button("Spawn Uncut Skill Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Skill });
+    auto spawnUncut = [&](GemPickupKind kind) {
+        int c, r;
+        if (!ItemUIHelpers::FindBagFreeSpace(inventory.items, 1, 1, c, r)) return;
+        ItemComponent item = ItemFactory::GenerateUncutSkillGem(debugGemLevel, kind);
+        item.gridCol = c;
+        item.gridRow = r;
+        inventory.items.push_back(item);
+    };
+    if (ImGui::Button("Spawn Uncut Skill Gem")) spawnUncut(GemPickupKind::Skill);
     ImGui::SameLine();
-    if (ImGui::Button("Spawn Uncut Support Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Support });
+    if (ImGui::Button("Spawn Uncut Support Gem")) spawnUncut(GemPickupKind::Support);
     ImGui::SameLine();
-    if (ImGui::Button("Spawn Uncut Spirit Gem")) gemInventory.pendingUncutGems.push_back(PendingUncutGem{ debugGemLevel, GemPickupKind::Spirit });
+    if (ImGui::Button("Spawn Uncut Spirit Gem")) spawnUncut(GemPickupKind::Spirit);
     ImGui::EndDisabled();
 
     ImGui::Separator();
@@ -765,11 +766,11 @@ void GameScene::RenderGemDebugTools() {
     ImGui::Text("Spirit: %.1f reserved / %.1f max", stats.currentSpirit, stats.maxSpirit);
     if (registry->HasComponent<SpiritGemLoadoutComponent>(playerEntity)) {
         auto& loadout = registry->GetComponent<SpiritGemLoadoutComponent>(playerEntity);
-        for (int i = 0; i < static_cast<int>(loadout.auraGemIds.size()); ++i) {
-            if (loadout.auraGemIds[i] < 0) continue;
-            const GemDefinition* def = SkillGemData::Find(loadout.auraGemIds[i]);
+        for (int i = 0; i < static_cast<int>(loadout.items.size()); ++i) {
+            if (!loadout.items[i]) continue;
+            const GemDefinition* def = SkillGemData::Find(loadout.items[i]->skillGemId);
             ImGui::Text("  Slot %d: %s [%s] cost=%.1f", i + 1, def ? def->skill.name.c_str() : "?",
-                loadout.active[i] ? "ON" : "OFF", SpiritAuraSystem::SpiritCostOf(loadout.auraGemIds[i], gemInventory));
+                loadout.active[i] ? "ON" : "OFF", SpiritAuraSystem::SpiritCostOf(*loadout.items[i]));
         }
     }
 

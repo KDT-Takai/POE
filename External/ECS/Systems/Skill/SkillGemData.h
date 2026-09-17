@@ -16,8 +16,9 @@ struct GemDefinition {
 };
 
 // Static catalog of every skill gem that can be found/equipped in any of the
-// 5 player skill slots. Equipping is free and reversible (see SkillGemSystem);
-// only *finding* a gem is a one-time unlock (SkillGemInventoryComponent).
+// 5 player skill slots. Equipping moves the item between the bag and the slot (see
+// SkillGemSystem); the gem itself is identified once via GemIdentifySystem and stays a
+// normal ItemComponent (category==SkillGem) from then on.
 class SkillGemData {
 public:
     static const std::vector<GemDefinition>& Gems() {

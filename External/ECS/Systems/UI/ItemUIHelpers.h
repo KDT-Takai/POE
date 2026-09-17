@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include "Components/Item/Item.h"
+#include "../Skill/SkillGemData.h"
+#include "../Skill/SupportGemData.h"
 
 namespace ItemUIHelpers {
     // Grid footprint in bag cells, referenced against real PoE2 inventory sizing
@@ -29,7 +31,7 @@ namespace ItemUIHelpers {
     // `slot`) always get their own compact footprint instead of whatever `slot` happens to
     // be left at.
     inline sf::Vector2i ItemGridSize(const ItemComponent& item) {
-        if (item.category == ItemCategory::Waystone) return { 1, 1 };
+        if (item.category == ItemCategory::Waystone || item.category == ItemCategory::SkillGem) return { 1, 1 };
         return ItemGridSize(item.slot);
     }
 
@@ -302,14 +304,51 @@ namespace ItemUIHelpers {
     // not a meaningful "level" to show the player).
     inline std::string CompactLevelLabel(const ItemComponent& item) {
         if (item.category == ItemCategory::Waystone) return "T" + std::to_string(item.waystoneTier);
+        if (item.category == ItemCategory::SkillGem) {
+            if (!item.skillGemIdentified) return "?";
+            if (item.skillGemIsSupport) return "Su";
+            return "Lv" + std::to_string(item.skillGemLevel);
+        }
         return "Lv" + std::to_string(item.itemLevel);
     }
 
+    inline const char* GemPickupKindLabel(GemPickupKind kind) {
+        switch (kind) {
+        case GemPickupKind::Support: return "Support";
+        case GemPickupKind::Spirit: return "Spirit";
+        default: return "Skill";
+        }
+    }
+
+    // A SkillGem-category item's display name: uncut gems show "Uncut {Kind} Gem",
+    // identified ones show the actual skill/support name from its catalog -- so a bag
+    // cell/tooltip never has to special-case where the name comes from.
+    inline std::string SkillGemDisplayName(const ItemComponent& item) {
+        if (!item.skillGemIdentified) {
+            return std::string("Uncut ") + GemPickupKindLabel(item.skillGemUncutKind) + " Gem";
+        }
+        if (item.skillGemIsSupport) {
+            const SupportGemDefinition* def = SupportGemData::Find(item.skillGemId);
+            return def ? def->name : "Support Gem";
+        }
+        const GemDefinition* def = SkillGemData::Find(item.skillGemId);
+        return def ? def->skill.name : "Skill Gem";
+    }
+
     // Tooltip header line: gear shows "Slot - Rarity - iLvl N - WxH", Waystones show
-    // their tier instead (slot/rarity/size are all meaningless for a Waystone).
+    // their tier instead, SkillGems show their kind/level (slot/rarity/size are all
+    // meaningless for either).
     inline std::string ItemTypeLine(const ItemComponent& item) {
         if (item.category == ItemCategory::Waystone) {
             return "Waystone - Tier " + std::to_string(item.waystoneTier);
+        }
+        if (item.category == ItemCategory::SkillGem) {
+            if (!item.skillGemIdentified) {
+                return std::string("Uncut ") + GemPickupKindLabel(item.skillGemUncutKind) + " Gem - Lv" + std::to_string(item.skillGemLevel)
+                    + " (right-click to identify)";
+            }
+            if (item.skillGemIsSupport) return "Support Gem";
+            return "Skill Gem - Lv" + std::to_string(item.skillGemLevel);
         }
         sf::Vector2i sz = ItemGridSize(item);
         return SlotName(item.slot) + " - " + RarityName(item.rarity) + " - iLvl " + std::to_string(item.itemLevel)

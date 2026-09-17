@@ -22,6 +22,7 @@
 #include "System/Input/InputUtils/InputUtils.h"
 #include "System/Input/KeyBindings/KeyBindings.h"
 #include "ItemUIHelpers.h"
+#include "GemIdentifySystem.h"
 
 // PoE2本家に寄せたアイテム画面: 左に体の部位に見立てた装備欄(ペーパードール)、
 // 右に6x4マスの所持品グリッド。アイテムはPoE2同様スロット種別に応じたサイズを持ち
@@ -110,7 +111,7 @@ public:
         return panelRect.contains(point);
     }
 
-    void Update(Registry& registry, float dt) {
+    void Update(Registry& registry, float dt, GemIdentifySystem& gemIdentifySystem) {
         if (messageTimer > 0.0f) messageTimer -= dt;
         if (!isOpen) return;
 
@@ -159,11 +160,18 @@ public:
                 m_dragItemCache = inventory.items[hoveredItemIndex];
             }
         } else if (mouseInput.IsGetMouse(sf::Mouse::Button::Right)) {
-            // PoE2の右クリック(装備/外す即実行)を踏襲。
+            // PoE2の右クリック(装備/外す即実行)を踏襲。Uncut Gemは右クリックで
+            // Gem Cutting(鑑定)を開く(「そのスキルジェムを右クリックですきな
+            // スキルに変換」という指示対応、通常アイテムのクイック装備とは別扱い)。
             if (onDoll && equipment.slots[static_cast<size_t>(hoveredDollSlot)].has_value()) {
                 QuickUnequip(hoveredDollSlot, inventory, equipment, stats);
             } else if (hoveredCellHasItem) {
-                QuickEquip(hoveredItemIndex, inventory, equipment, stats);
+                const ItemComponent& hovered = inventory.items[hoveredItemIndex];
+                if (hovered.category == ItemCategory::SkillGem && !hovered.skillGemIdentified) {
+                    gemIdentifySystem.Open(hoveredItemIndex, hovered.skillGemLevel, hovered.skillGemUncutKind);
+                } else {
+                    QuickEquip(hoveredItemIndex, inventory, equipment, stats);
+                }
             }
         }
     }
@@ -545,6 +553,17 @@ private:
         lines.push_back({ item.baseName, ItemUIHelpers::RarityColor(item.rarity) });
         if (item.category == ItemCategory::Waystone) {
             lines.push_back({ "ウェイストーン - Tier " + std::to_string(item.waystoneTier), sf::Color(190, 190, 190) });
+        } else if (item.category == ItemCategory::SkillGem) {
+            if (!item.skillGemIdentified) {
+                lines.push_back({ "未鑑定ジェム - 右クリックで鑑定", sf::Color(220, 160, 220) });
+            } else if (item.skillGemIsSupport) {
+                lines.push_back({ "サポートジェム", sf::Color(190, 190, 190) });
+            } else {
+                lines.push_back({ "スキルジェム - Lv" + std::to_string(item.skillGemLevel), sf::Color(190, 190, 190) });
+                int usedSockets = 0;
+                for (int s : item.skillGemSupportIds) if (s >= 0) usedSockets++;
+                lines.push_back({ "ソケット: " + std::to_string(usedSockets) + "/" + std::to_string(item.skillGemMaxSockets), sf::Color(210, 210, 220) });
+            }
         } else {
             sf::Vector2i sz = ItemUIHelpers::ItemGridSize(item);
             lines.push_back({ ItemUIHelpers::SlotName(item.slot) + " - " + ItemUIHelpers::RarityName(item.rarity) +

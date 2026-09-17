@@ -90,17 +90,24 @@ public:
         // Starting loadout is derived from the shared SkillGemData catalog (previously
         // hand-duplicated field-for-field here, which could silently drift from the
         // catalog -- see AI/DECISIONS.md). All start at gem level 1 / 2 sockets.
+        // All start at gem level 1 / 2 sockets, equipped directly into PlayerSkill (not
+        // sitting in the bag) since these 4 slots are always full at character creation.
         PlayerSkill skillComp;
         const int starterGemIds[4] = { 0, 1, 2, 3 };
-        SkillGemInventoryComponent gemInventory;
         for (size_t i = 0; i < 4; ++i) {
             const GemDefinition* def = SkillGemData::Find(starterGemIds[i]);
             if (!def) continue;
-            gemInventory.ownedGems.push_back(OwnedGemInstance{ starterGemIds[i], false, 1, 2, { -1, -1, -1, -1, -1 } });
-            SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], starterGemIds[i], gemInventory);
+            ItemComponent gemItem;
+            gemItem.category = ItemCategory::SkillGem;
+            gemItem.skillGemIdentified = true;
+            gemItem.skillGemId = starterGemIds[i];
+            gemItem.skillGemLevel = 1;
+            gemItem.skillGemMaxSockets = 2;
+            gemItem.baseName = def->skill.name;
+            skillComp.equippedItems[i] = gemItem;
+            SkillGemScaling::BuildEquippedSkillData(skillComp.skills[i], gemItem);
         }
         entity.AddComponent(skillComp);
-        entity.AddComponent(gemInventory);
         entity.AddComponent(SpiritGemLoadoutComponent{});
 
         // Starting Tier 1 Waystone so the endgame is reachable right away (real PoE2

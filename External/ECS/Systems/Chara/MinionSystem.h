@@ -44,15 +44,14 @@ private:
     static constexpr float kFollowStopRadius = 60.0f;
 
     void TickRespawns(Registry& registry, float dt) {
-        for (auto player : registry.View<PlayerInputComponent, SpiritGemLoadoutComponent, SkillGemInventoryComponent, TransformComponent, CharacterStatsComponent>()) {
+        for (auto player : registry.View<PlayerInputComponent, SpiritGemLoadoutComponent, TransformComponent, CharacterStatsComponent>()) {
             auto& loadout = registry.GetComponent<SpiritGemLoadoutComponent>(player);
-            auto& gemInventory = registry.GetComponent<SkillGemInventoryComponent>(player);
             auto& playerTrans = registry.GetComponent<TransformComponent>(player);
             auto& playerStats = registry.GetComponent<CharacterStatsComponent>(player);
 
-            for (int i = 0; i < static_cast<int>(loadout.auraGemIds.size()); ++i) {
-                if (!loadout.active[i]) continue;
-                int gemId = loadout.auraGemIds[i];
+            for (int i = 0; i < static_cast<int>(loadout.items.size()); ++i) {
+                if (!loadout.active[i] || !loadout.items[i]) continue;
+                int gemId = loadout.items[i]->skillGemId;
                 const GemDefinition* def = gemId >= 0 ? SkillGemData::Find(gemId) : nullptr;
                 if (!def || def->skill.behaviorType != SkillBehaviorType::Minion) continue;
 
@@ -64,9 +63,7 @@ private:
                     continue;
                 }
 
-                int level = 1;
-                if (const OwnedGemInstance* owned = SkillGemScaling::FindOwnedGem(gemInventory, gemId, false)) level = owned->level;
-
+                int level = loadout.items[i]->skillGemLevel;
                 auto minion = EntitySpawner::CreateMinion(registry, playerTrans.position, player, i, gemId, level, playerStats.atk);
                 loadout.minionEntity[i] = minion.GetID();
             }

@@ -4,6 +4,13 @@
 
 ## 済 (Done)
 
+**スキルジェムをウェイストーンと同じアイテム欄ベースへ全面移行(専用所持リストを廃止)**。「すきるじぇむとかもウェイストーンみたいにアイテム欄におく そのスキルジェムを右クリックですきなスキルに変換。その後Gキーを押して空いているスロットに入れる。その後Gキーで開いている状態でキーにセットする。」という指示に対応。前回の「Waystoneをアイテム化」と同じ発想をスキル/サポート/スピリットジェムにも拡張した、本セッション最大級のアーキテクチャ変更。
+- **データモデル**: `ItemComponent`に`category==ItemCategory::SkillGem`+`skillGemIdentified`/`skillGemIsSupport`/`skillGemUncutKind`/`skillGemId`/`skillGemLevel`/`skillGemMaxSockets`/`skillGemSupportIds[5]`を追加。旧`SkillGemInventoryComponent`(`ownedGems`/`pendingUncutGems`)・`OwnedGemInstance`・`SkillGemPickupComponent`・`PendingUncutGem`は全廃し、Uncut/識別済みジェムはどちらもバッグ/StashのItemComponent1つで表現するようにした(個体ごとに独立したアイテムのため、同じgemIdを複数レベル分重複所持することも可能になった)。
+- **鑑定はInventorySystemの右クリックへ移動**: 旧`SkillGemSystem`の「Uncut Gems」チップ列は廃止。`InventorySystem`(Iキー)でUncut Gemアイテムを右クリックすると`GemIdentifySystem`が開き、選んだジェムでそのアイテム自身が同じバッグ座標のまま識別済みへ変化する(消費→再生成ではなくin-place更新)。
+- **装備はバッグ⇔スロットの実体移動**: `PlayerSkill`に`equippedItems[5]`(装備中アイテム本体)を追加、`SpiritGemLoadoutComponent.auraGemIds`は`items[5]`(装備中アイテム本体の配列)へ置き換え。`SkillGemSystem`(Gキー)のピッカーはバッグ内の識別済みジェムを列挙し、選ぶとバッグから取り除いてスロットへ装備(既存の装備品ドールスロットと同じ方式)。サポートジェムのソケットも同様にバッグのアイテムを消費して装着し、外すとアイテムとして再生成してバッグへ返す。
+- **周辺システムの連鎖修正**: `SkillGemScaling::BuildEquippedSkillData`はgemId+所持リスト参照から「装備中アイテムを直接渡す」方式へ変更。`SpiritAuraSystem`は`TryRegister`/`LevelOf`等のgemInventory依存関数を全て`TryEquip`/`TryUnequip`+アイテム直接参照へ置き換え。`MinionSystem`・`CollisionSystem`(ドロップ生成)・`ItemPickupSystem`(拾得)・`EntitySpawner`(初期装備)・`CampaignManager`(セーブ/ロード、`WriteItem`/`ReadItem`にskillGem系フィールド追加)・`GameScene`(復元/保存ロジック、F1デバッグツール)を全て新アーキテクチャに合わせて更新。
+- ビルド確認済み(`/t:Build`、0エラー)。バックグラウンド起動でのクラッシュ無し確認も実施。スクリーンショットでの視覚確認を2度試みたが、いずれもゲームウィンドウではなく別のアプリ/ブラウザのウィンドウを誤って撮影してしまったため中止・削除した(ツール側の既知の制約、フィードバックとして記録済み)。実際のマウス操作によるプレイテスト(拾得→右クリック鑑定→G画面で装備→サポート装着→セーブ/ロード往復)は本セッションの制約上未実施。
+
 **NPC/マップデバイスのクリック判定ズレを修正+SkillGemSystemをPoE2寄りのUIへ刷新**。「まず修正点話しかける範囲の座標がそのNPCとかの中心ではなく左上からになっているのでずれている。あと、スキルジェムのUIが追加いにくいし分かりにくいのでPOE2みたいにして」という2点の指摘に対応。
 - **NPC/ポータルのクリック範囲ズレ**: `RenderSystem`は全ての`CircleComponent`を`transform.position + radius`中心で描画するが、`ZoneBuilder`のNPC/ポータル座標(タイル左上基準)がそのままクリック判定・輪描画の中心として扱われていたため、実際に描画される円から半径分(NPC20px/ポータル24px)右下にズレていた。`ZoneBuilder`内に`kTownNpcMarkerRadius`/`kPortalMarkerRadius`定数を新設し、`TownNpcSpawn.pos`/`ZoneBuildResult.portalPos`には描画中心(左上+半径)を格納するよう修正(`PlaceTownNpcs`がマーカー生成も統合して行うことで、左上座標と中心座標が別の場所で食い違わないようにした)。
 - **SkillGemSystemの視覚刷新**: 単色テキストの行リストだったスキル/スピリットスロットに、`GemAttribute`(Str/Dex/Int、`CharacterSheetSystem`と同じ赤/緑/青配色)で色分けした円アイコンを追加。サポートジェムのソケットも`SupportCategory`で色分け。下部のジェム選択ピッカーもテキスト1行リストから「アイコン+2行テキスト+ステータス色」のカード形式へ変更した。
