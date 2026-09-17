@@ -24,6 +24,7 @@ enum class SupportCategory { DamageMult, Speed, Utility, AreaMod, Duration };
 struct SupportGemDefinition {
     int id;
     std::string name;
+    std::string description;
     GemAttribute primaryAttribute;
     int requirement; // flat -- support gems aren't leveled, unlike SkillGemData entries
     // Which SkillTag the linked skill must have for this support to be compatible
@@ -57,36 +58,44 @@ private:
 
         SupportModifiers addedDamage;
         addedDamage.damageMult = 1.25f;
-        gems.push_back({ 0, "Added Damage Support", GemAttribute::Str, 20, SkillTag::None, SupportCategory::DamageMult, addedDamage });
+        gems.push_back({ 0, "Added Damage Support", "Increases the linked skill's damage.",
+            GemAttribute::Str, 20, SkillTag::None, SupportCategory::DamageMult, addedDamage });
 
         SupportModifiers brutality;
         brutality.damageMult = 1.35f;
-        gems.push_back({ 1, "Brutality Support", GemAttribute::Str, 25, SkillTag::Physical, SupportCategory::DamageMult, brutality });
+        gems.push_back({ 1, "Brutality Support", "Increases damage, but only supports skills that deal physical damage.",
+            GemAttribute::Str, 25, SkillTag::Physical, SupportCategory::DamageMult, brutality });
 
         SupportModifiers fasterAttacks;
         fasterAttacks.cooldownMult = 0.80f;
-        gems.push_back({ 2, "Faster Attacks Support", GemAttribute::Dex, 20, SkillTag::Attack, SupportCategory::Speed, fasterAttacks });
+        gems.push_back({ 2, "Faster Attacks Support", "Reduces the linked skill's cooldown. Only supports Attack skills.",
+            GemAttribute::Dex, 20, SkillTag::Attack, SupportCategory::Speed, fasterAttacks });
 
         SupportModifiers efficiency;
         efficiency.mpCostMult = 0.75f;
-        gems.push_back({ 3, "Efficiency Support", GemAttribute::Dex, 20, SkillTag::None, SupportCategory::Utility, efficiency });
+        gems.push_back({ 3, "Efficiency Support", "Reduces the linked skill's mana cost.",
+            GemAttribute::Dex, 20, SkillTag::None, SupportCategory::Utility, efficiency });
 
         SupportModifiers increasedArea;
         increasedArea.rangeMult = 1.30f;
-        gems.push_back({ 4, "Increased Area Support", GemAttribute::Int, 20, SkillTag::AreaEffect, SupportCategory::AreaMod, increasedArea });
+        gems.push_back({ 4, "Increased Area Support", "Increases the linked skill's area of effect. Only supports Area skills.",
+            GemAttribute::Int, 20, SkillTag::AreaEffect, SupportCategory::AreaMod, increasedArea });
 
         SupportModifiers increasedDuration;
         increasedDuration.durationMult = 1.40f;
-        gems.push_back({ 5, "Increased Duration Support", GemAttribute::Int, 20, SkillTag::Duration, SupportCategory::Duration, increasedDuration });
+        gems.push_back({ 5, "Increased Duration Support", "Increases the linked skill's duration. Only supports skills with a duration.",
+            GemAttribute::Int, 20, SkillTag::Duration, SupportCategory::Duration, increasedDuration });
 
         SupportModifiers concentratedEffect;
         concentratedEffect.damageMult = 1.40f;
         concentratedEffect.rangeMult = 0.70f;
-        gems.push_back({ 6, "Concentrated Effect Support", GemAttribute::Int, 25, SkillTag::AreaEffect, SupportCategory::AreaMod, concentratedEffect });
+        gems.push_back({ 6, "Concentrated Effect Support", "Increases damage but shrinks the area of effect. Only supports Area skills.",
+            GemAttribute::Int, 25, SkillTag::AreaEffect, SupportCategory::AreaMod, concentratedEffect });
 
         SupportModifiers elementalFocus;
         elementalFocus.damageMult = 1.30f;
-        gems.push_back({ 7, "Elemental Focus Support", GemAttribute::Int, 25, SkillTag::Elemental, SupportCategory::DamageMult, elementalFocus });
+        gems.push_back({ 7, "Elemental Focus Support", "Increases damage, but only supports skills that deal elemental (non-physical) damage.",
+            GemAttribute::Int, 25, SkillTag::Elemental, SupportCategory::DamageMult, elementalFocus });
 
         return gems;
     }

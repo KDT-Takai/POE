@@ -422,6 +422,7 @@ private:
             sf::Color statusColor(200, 220, 255);
             bool hasIcon = false;
 
+            std::string description;
             if (bagIndex >= 0) {
                 const ItemComponent& item = inventory.items[bagIndex];
                 const GemDefinition* def = SkillGemData::Find(item.skillGemId);
@@ -430,6 +431,7 @@ private:
                 iconColor = AttributeColor(def->primaryAttribute);
                 name = def->skill.name + " Lv" + std::to_string(item.skillGemLevel);
                 if (DealsElementalDamage(def->skill.behaviorType)) name += " (" + ElementName(def->skill.element) + ")";
+                description = def->skill.description;
 
                 int required = SkillGemScaling::RequiredStat(def->baseRequirement, item.skillGemLevel);
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
@@ -438,7 +440,7 @@ private:
                 statusColor = (have < required) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
 
-            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, statusColor);
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, description, iconColor, hasIcon, statusColor);
         }
     }
 
@@ -454,6 +456,7 @@ private:
             sf::Color statusColor(200, 220, 255);
             bool hasIcon = false;
 
+            std::string description;
             if (bagIndex >= 0) {
                 const ItemComponent& item = inventory.items[bagIndex];
                 const SupportGemDefinition* def = SupportGemData::Find(item.skillGemId);
@@ -461,21 +464,24 @@ private:
                 hasIcon = true;
                 iconColor = CategoryColor(def->category);
                 name = def->name;
+                description = def->description;
                 int have = SpiritAuraSystem::StatValue(stats, def->primaryAttribute);
                 reqLine = "Requires " + std::to_string(def->requirement) + " " + SpiritAuraSystem::AttributeName(def->primaryAttribute)
                     + " (have " + std::to_string(have) + ")";
                 statusColor = (have < def->requirement) ? sf::Color(230, 100, 100) : sf::Color(150, 220, 150);
             }
 
-            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, iconColor, hasIcon, statusColor);
+            DrawPickerCard(target, panelX, contentWidth, y, L.pickerRowHeight, name, reqLine, description, iconColor, hasIcon, statusColor);
         }
     }
 
-    // One picker option, PoE2-style: a colored gem icon + two-line text block (name on
-    // top, requirement/status below) inside a bordered card, instead of the old single
-    // line of dense text.
+    // One picker option, PoE2-style: a colored gem icon + three-line text block (name,
+    // requirement/status, and a short effect description) inside a bordered card, instead
+    // of the old single line of dense text. The description line is what answers "what does
+    // this skill actually do" when browsing the picker after pressing G.
     void DrawPickerCard(sf::RenderTarget& target, float panelX, float contentWidth, float y, float rowHeight,
-        const std::string& name, const std::string& reqLine, sf::Color iconColor, bool hasIcon, sf::Color statusColor) {
+        const std::string& name, const std::string& reqLine, const std::string& description,
+        sf::Color iconColor, bool hasIcon, sf::Color statusColor) {
         sf::RectangleShape card({ kPanelW - 24.0f, rowHeight - 4.0f });
         card.setPosition({ panelX + 12.0f, y });
         card.setFillColor(sf::Color(28, 28, 33, 190));
@@ -489,9 +495,12 @@ private:
 
         float textX = panelX + 12.0f + 10.0f + iconR * 2.0f + 10.0f;
         float textW = contentWidth - (textX - panelX) - 8.0f;
-        DrawText(target, textX, y + 6.0f, Truncate(name, textW, 13), 13, sf::Color(225, 225, 230));
+        DrawText(target, textX, y + 4.0f, Truncate(name, textW, 13), 13, sf::Color(225, 225, 230));
         if (!reqLine.empty()) {
-            DrawText(target, textX, y + rowHeight - 20.0f, Truncate(reqLine, textW, 11), 11, statusColor);
+            DrawText(target, textX, y + 21.0f, Truncate(reqLine, textW, 11), 11, statusColor);
+        }
+        if (!description.empty()) {
+            DrawText(target, textX, y + 37.0f, Truncate(description, textW, 10), 10, sf::Color(170, 170, 178));
         }
     }
 
@@ -506,7 +515,7 @@ private:
         L.spiritRowHeight = 36.0f;
         L.pickerHeaderY = L.spiritRowY + static_cast<float>(kSpiritSlotCount) * L.spiritRowHeight + 16.0f;
         L.pickerRowY = L.pickerHeaderY + 22.0f;
-        L.pickerRowHeight = 46.0f;
+        L.pickerRowHeight = 64.0f; // tall enough for name + requirement + a description line
         L.pickerViewportH = (std::max)(60.0f, (kPanelY + kPanelH) - L.pickerRowY - 34.0f);
         return L;
     }
