@@ -4,7 +4,7 @@
 
 ## 済 (Done)
 
-**常時表示HUDにEnergy Shieldオーブを追加**。「エナジーシールドの表示して」という指示に対応。従来`UISystem`(常時表示HUD)はHP/MPの2オーブのみで、ESは`CharacterSheetSystem`(Cキー)を開かないと確認できなかった。`stats.maxES > 0`の時だけHPオーブの真上に小さめのES専用オーブ(水色、`DrawOrb`を再利用)を追加表示するようにした。ビルド確認済み(`/t:Build`、0エラー)、バックグラウンド起動でのクラッシュ無し確認も実施。
+**常時表示HUDにEnergy Shieldを追加(PoE2風のオーブを囲むリング表示に修正)**。「エナジーシールドの表示して」の後「POE2みたいなエナジーシールドの表示にして」と続けて指示を受けた。最初はHPオーブの真上に小さな専用オーブを追加する実装にしたが、指摘を受けてPoE2本家と同じ「生命オーブの縁を囲む光るリングが、ESが減るにつれて時計回りに縮む」表現へ作り直した。新設`DrawShieldRing`(`sf::VertexArray`のTriangleStrip/LineStripでリング状のセグメントを生成、12時位置から`current/max`比率ぶんだけ時計回りに描く)をHPオーブの外周に重ねて描画し、ESの数値はオーブの真上にテキスト表示する(`stats.maxES > 0`の時だけ)。SFMLに円形プログレスバーの標準プリミティブが無いため、扇形の頂点列を自前で生成する方式にした。スクリーンショット(`PrintWindow` API使用、`CopyFromScreen`は誤って別ウィンドウを撮ってしまう問題があったため切り替えた)で実際にオーブを囲む水色のリングとして表示されることを目視確認済み。ビルド確認済み(`/t:Build`、0エラー)。
 
 **スキルジェムをウェイストーンと同じアイテム欄ベースへ全面移行(専用所持リストを廃止)**。「すきるじぇむとかもウェイストーンみたいにアイテム欄におく そのスキルジェムを右クリックですきなスキルに変換。その後Gキーを押して空いているスロットに入れる。その後Gキーで開いている状態でキーにセットする。」という指示に対応。前回の「Waystoneをアイテム化」と同じ発想をスキル/サポート/スピリットジェムにも拡張した、本セッション最大級のアーキテクチャ変更。
 - **データモデル**: `ItemComponent`に`category==ItemCategory::SkillGem`+`skillGemIdentified`/`skillGemIsSupport`/`skillGemUncutKind`/`skillGemId`/`skillGemLevel`/`skillGemMaxSockets`/`skillGemSupportIds[5]`を追加。旧`SkillGemInventoryComponent`(`ownedGems`/`pendingUncutGems`)・`OwnedGemInstance`・`SkillGemPickupComponent`・`PendingUncutGem`は全廃し、Uncut/識別済みジェムはどちらもバッグ/StashのItemComponent1つで表現するようにした(個体ごとに独立したアイテムのため、同じgemIdを複数レベル分重複所持することも可能になった)。

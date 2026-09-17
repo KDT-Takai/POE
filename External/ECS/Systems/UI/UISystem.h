@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cmath>
+#include <algorithm>
 #include "../../Registry/Registry.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
 #include "../../Components/PlayerSkill/PlayerSkill.h"
@@ -44,12 +45,24 @@ public:
         DrawOrb(target, 80.0f, height - 80.0f, 45.0f, sf::Color(180, 0, 0), stats.currentHP, stats.maxHP, "HP");
         DrawOrb(target, width - 80.0f, height - 80.0f, 45.0f, sf::Color(0, 80, 200), stats.currentMP, stats.maxMP, "MP");
 
-        // Energy Shield: a smaller orb stacked above HP (PoE-style -- ES absorbs non-Chaos
-        // damage before HP, see CombatMath::ApplyDamage), only shown once the character
-        // actually has any (maxES > 0) so a build with none doesn't carry a permanently
-        // empty orb on screen.
+        // Energy Shield, PoE2-style: a glowing blue ring wrapped around the life orb's
+        // rim (not a separate orb) that sweeps clockwise from the top and shrinks as ES
+        // depletes -- ES absorbs non-Chaos damage before HP (see CombatMath::ApplyDamage),
+        // so visually "shielding" the life orb reads the same way it does in the real game.
+        // Only drawn once the character actually has any (maxES > 0).
         if (stats.maxES > 0.0f) {
-            DrawOrb(target, 80.0f, height - 80.0f - 45.0f - 20.0f - 28.0f, 28.0f, sf::Color(80, 160, 255), stats.currentES, stats.maxES, "ES");
+            float esRatio = stats.maxES > 0.0f ? std::clamp(stats.currentES / stats.maxES, 0.0f, 1.0f) : 0.0f;
+            DrawShieldRing(target, 80.0f, height - 80.0f, 45.0f, 7.0f, sf::Color(90, 190, 255), esRatio);
+
+            std::string esStr = "ES " + std::to_string(static_cast<int>(stats.currentES)) + "/" + std::to_string(static_cast<int>(stats.maxES));
+            sf::Text esText(*m_font, esStr, 13);
+            sf::FloatRect esBounds = esText.getLocalBounds();
+            esText.setOrigin({ esBounds.position.x + esBounds.size.x / 2.0f, esBounds.position.y + esBounds.size.y / 2.0f });
+            esText.setPosition({ 80.0f, height - 80.0f - 45.0f - 14.0f });
+            esText.setFillColor(sf::Color(150, 220, 255));
+            esText.setOutlineColor(sf::Color::Black);
+            esText.setOutlineThickness(1.0f);
+            target.draw(esText);
         }
 
         if (registry.HasComponent<StatusEffectsComponent>(playerEntity)) {
@@ -166,6 +179,45 @@ private:
         timeText.setOutlineColor(sf::Color::Black);
         timeText.setOutlineThickness(1.0f);
         target.draw(timeText);
+    }
+
+    // PoE2-style Energy Shield ring: a glowing arc hugging the outside of the life orb's
+    // rim, sweeping clockwise from the top (12 o'clock) and shrinking as `ratio` (current/
+    // max ES) drops, instead of a plain filled shape -- built from a triangle-strip ring
+    // segment since SFML has no built-in circular progress primitive.
+    void DrawShieldRing(sf::RenderTarget& target, float cx, float cy, float orbRadius, float thickness, sf::Color color, float ratio) {
+        if (ratio <= 0.0f) return;
+
+        float innerR = orbRadius + 2.0f;
+        float outerR = innerR + thickness;
+        constexpr int kMaxSegments = 64;
+        int segments = (std::max)(1, static_cast<int>(kMaxSegments * ratio));
+
+        sf::VertexArray strip(sf::PrimitiveType::TriangleStrip);
+        sf::Color glow = color;
+        glow.a = 220;
+        for (int i = 0; i <= segments; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(kMaxSegments); // 0..ratio
+            float angleDeg = -90.0f + t * 360.0f; // start at 12 o'clock, sweep clockwise
+            float angleRad = angleDeg * 3.14159265f / 180.0f;
+            sf::Vector2f dir(std::cos(angleRad), std::sin(angleRad));
+            strip.append(sf::Vertex(sf::Vector2f(cx, cy) + dir * innerR, glow));
+            strip.append(sf::Vertex(sf::Vector2f(cx, cy) + dir * outerR, glow));
+        }
+        target.draw(strip);
+
+        // A brighter thin highlight line along the outer edge, so the ring reads as a
+        // glowing shell rather than a flat band.
+        sf::VertexArray edge(sf::PrimitiveType::LineStrip);
+        sf::Color highlight(220, 240, 255, 240);
+        for (int i = 0; i <= segments; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(kMaxSegments);
+            float angleDeg = -90.0f + t * 360.0f;
+            float angleRad = angleDeg * 3.14159265f / 180.0f;
+            sf::Vector2f dir(std::cos(angleRad), std::sin(angleRad));
+            edge.append(sf::Vertex(sf::Vector2f(cx, cy) + dir * outerR, highlight));
+        }
+        target.draw(edge);
     }
 
     // HP/MP�I�[�u�`��
