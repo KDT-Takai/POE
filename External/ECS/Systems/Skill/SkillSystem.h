@@ -180,6 +180,8 @@ private:
                 reg.AddComponent<ProjectileComponent>(p, proj);
                 SparkVisualComponent sparkVis;
                 sparkVis.trailHistory.push_back(spawnPos);
+                sparkVis.electric = true;
+                sparkVis.seed = GetRandom(0.0f, 1000.0f);
                 reg.AddComponent<SparkVisualComponent>(p, sparkVis);
             }
             break;
@@ -220,6 +222,8 @@ private:
                 sparkVis.trailHistory.push_back(spawnPos);
                 sparkVis.thickness = 3.0f;
                 sparkVis.color = sf::Color(255, 255, 150);
+                sparkVis.electric = true;
+                sparkVis.seed = GetRandom(0.0f, 1000.0f);
                 reg.AddComponent<SparkVisualComponent>(p, sparkVis);
             }
             break;
@@ -261,6 +265,8 @@ private:
                 sparkVis.style = VisualStyle::Explosion;
                 sparkVis.maxDuration = 0.4f;
                 sparkVis.color = sf::Color(200, 255, 255, 255);
+                sparkVis.electric = true;
+                sparkVis.seed = GetRandom(0.0f, 1000.0f);
                 reg.AddComponent<SparkVisualComponent>(visualEntity, sparkVis);
 
                 reg.AddComponent<VelocityComponent>(visualEntity, VelocityComponent{ sf::Vector2f(0.f, 0.f) });
@@ -326,6 +332,8 @@ private:
                 sparkVis.style = VisualStyle::Explosion;
                 sparkVis.maxDuration = 2.0f;
                 sparkVis.color = sf::Color(150, 230, 255, 255);
+                sparkVis.electric = true;
+                sparkVis.seed = GetRandom(0.0f, 1000.0f);
                 reg.AddComponent<SparkVisualComponent>(ball, sparkVis);
 
                 // �ړ����x���Z�b�g
