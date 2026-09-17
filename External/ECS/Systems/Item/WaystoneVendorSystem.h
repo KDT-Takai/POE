@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "../../Registry/Registry.h"
 #include "../../Components/Item/Waystone.h"
 #include "../../Components/Stats/CharacterStats/CharacterStats.h"
@@ -13,8 +14,10 @@
 // Waystones, one tier per row, gold-only, buy-only (no Buyback/no accepting Waystones
 // back -- the general Vendor's bag-drag sell flow doesn't apply here since Waystones
 // aren't ItemComponents, just per-tier counts on WaystoneInventoryComponent). All 15
-// tiers are listed from the start; high tiers are gated by gold cost rather than an
-// unlock system, matching this project's "endgame loop only" simplification.
+// tiers are listed from the start; Tier 1 is free, and tiers beyond the player's current
+// character level are locked (shown greyed out with the level requirement, never hidden --
+// matches this project's existing "always show why, never just grey out silently"
+// convention, e.g. SkillGemSystem's requirement display).
 class WaystoneVendorSystem {
 private:
     std::shared_ptr<sf::Font> m_font;
@@ -37,7 +40,17 @@ public:
     void Close() { isOpen = false; }
     void Toggle() { isOpen = !isOpen; }
 
-    static int PriceForTier(int tier) { return 20 + tier * 20; }
+    // Tier 1 is always free -- it's the only tier available at character level 1, so
+    // charging for it would gate the very first map behind gold the player has no way
+    // to have earned yet.
+    static int PriceForTier(int tier) { return tier <= 1 ? 0 : 20 + tier * 20; }
+
+    // Tier N unlocks at character level N (1:1) -- simplest possible reading of "自分の
+    // レベルで行けるウェイストーンの上限解放" for this project's compressed level range,
+    // no separate Atlas-progression system to track.
+    static int MaxTierForLevel(int level) {
+        return std::clamp(level, 1, WaystoneInventoryComponent::kMaxTier);
+    }
 
     bool IsPointInPanel(sf::Vector2f point, sf::Vector2u winSize) const {
         if (!isOpen) return false;
@@ -74,6 +87,10 @@ public:
         }
     }
 
+    // Central gate shared by TryBuy (Update) and Render's grey-out -- so the row can
+    // never be shown as buyable while the click handler would actually refuse it.
+    static bool IsUnlocked(int tier, int playerLevel) { return tier <= MaxTierForLevel(playerLevel); }
+
     void Render(Registry& registry, sf::RenderTarget& target) {
         if (!isOpen || !m_font) return;
 
@@ -109,11 +126,13 @@ public:
         DrawText(target, closeBtn.position.x + 18.0f, closeBtn.position.y + 5.0f, "Close", 13, sf::Color::White);
 
         sf::Vector2f mouse = InputManager::Instance().GetMouseInput().GetMousePointF();
+        int maxTier = MaxTierForLevel(stats.level);
         for (int tier = 1; tier <= WaystoneInventoryComponent::kMaxTier; ++tier) {
             sf::FloatRect rowRect = RowRect(panel, tier);
             bool hovered = rowRect.contains(mouse);
             int price = PriceForTier(tier);
-            bool canAfford = stats.gold >= price;
+            bool unlocked = tier <= maxTier;
+            bool canAfford = unlocked && stats.gold >= price;
 
             sf::RectangleShape row(rowRect.size);
             row.setPosition(rowRect.position);
@@ -122,10 +141,11 @@ public:
             row.setOutlineThickness(hovered ? 2.0f : 1.0f);
             target.draw(row);
 
-            std::string label = "Tier " + std::to_string(tier) + "  -  " + std::to_string(price) + "g  (owned: "
-                + std::to_string(waystones.counts[tier - 1]) + ")";
+            std::string label = "Tier " + std::to_string(tier) + "  -  " + (price == 0 ? std::string("Free") : std::to_string(price) + "g")
+                + "  (owned: " + std::to_string(waystones.counts[tier - 1]) + ")";
+            if (!unlocked) label += "  [Requires Lv" + std::to_string(tier) + "]";
             DrawText(target, rowRect.position.x + 8.0f, rowRect.position.y + 6.0f, label, 13,
-                canAfford ? sf::Color(220, 220, 220) : sf::Color(150, 120, 100));
+                !unlocked ? sf::Color(150, 90, 90) : (canAfford ? sf::Color(220, 220, 220) : sf::Color(150, 120, 100)));
         }
 
         if (messageTimer > 0.0f && !lastActionMessage.empty()) {
@@ -152,6 +172,11 @@ private:
     }
 
     void TryBuy(WaystoneInventoryComponent& waystones, CharacterStatsComponent& stats, int tier) {
+        if (!IsUnlocked(tier, stats.level)) {
+            lastActionMessage = "Requires level " + std::to_string(tier);
+            messageTimer = 2.0f;
+            return;
+        }
         int price = PriceForTier(tier);
         if (stats.gold < price) {
             lastActionMessage = "Not enough gold";
