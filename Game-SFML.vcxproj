@@ -60,6 +60,7 @@
     <ClInclude Include="External\ECS\Components\Control\PlayerInput\PlayerInput.h" />
     <ClInclude Include="External\ECS\Components\Control\State\State.h" />
     <ClInclude Include="External\ECS\Components\Interaction\Interaction.h" />
+    <ClInclude Include="External\ECS\Components\Interaction\MapReturnPortal.h" />
     <ClInclude Include="External\ECS\Components\Tags\Boss\Boss.h" />
     <ClInclude Include="External\ECS\Components\Tags\Boss\BossPhase.h" />
     <ClInclude Include="External\ECS\Components\VFX\HitFlash.h" />
@@ -103,6 +104,7 @@
     <ClInclude Include="External\ECS\Components\Stats\CharacterStats\CharacterStats.h" />
     <ClInclude Include="External\ECS\Components\Tags\Player\Player.h" />
     <ClInclude Include="External\ECS\Components\World\Map.h" />
+    <ClInclude Include="External\ECS\Components\World\HazardGround.h" />
     <ClInclude Include="External\ECS\Core\ComponentPool.h" />
     <ClInclude Include="External\ECS\Core\Entity.h" />
     <ClInclude Include="External\ECS\ECS.h" />
@@ -119,6 +121,7 @@
     <ClInclude Include="External\ECS\Systems\Chara\EnemySpawnSystem.h" />
     <ClInclude Include="External\ECS\Systems\Chara\MinionSystem.h" />
     <ClInclude Include="External\ECS\Components\Chara\Minion.h" />
+    <ClInclude Include="External\ECS\Components\Chara\MapSlot.h" />
     <ClInclude Include="External\ECS\Systems\Contorol\InputSystem.h" />
     <ClInclude Include="External\ECS\Systems\EditerSystem.h" />
     <ClInclude Include="External\ECS\EntityObject\EntityObject.h" />
@@ -144,6 +147,9 @@
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\World\TileTextureFactory.h" />
+    <ClInclude Include="External\ECS\Systems\World\MinimapSystem.h" />
+    <ClInclude Include="External\ECS\Systems\World\HazardGroundSystem.h" />
+    <ClInclude Include="External\ECS\Systems\World\HazardGroundRenderSystem.h" />
     <ClInclude Include="External\ECS\Components\Physics\Transform\Transform.h" />
     <ClInclude Include="Programs\Game\GameScene\Character\Enemy\EnemyFactory.h" />
     <ClInclude Include="Programs\Game\GameScene\Entity\EntitySpawner.h" />

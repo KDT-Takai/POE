@@ -3,7 +3,10 @@
 #include <vector>
 #include <array>
 #include <optional>
+#include <unordered_map>
+#include <algorithm>
 #include <SFML/Graphics/Color.hpp>
+#include <SFML/System/Vector2.hpp>
 #include "Components/Stats/CharacterStats/CharacterStats.h"
 #include "Components/Item/Equipment.h"
 #include "Components/Item/Inventory.h"
@@ -60,7 +63,46 @@ class CampaignManager : public Singleton<CampaignManager> {
     // live entity state isn't persisted" behavior, only the character/inventory/etc is).
     bool m_mapAttemptActive = false;
     int m_mapDeathsRemaining = 0;
+    int m_mapDeathsMax = 0;
     std::vector<WaystoneMod> m_activeMapMods;
+    // このマップアタempトの迷路生成シード(MapGenerator::GenerateRandomWalk)。
+    // OpenEndgameMapで一度だけ振り直し、以後同じアタempト中(再入場含む)は使い回す
+    // ことで「同じマップのポータルに入ったら別のマップになっている」を防ぐ。他の
+    // アタempt状態と同じく非永続(保存/再読込を跨いで残す設計にはしていない)。
+    unsigned int m_mapSeed = 0;
+    // このマップアタempト中に死亡したスポーン枠番号の集合(MapSlotComponent参照、
+    // トラッシュ/Rareは0..trashCount-1、ボスは-1固定)。ZoneBuilder::Buildは
+    // 再構築(町へ戻って再入場等)のたびに、この集合に含まれる枠だけスポーンをスキップ
+    // する。マップ生成自体をマップシードで決定論的にしてあるため、同じ枠には常に同じ
+    // 個体(同じ座標・種族・レアリティ・アーケタイプ)が対応し、「倒した個体はもう
+    // 出てこない、生きていた個体はまた同じ場所に出る」を実現する
+    // ("雑魚敵も復活しないようにして…同じ個体で"という指示対応)。
+    std::vector<int> m_deadEnemySlots;
+    // 生存中に離脱した個体のcurrentHPを枠番号ごとに記録する(死亡時はNotifyEnemySlotDead
+    // が削除する)。再構築時にここへ記録があれば、そのHPから再開する(無ければ満タン)。
+    std::unordered_map<int, float> m_enemySlotHp;
+    // 帰還用ポータルでタウンへ戻る時点の、マップ内MapComponent::visited(探索済み
+    // タイル)のスナップショット。同じマップアタempト中の再入場ではこれを復元する
+    // ("ミニマップがリセットされてる"というバグ報告対応)。タウンはZoneBuilder::Build
+    // が常にRevealAllするため対象外。
+    std::vector<uint8_t> m_mapVisitedTiles;
+
+    // 同じゾーン種別内でのシーン再構築(例: Atlasでマップを開いた直後、タウンを円状
+    // ポータル入りで作り直す)の直後だけ、プレイヤーをゾーン固定のスポーン地点では
+    // なく直前の座標へ置くための一時的な引き継ぎ値("町でポータルを出すと位置がリ
+    // セットされる"というフィードバック対応)。ゾーンをまたぐ遷移(タウン⇔マップ)は
+    // 座標系が別物なので使わない。
+    bool m_pendingSpawnOverrideValid = false;
+    sf::Vector2f m_pendingSpawnOverride{ 0.f, 0.f };
+
+    // 帰還用ポータル(GameScene::ReturnToHubViaPortal)でタウンへ戻った時点のマップ内
+    // 座標。同じマップアタempト中に町側のポータルから再入場すると、ゾーン固定の
+    // スポーン地点ではなくここへ置かれる("ポータルで町に戻った際に再度ポータルに
+    // 入ると先ほど帰還用ポータルで出た位置からにする"という指示対応)。使うたびに
+    // 上書きされる(消費されない、次にOpenEndgameMapが呼ばれる=新しいマップを開く
+    // まで有効)。死亡による帰還はこれを更新しない(意図的に別経路のまま)。
+    bool m_mapReturnPositionValid = false;
+    sf::Vector2f m_mapReturnPosition{ 0.f, 0.f };
 
     // Which Atlas node (see AtlasSystem/AtlasData) the current map attempt was opened
     // from, if any -- set right before entering the map, consumed on a successful clear
@@ -97,9 +139,20 @@ public:
     int GetEndgameMapTier() const { return m_endgameMapTier; }
 
     // Spends a held Waystone item (tier + rolled mods, see ItemCategory::Waystone) to
-    // open the endgame map zone at that tier, granting a fresh 6-portal attempt. Returns
-    // false for an out-of-range tier.
+    // open the endgame map zone at that tier, granting a fresh portal attempt (see
+    // MaxMapDeathsForTier for how many). Returns false for an out-of-range tier.
     bool OpenEndgameMap(int tier, const std::vector<WaystoneMod>& mods);
+
+    // Higher-tier Waystones grant fewer portals ("ウェイストーンのTierが上がると上限が
+    // 減っていく" -- higher-risk maps get a smaller safety net). Capped at a minimum of 2
+    // so a map is never a guaranteed one-death loss.
+    static int MaxMapDeathsForTier(int tier) {
+        if (tier <= 3) return 6;
+        if (tier <= 6) return 5;
+        if (tier <= 9) return 4;
+        if (tier <= 12) return 3;
+        return 2;
+    }
 
     std::string GetProgressLabel() const;
 
@@ -111,6 +164,28 @@ public:
     // instead of requiring another Waystone (see GameScene::TryOpenEndgameMapFromHub).
     bool HasActiveMapAttempt() const { return m_mapAttemptActive; }
     int GetMapDeathsRemaining() const { return m_mapDeathsRemaining; }
+    int GetMapDeathsMax() const { return m_mapDeathsMax; }
+    unsigned int GetMapSeed() const { return m_mapSeed; }
+
+    // スポーン枠(MapSlotComponent::slotIndex)が死亡したことを記録する(重複無視)。
+    // 同時にそのHPスナップショットも消す(死んだ個体のHPは意味を持たないため)。
+    void NotifyEnemySlotDead(int slotIndex) {
+        if (std::find(m_deadEnemySlots.begin(), m_deadEnemySlots.end(), slotIndex) == m_deadEnemySlots.end()) {
+            m_deadEnemySlots.push_back(slotIndex);
+        }
+        m_enemySlotHp.erase(slotIndex);
+    }
+    bool IsEnemySlotDead(int slotIndex) const {
+        return std::find(m_deadEnemySlots.begin(), m_deadEnemySlots.end(), slotIndex) != m_deadEnemySlots.end();
+    }
+    // 生存中に離脱する個体のHPスナップショット(GameScene::ReturnToHubViaPortal等)。
+    void SetEnemySlotHp(int slotIndex, float hp) { m_enemySlotHp[slotIndex] = hp; }
+    bool GetEnemySlotHp(int slotIndex, float& outHp) const {
+        auto it = m_enemySlotHp.find(slotIndex);
+        if (it == m_enemySlotHp.end()) return false;
+        outHp = it->second;
+        return true;
+    }
     const std::vector<WaystoneMod>& GetActiveMapMods() const { return m_activeMapMods; }
 
     // Call when the player dies inside a map (not the hub). Consumes one of the 6
@@ -130,7 +205,33 @@ public:
     }
     void ClearPendingAtlasNode() { m_pendingAtlasNodeValid = false; }
 
-    // 死亡時: エンドゲームハブへ戻す
+    // 同一ゾーン内でのシーン再構築時だけプレイヤーのスポーン地点を上書きする
+    // (ConsumePendingSpawnOverrideを呼んだ側が一度きりで消費する)。
+    void SetPendingSpawnOverride(sf::Vector2f pos) { m_pendingSpawnOverrideValid = true; m_pendingSpawnOverride = pos; }
+    bool ConsumePendingSpawnOverride(sf::Vector2f& outPos) {
+        if (!m_pendingSpawnOverrideValid) return false;
+        outPos = m_pendingSpawnOverride;
+        m_pendingSpawnOverrideValid = false;
+        return true;
+    }
+
+    // 探索済みタイルのスナップショット(上書きのみ、消費されない)。
+    void SetMapVisitedTiles(std::vector<uint8_t> tiles) { m_mapVisitedTiles = std::move(tiles); }
+    const std::vector<uint8_t>& GetMapVisitedTiles() const { return m_mapVisitedTiles; }
+
+    // 帰還用ポータルでタウンへ戻った座標(消費されない、上書きのみ)。
+    void SetMapReturnPosition(sf::Vector2f pos) { m_mapReturnPositionValid = true; m_mapReturnPosition = pos; }
+    bool GetMapReturnPosition(sf::Vector2f& outPos) const {
+        if (!m_mapReturnPositionValid) return false;
+        outPos = m_mapReturnPosition;
+        return true;
+    }
+    void ClearMapReturnPosition() { m_mapReturnPositionValid = false; }
+
+    // エンドゲームハブへ戻す(死亡時、および自発的な帰還用ポータル使用時の両方から呼ばれる)。
+    // m_mapAttemptActive/m_mapDeathsRemainingには触れない -- 死亡側はGameSceneが別途
+    // ConsumeMapDeath()を呼ぶ、自発的な帰還(GameScene::ReturnToHubViaPortal)はポータルを
+    // 消費せずアタemptを維持したまま戻るため、どちらもこの関数自体は中立でいる必要がある。
     void ReturnToLastTown();
     // タイトルからの新規開始
     void ResetCampaign();

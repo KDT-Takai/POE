@@ -8,7 +8,12 @@
 
 class MapGenerator {
 public:
-    static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100, float tileSize = 64.0f) {
+    // seed==0は非決定的(std::random_device、従来通り)。0以外は同じ値なら毎回同じ
+    // 廊下形状を生成する(CampaignManager::GetMapSeed、「同じマップのポータルに
+    // 入ったら別のマップになっている」というフィードバック対応 -- 同一のマップ
+    // アタempト中はZoneBuilder::Buildへ同じシードが渡り続けるため、再入場のたびに
+    // 別の迷路になることがなくなる)。
+    static EntityObject CreateProceduralWorld(Registry& registry, int w = 100, int h = 100, float tileSize = 64.0f, unsigned int seed = 0) {
         auto entity = registry.CreateEntityObject();
 
         entity.AddComponent(MapComponent{});
@@ -18,7 +23,7 @@ public:
         // ユーザーの好みでランダムウォーク方式に戻した(部屋+通路方式は区画的で
         // 狭く感じるため、より広く開けたマップになるこちらを採用)。
         int steps = (w * h) / 2;
-        GenerateRandomWalk(map, w, h, steps);
+        GenerateRandomWalk(map, w, h, steps, seed);
 
         return entity;
     }
@@ -114,12 +119,11 @@ public:
         spdlog::info("Map Generated: Rooms&Corridors ({}x{}, {} rooms)", width, height, static_cast<int>(rooms.size()));
     }
 
-    static void GenerateRandomWalk(MapComponent& map, int width, int height, int steps) {
+    static void GenerateRandomWalk(MapComponent& map, int width, int height, int steps, unsigned int seed = 0) {
         // ������
         map.Resize(width, height);
 
-        std::random_device rd;
-        std::mt19937 mt(rd());
+        std::mt19937 mt(seed != 0 ? seed : std::random_device{}());
         std::uniform_int_distribution<int> dirDist(0, 3);
 
         int x = width / 2;

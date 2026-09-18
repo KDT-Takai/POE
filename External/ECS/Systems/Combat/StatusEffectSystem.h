@@ -6,6 +6,7 @@
 #include "Components/VFX/HitFlash.h"
 #include "Components/Item/Equipment.h"
 #include "Systems/Item/EquipmentSystem.h"
+#include "CombatMath.h"
 #include <algorithm>
 
 class StatusEffectSystem {
@@ -37,6 +38,8 @@ public:
 
             if (!registry.HasComponent<StatusEffectsComponent>(entity)) continue;
             auto& status = registry.GetComponent<StatusEffectsComponent>(entity);
+
+            CombatMath::DecayAilmentBuildup(status, stats.maxHP, dt);
 
             if (status.igniteRemaining > 0.0f) {
                 stats.currentHP -= status.igniteDps * dt;

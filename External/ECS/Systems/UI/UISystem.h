@@ -21,7 +21,28 @@ public:
         m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
     }
 
-    void Render(Registry& registry, sf::RenderTarget& target) {
+    // スキルスロット列のレイアウト計算をGameScene側のクリック判定と共有するための公開
+    // ヘルパー(帰還用ポータル生成ボタン、"スキルの横に" という指示でスキル列の右隣に
+    // 置く)。Render()内の座標計算と同じ式を使うこと。
+    static sf::FloatRect PortalButtonRect(sf::Vector2u winSize) {
+        float slotSize = 50.0f;
+        float gap = 8.0f;
+        float rollGap = 20.0f;
+        int skillCount = 5;
+        float totalBarWidth = slotSize + rollGap + (slotSize * skillCount) + (gap * (skillCount - 1));
+        float startX = (static_cast<float>(winSize.x) - totalBarWidth) / 2.0f;
+        float startY = static_cast<float>(winSize.y) - 70.0f;
+        float skillStartX = startX + slotSize + rollGap;
+        float btnX = skillStartX + static_cast<float>(skillCount) * (slotSize + gap) + rollGap;
+        return sf::FloatRect({ btnX, startY }, { slotSize, slotSize });
+    }
+
+    // showPortalButton: マップ内(Combatゾーン)でのみtrue、帰還用ポータル生成ボタンを
+    // スキルスロットの右隣に描く("マップ上ではスキルの横に帰還用ポータルを出現させる
+    // ものを用意"という指示対応)。portalChannelRemaining>0の間は詠唱中の進捗オーバーレイ
+    // を重ねる(既存のスキルクールダウン表示と同じDrawCooldownOverlayを流用)。
+    void Render(Registry& registry, sf::RenderTarget& target, bool showPortalButton = false,
+        float portalChannelRemaining = 0.0f, float portalChannelMax = 1.5f) {
         if (!m_font) return;
         
         auto view = registry.View<PlayerTag>();
@@ -117,6 +138,15 @@ public:
             }
         }
 
+        if (showPortalButton) {
+            sf::FloatRect btnRect = PortalButtonRect(winSize);
+            DrawSlotFrame(target, btnRect.position.x, btnRect.position.y, btnRect.size.x, "帰還");
+            DrawIcon(target, btnRect.position.x, btnRect.position.y, btnRect.size.x, sf::Color(255, 210, 60));
+            if (portalChannelRemaining > 0.0f) {
+                DrawCooldownOverlay(target, btnRect.position.x, btnRect.position.y, btnRect.size.x, portalChannelRemaining, portalChannelMax);
+            }
+        }
+
         DrawStats(target, stats);
 
         target.setView(oldView);
@@ -133,7 +163,7 @@ private:
         slot.setOutlineThickness(2.0f);
         target.draw(slot);
 
-        sf::Text keyText(*m_font, keyName, 12);
+        sf::Text keyText(*m_font, sf::String::fromUtf8(keyName.begin(), keyName.end()), 12);
 
         // ���������v�Z
         sf::FloatRect bounds = keyText.getLocalBounds();

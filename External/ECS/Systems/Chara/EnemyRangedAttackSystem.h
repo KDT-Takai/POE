@@ -7,6 +7,8 @@
 #include "../../Components/Physics/BoxCollider/BoxCollider.h"
 #include "../../Components/Physics/Projectile/Projectile.h"
 #include "../../Components/Control/PlayerInput/PlayerInput.h"
+#include "../../Components/PlayerSkill/SparkVisual.h"
+#include "../Combat/ImpactVfx.h"
 #include <cmath>
 
 // Fires a projectile at the player for every monster with a RangedAttackerComponent
@@ -48,6 +50,17 @@ public:
             proj.ownerEntity = entity;
             proj.damageType = stats.contactDamageType;
             registry.AddComponent<ProjectileComponent>(bolt, proj);
+
+            // 弾自体に見た目を持たせる(プレイヤースキルの投射物と同じSparkVisualComponent
+            // 経路、以前は矢/魔弾が完全に不可視だった)。属性色は着弾VFXと同じ
+            // ImpactVfx::ElementColorを再利用し、雷は稲妻描画(electric)にする。
+            SparkVisualComponent sparkVis;
+            sparkVis.trailHistory.push_back(trans.position);
+            sparkVis.color = ImpactVfx::ElementColor(proj.damageType);
+            sparkVis.thickness = 3.0f;
+            sparkVis.electric = (proj.damageType == DamageElement::Lightning);
+            sparkVis.seed = static_cast<float>(entity) * 37.0f + proj.duration;
+            registry.AddComponent<SparkVisualComponent>(bolt, sparkVis);
 
             ranged.currentCooldown = ranged.cooldownTime;
         }

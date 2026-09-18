@@ -29,6 +29,9 @@ GameScene::GameScene() {
     inputSystem = std::make_shared<InputSystem>();
     physicsSystem = std::make_shared<PhysicsSystem>();
     mapRenderSystem = std::make_shared<MapRenderSystem>();
+    minimapSystem = std::make_shared<MinimapSystem>();
+    hazardGroundSystem = std::make_shared<HazardGroundSystem>();
+    hazardGroundRenderSystem = std::make_shared<HazardGroundRenderSystem>();
 	skillSystem = std::make_shared<SkillSystem>();
 	uiSystem = std::make_shared<UISystem>();
 	sparkVisualSystem = std::make_shared<SparkVisualSystem>();
@@ -61,12 +64,44 @@ GameScene::GameScene() {
     const ZoneDefinition& zone = campaign.CurrentZone();
     m_zoneKind = zone.kind;
 
-    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame, campaign.GetActiveMapMods());
+    ZoneBuildResult built = ZoneBuilder::Build(*registry, zone, campaign.GetEndgameMapTier(), campaign.CurrentAct().isEndgame, campaign.GetActiveMapMods(),
+        campaign.HasActiveMapAttempt(), campaign.GetMapDeathsRemaining(), campaign.GetMapSeed());
     m_hasPortal = built.hasPortal;
     m_portalPos = built.portalPos;
+    m_portalMarkers = built.portalMarkers;
     m_townNpcs = built.townNpcs;
 
-    auto player = EntitySpawner::CreatePlayer(*registry, built.playerSpawn.x, built.playerSpawn.y);
+    // このゾーン開始時点のRare/ボスの頭数を数えておく("レア敵とボスを全部倒してから
+    // 帰還用ポータルを出す"の判定に使う、GameScene::Update参照)。
+    m_notableEnemiesRemaining = 0;
+    m_notablePortalSpawned = false;
+    if (m_zoneKind == ZoneKind::Combat) {
+        for (auto entity : registry->View<CharacterStatsComponent>()) {
+            if (registry->HasComponent<PlayerTag>(entity) || registry->HasComponent<AllyTagComponent>(entity)) continue;
+            auto& enemyStats = registry->GetComponent<CharacterStatsComponent>(entity);
+            if (enemyStats.rarity == MonsterRarity::Rare || registry->HasComponent<BossTag>(entity)) {
+                m_notableEnemiesRemaining++;
+            }
+        }
+    }
+
+    // 同一ゾーン内でのシーン再構築(Atlasでマップを開いた直後にタウンを円状ポータル
+    // 入りで作り直す等)の直後は、ゾーン固定のスポーン地点ではなく直前の座標へ置く
+    // ("町でポータルを出すと位置がリセットされる"というフィードバック対応)。
+    sf::Vector2f spawnPos = built.playerSpawn;
+    sf::Vector2f overrideSpawnPos;
+    if (campaign.ConsumePendingSpawnOverride(overrideSpawnPos)) {
+        spawnPos = overrideSpawnPos;
+    } else if (m_zoneKind == ZoneKind::Combat) {
+        // 同じマップアタempト中に帰還用ポータルを使ったことがあれば、その座標から
+        // 再開する(死亡での再入場は対象外、GameScene::ReturnToHubViaPortal参照)。
+        sf::Vector2f mapReturnPos;
+        if (campaign.GetMapReturnPosition(mapReturnPos)) {
+            spawnPos = mapReturnPos;
+        }
+    }
+
+    auto player = EntitySpawner::CreatePlayer(*registry, spawnPos.x, spawnPos.y);
     if (player) {
         playerEntity = player.GetID();
         if (campaign.HasSavedPlayer()) {
@@ -138,9 +173,15 @@ GameScene::GameScene() {
 
         spdlog::info("Player created with ID: {} in zone '{}'", player.GetID(), zone.displayName);
     }
+
+    if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
+        m_playerHpLastFrame = registry->GetComponent<CharacterStatsComponent>(playerEntity).currentHP;
+    }
 }
 
-void GameScene::AdvanceToNextZone() {
+// AdvanceToNextZone/ReturnToHubViaPortalの両方が使う保存処理(以前はAdvanceToNextZoneに
+// 直接書かれていた重複コード)。
+void GameScene::SavePlayerStateToCampaign() {
     auto& campaign = CampaignManager::Instance();
     if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
         campaign.SavePlayerStats(registry->GetComponent<CharacterStatsComponent>(playerEntity));
@@ -177,9 +218,68 @@ void GameScene::AdvanceToNextZone() {
         campaign.SaveAuraLoadout(spiritLoadout.items);
         campaign.SaveAuraActive(spiritLoadout.active);
     }
+}
+
+void GameScene::AdvanceToNextZone() {
+    SavePlayerStateToCampaign();
+    auto& campaign = CampaignManager::Instance();
     campaign.CompleteCurrentZoneAndAdvance();
     campaign.SaveToDisk();
     SceneManager::Instance().ChangeScene("GameScene");
+}
+
+// 「マップ上ではスキルの横に帰還用ポータルを出現させる」「レア敵・ボスを倒すとポータルが
+// 出現」の両方から呼ばれる自発的な帰還。AdvanceToNextZoneと違いCompleteCurrentZoneAndAdvance
+// (Atlasノード完了判定+マップアタempt終了)を経由せず、CampaignManager::ReturnToLastTown()
+// のみを呼ぶため、進行中のマップアタempt(残りポータル数)はそのまま維持される(町側の
+// 周回ポータルからいつでも無料で再入場できる、死亡でもクリアでもない「ただの一時帰宅」)。
+void GameScene::ReturnToHubViaPortal() {
+    SavePlayerStateToCampaign();
+    auto& campaign = CampaignManager::Instance();
+
+    // 生存中に離脱する個体(MapSlotComponent持ち)のHPを覚えておく。次に同じマップ
+    // アタempト内で再入場した時、死んでいない個体は同じ座標・同じ状態でそのまま
+    // 続きから戦える("雑魚敵も復活しないようにして…同じ個体で"という指示対応)。
+    for (auto entity : registry->View<MapSlotComponent, CharacterStatsComponent>()) {
+        auto& slot = registry->GetComponent<MapSlotComponent>(entity);
+        auto& stats = registry->GetComponent<CharacterStatsComponent>(entity);
+        if (stats.currentHP > 0.0f) {
+            campaign.SetEnemySlotHp(slot.slotIndex, stats.currentHP);
+        }
+    }
+
+    // ミニマップ/Tab全体マップの探索済みタイルも覚えておく("ミニマップがリセット
+    // されてる"というバグ報告対応)。
+    {
+        auto mapView = registry->View<MapComponent>();
+        if (!mapView.empty()) {
+            campaign.SetMapVisitedTiles(registry->GetComponent<MapComponent>(mapView[0]).visited);
+        }
+    }
+
+    // 次に同じマップアタempト内で再入場した時、ここ(帰還用ポータルを使った座標)から
+    // 再開できるように覚えておく("ポータルで町に戻った際に再度ポータルに入ると先ほど
+    // 帰還用ポータルで出た位置からにする"という指示対応)。
+    if (registry->HasComponent<TransformComponent>(playerEntity)) {
+        campaign.SetMapReturnPosition(registry->GetComponent<TransformComponent>(playerEntity).position);
+    }
+    campaign.ReturnToLastTown();
+    campaign.SaveToDisk();
+    SceneManager::Instance().ChangeScene("GameScene");
+}
+
+// プレイヤーの現在地に帰還用ポータルを1つ出す。スキル欄隣のボタンでの詠唱完了、
+// および全Rare/ボス討伐(GameScene::Update)の両方から呼ばれる共通処理。
+void GameScene::SpawnMapReturnPortalAtPlayer() {
+    if (!registry->HasComponent<TransformComponent>(playerEntity)) return;
+    auto& pTrans = registry->GetComponent<TransformComponent>(playerEntity);
+    sf::Vector2f playerCenter = pTrans.position + sf::Vector2f(16.0f, 16.0f);
+    constexpr float kReturnPortalRadius = 22.0f;
+    auto portal = registry->CreateEntityObject();
+    portal.AddComponent(TransformComponent{ playerCenter - sf::Vector2f(kReturnPortalRadius, kReturnPortalRadius), {1.f, 1.f}, 0.f });
+    portal.AddComponent(CircleComponent{ kReturnPortalRadius, sf::Color(255, 210, 60), true });
+    portal.AddComponent(TagComponent{ "Return Portal" });
+    portal.AddComponent(MapReturnPortalTag{});
 }
 
 // "T3x2 T1x1" style summary of held Waystones (now a normal inventory item, see Item.h)
@@ -215,9 +315,9 @@ sf::Color GameScene::NpcRingColor(TownNpcKind kind) {
 
 std::string GameScene::NpcHudHint(TownNpcKind kind) {
     switch (kind) {
-    case TownNpcKind::ItemVendor: return "Click the merchant to trade";
-    case TownNpcKind::WaystoneVendor: return "Click the Waystone vendor to buy Waystones";
-    case TownNpcKind::Stash: return "Click the stash to store items";
+    case TownNpcKind::ItemVendor: return "クリックして商人と取引する";
+    case TownNpcKind::WaystoneVendor: return "クリックしてウェイストーンを購入する";
+    case TownNpcKind::Stash: return "クリックして保管庫を開く";
     default: return "";
     }
 }
@@ -269,6 +369,15 @@ void GameScene::Update() {
         stashSystem->Close();
         keyBindSystem->Close();
         gemIdentifySystem->Close();
+        minimapSystem->CloseFullMap();
+    }
+
+    // Tab: PoE2風の全画面マップ(MinimapSystem)。他の全画面/モーダル系メニューが
+    // 開いている間は競合を避けるため開かない(Escapeでの一括クローズには含める、上記)。
+    bool anyOtherPauseMenuOpen = passiveTreeSystem->isOpen || atlasSystem->isOpen || vendorSystem->isOpen ||
+        waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
+    if (!awaitingRebind && !anyOtherPauseMenuOpen && InputManager::Instance().GetKeyInput().IsGetKey(sf::Keyboard::Key::Tab)) {
+        minimapSystem->ToggleFullMap();
     }
 
     if (!awaitingRebind && InputManager::Instance().GetKeyInput().IsGetKey(binds.Get(GameAction::ToggleCharacterSheet))) {
@@ -304,16 +413,56 @@ void GameScene::Update() {
 
     // マップデバイス(ポータル)もNPCと同じく左クリックで操作する(Enterキーでの
     // 起動は廃止、「エンターで開くのではなく左クリックで開く」というフィードバック対応)。
+    // 進行中のマップアタempトがあるとm_portalMarkersが複数(円状の再入場口)になるため、
+    // どれか1つにカーソルが乗っているかを走査する(どれをクリックしても同じ処理)。
     m_hoveringPortal = false;
     m_clickedOnPortal = false;
+    m_hoveredPortalMarker = -1;
     bool anyMenuBlockingPortal = inventorySystem->isOpen || passiveTreeSystem->isOpen || atlasSystem->isOpen ||
-        vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen || anyNpcPanelOpen;
+        vendorSystem->isOpen || skillGemSystem->isOpen || keyBindSystem->isOpen || anyNpcPanelOpen || minimapSystem->IsFullMapOpen();
     if (m_hasPortal && m_playerNearPortal && !anyMenuBlockingPortal) {
         sf::Vector2f mouseWorldForPortal = InputManager::Instance().GetMouseWorldPosition();
-        float pdx = mouseWorldForPortal.x - m_portalPos.x;
-        float pdy = mouseWorldForPortal.y - m_portalPos.y;
-        m_hoveringPortal = (pdx * pdx + pdy * pdy) < (kVendorClickRadius * kVendorClickRadius);
+        for (size_t i = 0; i < m_portalMarkers.size(); ++i) {
+            float pdx = mouseWorldForPortal.x - m_portalMarkers[i].x;
+            float pdy = mouseWorldForPortal.y - m_portalMarkers[i].y;
+            if ((pdx * pdx + pdy * pdy) < (kVendorClickRadius * kVendorClickRadius)) {
+                m_hoveringPortal = true;
+                m_hoveredPortalMarker = static_cast<int>(i);
+                break;
+            }
+        }
         m_clickedOnPortal = m_hoveringPortal && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
+    }
+
+    // マップ内の帰還用ポータル(詠唱生成/レア・ボス討伐で出現)。位置が動的なので毎フレーム
+    // 最寄りを探す(町のNPC/マップデバイスと同じ「近づくと輪、クリックで発動」パターン)。
+    m_nearReturnPortal = ItemPickupSystem::kInvalidEntity;
+    m_hoveringReturnPortal = false;
+    m_clickedOnReturnPortal = false;
+    sf::Vector2f nearReturnPortalCenter;
+    if (m_zoneKind == ZoneKind::Combat && registry->IsValid(playerEntity) && registry->HasComponent<TransformComponent>(playerEntity)) {
+        auto& pTransForPortal = registry->GetComponent<TransformComponent>(playerEntity);
+        sf::Vector2f playerCenterForPortal = pTransForPortal.position + sf::Vector2f(16.0f, 16.0f);
+        float bestDistSq = 150.0f * 150.0f;
+        for (auto portalEnt : registry->View<MapReturnPortalTag, TransformComponent, CircleComponent>()) {
+            auto& pt = registry->GetComponent<TransformComponent>(portalEnt);
+            auto& pc = registry->GetComponent<CircleComponent>(portalEnt);
+            sf::Vector2f center = pt.position + sf::Vector2f(pc.radius, pc.radius);
+            float dx = playerCenterForPortal.x - center.x, dy = playerCenterForPortal.y - center.y;
+            float distSq = dx * dx + dy * dy;
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                m_nearReturnPortal = portalEnt;
+                nearReturnPortalCenter = center;
+            }
+        }
+    }
+    if (registry->IsValid(m_nearReturnPortal) && !anyMenuBlockingPortal) {
+        sf::Vector2f mouseWorldForReturn = InputManager::Instance().GetMouseWorldPosition();
+        float rdx = mouseWorldForReturn.x - nearReturnPortalCenter.x;
+        float rdy = mouseWorldForReturn.y - nearReturnPortalCenter.y;
+        m_hoveringReturnPortal = (rdx * rdx + rdy * rdy) < (kVendorClickRadius * kVendorClickRadius);
+        m_clickedOnReturnPortal = m_hoveringReturnPortal && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left);
     }
     if (m_clickedOnNpc) {
         switch (m_townNpcs[m_nearNpcIndex].kind) {
@@ -343,7 +492,19 @@ void GameScene::Update() {
     passiveTreeSystem->Update(*registry, dt);
     atlasSystem->Update(*registry, dt);
     if (atlasSystem->ConsumeMapStartRequest()) {
-        AdvanceToNextZone();
+        // Waystoneを消費してアタemptを開始しただけで、まだマップへは入らない
+        // ("ポータルに触る前にマップに行く"というフィードバック対応)。
+        // CampaignManager::OpenEndgameMapはzoneIndexを変えないため、ここではまだ
+        // タウン(index 0)のまま -- シーンを再構築するだけでHasActiveMapAttempt()が
+        // trueになった状態のZoneBuilder::Buildが呼ばれ、デバイス周りに円状の入場
+        // ポータルが出現する。実際にマップへ入るのはそのどれかをクリックした時
+        // (m_clickedOnPortal、TryOpenEndgameMapFromHubと同じ経路)。
+        SavePlayerStateToCampaign();
+        if (registry->HasComponent<TransformComponent>(playerEntity)) {
+            CampaignManager::Instance().SetPendingSpawnOverride(registry->GetComponent<TransformComponent>(playerEntity).position);
+        }
+        CampaignManager::Instance().SaveToDisk();
+        SceneManager::Instance().ChangeScene("GameScene");
         return;
     }
     vendorSystem->Update(*registry, dt);
@@ -357,7 +518,7 @@ void GameScene::Update() {
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
     // ようにする(スキルジェム画面を開くとゲームが固まる不具合の修正)。未鑑定ジェムの
     // 選択画面(GemIdentifySystem)も選んでいる間は戦闘が進まないようポーズ系に含める。
-    bool isPaused = passiveTreeSystem->isOpen || atlasSystem->isOpen || vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen;
+    bool isPaused = passiveTreeSystem->isOpen || atlasSystem->isOpen || vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen || minimapSystem->IsFullMapOpen();
     // 非ポーズ系メニュー(インベントリ/キャラクターシート/スキルジェム)はゲームを
     // 止めないので、開いている間もフィールド上でのスキル発動クリックは通したい。
     // マウスが実際にそのパネルの上に重なっている時だけクリックをUI側へ譲る
@@ -383,9 +544,24 @@ void GameScene::Update() {
         }
     }
 
+    // マップ内(Combat)で、スキルスロット隣のボタンをクリックすると帰還用ポータルの
+    // 詠唱を開始する("スキルの横に帰還用ポータルを出現させるものを用意。クリックで
+    // 実行"という指示)。詠唱時間が経過するとGameScene::UpdateのSpawnMapReturnPortal
+    // 相当処理(後述)で実際にポータルが出現する。既に詠唱中なら再クリックは無視。
+    bool clickedPortalButton = false;
+    if (m_zoneKind == ZoneKind::Combat && !uiOwnsClicks && m_portalChannelRemaining <= 0.0f) {
+        sf::FloatRect portalBtnRect = UISystem::PortalButtonRect(winSizeForUI);
+        if (portalBtnRect.contains(mouseScreenPos) && InputManager::Instance().GetMouseInput().IsGetMouse(sf::Mouse::Button::Left)) {
+            clickedPortalButton = true;
+        }
+    }
+    if (clickedPortalButton) {
+        m_portalChannelRemaining = kPortalChannelDuration;
+    }
+
     if (!isPaused) {
         // ����
-        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnNpc || m_clickedOnPortal);
+        inputSystem->Update(*registry, dt, uiOwnsClicks || registry->IsValid(hoveredPickup) || m_clickedOnNpc || m_clickedOnPortal || m_clickedOnReturnPortal || clickedPortalButton);
         // ������
         skillSystem->Update(*registry, dt);
         // �X�p�[�N
@@ -400,6 +576,8 @@ void GameScene::Update() {
         auto& trans = registry->GetComponent<TransformComponent>(playerEntity);
         sf::Vector2f centerPos = trans.position + sf::Vector2f(16.0f, 32.0f);
         CameraManager::Instance().SetCenter(centerPos);
+
+        minimapSystem->RevealAndPan(*registry, playerEntity, dt);
 
         // Safe to run every frame regardless of what changed maxSpirit/baseStats since the
         // last call (equip swap, level up, passive spend) -- see SpiritAuraSystem::
@@ -426,6 +604,7 @@ void GameScene::Update() {
         enemySummonSystem->Update(*registry, dt, playerPos);
         enemyChargeSystem->Update(*registry, dt, playerPos);
         minionSystem->Update(*registry, dt);
+        hazardGroundSystem->Update(*registry, dt);
         statusEffectSystem->Update(*registry, dt);
         // �������Z
         physicsSystem->Update(*registry, dt);
@@ -435,11 +614,43 @@ void GameScene::Update() {
         bossPhaseSystem->Update(*registry, dt);
     }
 
+    if (m_portalMessageTimer > 0.0f) m_portalMessageTimer -= dt;
+
+    // 帰還用ポータルの詠唱進行。ダメージを受けると(直前フレームよりHPが減っていたら)
+    // キャンセルする("出現させるには少し時間がかかる。その間攻撃されるとキャンセル
+    // される"という指示)。環境ダメージ(床属性ギミック等)も含め、HPが減る要因なら
+    // 種類を問わずキャンセル対象にする。
+    if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
+        float currentHP = registry->GetComponent<CharacterStatsComponent>(playerEntity).currentHP;
+        if (m_portalChannelRemaining > 0.0f) {
+            if (currentHP < m_playerHpLastFrame) {
+                m_portalChannelRemaining = 0.0f;
+                m_portalMessage = "ポータルの詠唱が中断されました！";
+                m_portalMessageTimer = 2.0f;
+            } else {
+                m_portalChannelRemaining -= dt;
+                if (m_portalChannelRemaining <= 0.0f) {
+                    m_portalChannelRemaining = 0.0f;
+                    SpawnMapReturnPortalAtPlayer();
+                    m_portalMessage = "帰還用ポータルを生成しました！";
+                    m_portalMessageTimer = 2.0f;
+                }
+            }
+        }
+        m_playerHpLastFrame = currentHP;
+    }
+
+    if (m_clickedOnReturnPortal) {
+        ReturnToHubViaPortal();
+        return;
+    }
+
     // �Q�[���̏I���m�F
     if (registry->HasComponent<CharacterStatsComponent>(playerEntity)) {
         auto& state = registry->GetComponent<CharacterStatsComponent>(playerEntity);
         if (state.currentHP <= 0) {
-            // Dying inside a map consumes one of its up to 6 portals instead of just
+            // Dying inside a map consumes one of its portals (up to CampaignManager::
+            // MaxMapDeathsForTier, fewer at higher Waystone tiers) instead of just
             // ending the run outright -- softcore's existing ResultScene "Continue"
             // already sends the player back to the hub either way, this only tracks how
             // many more times that's still free before the map attempt closes for good.
@@ -480,24 +691,39 @@ void GameScene::Update() {
         }
     } else {
         auto enemyView = registry->View<CharacterStatsComponent>();
-        bool anyEnemyAlive = false;
+        bool anyNotableAlive = false;
 
         for (auto entity : enemyView) {
-            if (!registry->HasComponent<PlayerTag>(entity) && !registry->HasComponent<AllyTagComponent>(entity)) {
-                anyEnemyAlive = true;
-                break;
+            if (registry->HasComponent<PlayerTag>(entity) || registry->HasComponent<AllyTagComponent>(entity)) continue;
+            auto& enemyStats = registry->GetComponent<CharacterStatsComponent>(entity);
+            if (enemyStats.rarity == MonsterRarity::Rare || registry->HasComponent<BossTag>(entity)) {
+                anyNotableAlive = true;
             }
         }
-        if (!anyEnemyAlive) {
-            spdlog::info("Zone cleared!");
+
+        // マップの完了条件はボス+Rareを全滅させること(このゾーンは常にisBossZone、
+        // ZoneDefinitionのMakeBoss参照)。以前はここで全滅(名前の無いトラッシュ雑魚も
+        // 含む)判定と同時にAdvanceToNextZoneで即座に町へ強制送還していたため、
+        // トラッシュを先に倒し切ってからボスを倒すと、帰還用ポータルが出現する間も
+        // 無くそのまま町へ飛ばされ、ボスのドロップ品を拾えなかった
+        // ("雑魚敵、レア敵を倒してからボスを倒すとポータルの出現じゃなく直接町に
+        // 送られる…ボスのドロップ品回収できない"というバグ報告対応)。Atlasノードの
+        // 完了判定もこのタイミングへ移し、以後は帰還用ポータルをクリックするまで
+        // 転送しない(自分のタイミングでドロップ品を拾ってから離脱できる)。
+        if (m_notableEnemiesRemaining > 0 && !m_notablePortalSpawned && !anyNotableAlive) {
+            m_notablePortalSpawned = true;
+            spdlog::info("Notable enemies cleared!");
+
             auto& campaign = CampaignManager::Instance();
             int pendingCol, pendingRow;
             if (campaign.GetPendingAtlasNode(pendingCol, pendingRow) && registry->HasComponent<AtlasComponent>(playerEntity)) {
                 AtlasData::MarkCompleted(registry->GetComponent<AtlasComponent>(playerEntity), pendingCol, pendingRow);
                 campaign.ClearPendingAtlasNode();
             }
-            AdvanceToNextZone();
-            return;
+
+            SpawnMapReturnPortalAtPlayer();
+            m_portalMessage = "主要な敵を全て倒しました。帰還用ポータルが出現しました！";
+            m_portalMessageTimer = 2.5f;
         }
     }
 }
@@ -506,6 +732,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     target.setView(CameraManager::Instance().GetCurrentView());
 	// �}�b�v�`��
 	mapRenderSystem->Render(*registry, target);
+	hazardGroundRenderSystem->Render(*registry, target);
     renderSystem->Render(*registry, target);
     if (DebugManager::Instance().IsDebugMode()) {
         renderSystem->RenderDebug(*registry, target);
@@ -527,29 +754,48 @@ void GameScene::Render(sf::RenderTarget& target) {
         target.draw(ring);
     }
 
-    // マップデバイス(ポータル)もNPCと同じクリック範囲リングを表示する。
+    // マップデバイス(ポータル)もNPCと同じクリック範囲リングを表示する。進行中のマップ
+    // アタempトがあれば円状に並んだ全マーカーそれぞれにリングを描く。
     if (m_hasPortal && m_playerNearPortal) {
-        sf::CircleShape portalRing(kVendorClickRadius);
-        portalRing.setOrigin({ kVendorClickRadius, kVendorClickRadius });
-        portalRing.setPosition(m_portalPos);
-        portalRing.setFillColor(sf::Color::Transparent);
-        portalRing.setOutlineThickness(2.0f);
-        portalRing.setOutlineColor(m_hoveringPortal ? sf::Color(255, 255, 120, 220) : sf::Color(120, 220, 255, 140));
-        target.draw(portalRing);
+        for (size_t i = 0; i < m_portalMarkers.size(); ++i) {
+            sf::CircleShape portalRing(kVendorClickRadius);
+            portalRing.setOrigin({ kVendorClickRadius, kVendorClickRadius });
+            portalRing.setPosition(m_portalMarkers[i]);
+            portalRing.setFillColor(sf::Color::Transparent);
+            portalRing.setOutlineThickness(2.0f);
+            bool hovered = m_hoveringPortal && static_cast<int>(i) == m_hoveredPortalMarker;
+            portalRing.setOutlineColor(hovered ? sf::Color(255, 255, 120, 220) : sf::Color(120, 220, 255, 140));
+            target.draw(portalRing);
+        }
+    }
+
+    // マップ内の帰還用ポータル(詠唱生成/レア・ボス討伐)も同じクリック範囲リング。
+    if (registry->IsValid(m_nearReturnPortal) && registry->HasComponent<TransformComponent>(m_nearReturnPortal) && registry->HasComponent<CircleComponent>(m_nearReturnPortal)) {
+        auto& rpTrans = registry->GetComponent<TransformComponent>(m_nearReturnPortal);
+        auto& rpCircle = registry->GetComponent<CircleComponent>(m_nearReturnPortal);
+        sf::Vector2f rpCenter = rpTrans.position + sf::Vector2f(rpCircle.radius, rpCircle.radius);
+        sf::CircleShape returnRing(kVendorClickRadius);
+        returnRing.setOrigin({ kVendorClickRadius, kVendorClickRadius });
+        returnRing.setPosition(rpCenter);
+        returnRing.setFillColor(sf::Color::Transparent);
+        returnRing.setOutlineThickness(2.0f);
+        returnRing.setOutlineColor(m_hoveringReturnPortal ? sf::Color(255, 255, 120, 220) : sf::Color(120, 220, 255, 140));
+        target.draw(returnRing);
     }
 
     target.setView(target.getDefaultView());
-	uiSystem->Render(*registry, target);
+	uiSystem->Render(*registry, target, m_zoneKind == ZoneKind::Combat, m_portalChannelRemaining, kPortalChannelDuration);
+	minimapSystem->RenderMinimap(*registry, target, playerEntity);
 
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
         if (m_playerNearPortal) {
             auto& campaign = CampaignManager::Instance();
             if (campaign.HasActiveMapAttempt()) {
-                hudLine = "Click to re-enter your Tier " + std::to_string(campaign.GetEndgameMapTier())
-                    + " map (" + std::to_string(campaign.GetMapDeathsRemaining()) + " portals left)";
+                hudLine = "ポータルをクリックしてTier " + std::to_string(campaign.GetEndgameMapTier())
+                    + " のマップへ再入場 (残りポータル " + std::to_string(campaign.GetMapDeathsRemaining()) + "/" + std::to_string(campaign.GetMapDeathsMax()) + ")";
             } else {
-                hudLine = "Click to open the Atlas (Waystones held: " + HeldWaystoneSummary() + ")";
+                hudLine = "クリックしてAtlasを開く (所持ウェイストーン: " + HeldWaystoneSummary() + ")";
             }
         }
         else if (m_nearNpcIndex >= 0) hudLine = NpcHudHint(m_townNpcs[m_nearNpcIndex].kind);
@@ -561,7 +807,13 @@ void GameScene::Render(sf::RenderTarget& target) {
                 aliveEnemies++;
             }
         }
-        hudLine = "Remaining Enemies: " + std::to_string(aliveEnemies);
+        if (registry->IsValid(m_nearReturnPortal)) {
+            hudLine = "ポータルをクリックして町へ帰還";
+        } else if (m_portalChannelRemaining > 0.0f) {
+            hudLine = "帰還用ポータルを詠唱中...(被弾でキャンセル)";
+        } else {
+            hudLine = "残り敵数: " + std::to_string(aliveEnemies);
+        }
     }
 
     std::shared_ptr<sf::Font> m_font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
@@ -621,6 +873,17 @@ void GameScene::Render(sf::RenderTarget& target) {
             target.draw(pickupText);
         }
 
+        if (m_portalMessageTimer > 0.0f && !m_portalMessage.empty()) {
+            sf::Text portalText(*m_font, sf::String::fromUtf8(m_portalMessage.begin(), m_portalMessage.end()), 22);
+            portalText.setFillColor(sf::Color(255, 210, 60));
+            portalText.setOutlineColor(sf::Color::Black);
+            portalText.setOutlineThickness(2.0f);
+            sf::FloatRect portalBounds = portalText.getLocalBounds();
+            portalText.setOrigin({ portalBounds.position.x + portalBounds.size.x / 2.0f, 0.0f });
+            portalText.setPosition({ target.getSize().x / 2.0f, 64.0f });
+            target.draw(portalText);
+        }
+
         if (collisionSystem->levelUpMessageTimer > 0.0f && !collisionSystem->levelUpMessage.empty()) {
             sf::Text levelText(*m_font, sf::String::fromUtf8(collisionSystem->levelUpMessage.begin(), collisionSystem->levelUpMessage.end()), 32);
             levelText.setFillColor(sf::Color(255, 255, 255));
@@ -662,6 +925,22 @@ void GameScene::Render(sf::RenderTarget& target) {
             bossName.setOrigin({ nameBounds.position.x + nameBounds.size.x / 2.0f, 0.0f });
             bossName.setPosition({ target.getSize().x / 2.0f, barY - 22.0f });
             target.draw(bossName);
+
+            // プレイヤーがボスへ与えた累計ダメージをHPバー右上に表示する
+            // ("プレイヤーがどれだけダメージを与えているか分かりやすく"という指示対応)。
+            // 一定時間ダメージを与えられていないとCollisionSystem側で0にリセットされ、
+            // ここでは0以下なら単に表示しない(=自動的に消える)。
+            if (collisionSystem->bossDamageDealt > 0.0f) {
+                std::string dmgStr = "与ダメージ: " + std::to_string(static_cast<int>(collisionSystem->bossDamageDealt));
+                sf::Text dmgText(*m_font, sf::String::fromUtf8(dmgStr.begin(), dmgStr.end()), 18);
+                dmgText.setFillColor(sf::Color(255, 220, 120));
+                dmgText.setOutlineColor(sf::Color::Black);
+                dmgText.setOutlineThickness(2.0f);
+                sf::FloatRect dmgBounds = dmgText.getLocalBounds();
+                dmgText.setOrigin({ dmgBounds.position.x + dmgBounds.size.x, 0.0f });
+                dmgText.setPosition({ barX + barWidth, barY - 22.0f });
+                target.draw(dmgText);
+            }
             break;
         }
 
@@ -688,6 +967,7 @@ void GameScene::Render(sf::RenderTarget& target) {
     skillGemSystem->Render(*registry, target);
     gemIdentifySystem->Render(*registry, target);
     keyBindSystem->Render(*registry, target);
+    minimapSystem->RenderFullMap(*registry, target, playerEntity);
 
     target.setView(target.getDefaultView());
 }

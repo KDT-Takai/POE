@@ -7,6 +7,9 @@
 #include "../../ECS/Systems/Contorol/InputSystem.h"
 #include "../../ECS/Systems/Physics/PhysicsSystem.h"
 #include "../../ECS/Systems/World/MapRenderSystem.h"
+#include "../../ECS/Systems/World/MinimapSystem.h"
+#include "../../ECS/Systems/World/HazardGroundSystem.h"
+#include "../../ECS/Systems/World/HazardGroundRenderSystem.h"
 #include "../../ECS/Systems/Skill/SkillSystem.h"
 #include "../../ECS/Systems/UI/UISystem.h"
 #include "../../ECS/Systems/Skill/SparkVisualSystem.h"
@@ -35,6 +38,8 @@
 #include "../../ECS/Systems/UI/KeyBindSystem.h"
 #include "../../ECS/Systems/Chara/MinionSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
+#include "../../ECS/Components/Interaction/MapReturnPortal.h"
+#include "../../ECS/Components/Chara/MapSlot.h"
 #include "../Zone/TownNpc.h"
 
 class GameScene : public SceneBase {
@@ -49,6 +54,8 @@ public:
 
 private:
     void AdvanceToNextZone();
+    void SavePlayerStateToCampaign();
+    void ReturnToHubViaPortal();
     void TryOpenEndgameMapFromHub();
     std::string HeldWaystoneSummary() const;
     void RenderGemDebugTools();
@@ -60,9 +67,29 @@ private:
     ZoneKind m_zoneKind = ZoneKind::Combat;
     bool m_hasPortal = false;
     bool m_playerNearPortal = false;
-    sf::Vector2f m_portalPos;
+    sf::Vector2f m_portalPos; // マップデバイス自体の中心(近接判定用)
+    std::vector<sf::Vector2f> m_portalMarkers; // クリック可能な個々のポータル(1個 or 円状にN個)
     bool m_hoveringPortal = false;  // クリック可能範囲にカーソルがあるか(輪の描画に使用、NPCと同じパターン)
     bool m_clickedOnPortal = false; // このフレームでマップデバイスを左クリックしたか(スキル発動クリックとの競合防止用)
+    int m_hoveredPortalMarker = -1; // m_portalMarkers中どれにカーソルが乗っているか(リング強調表示用)
+
+    // マップ内の帰還用ポータル("スキル欄隣のボタンで詠唱生成"/"レア敵・ボス討伐で自動出現"
+    // の両方、MapReturnPortalTag持ちエンティティを毎フレーム走査するため固定リストは
+    // 持たない)。詠唱中はダメージを受けるとキャンセルされる(m_playerHpLastFrameとの比較)。
+    static constexpr float kPortalChannelDuration = 1.5f;
+    float m_portalChannelRemaining = 0.0f;
+    float m_playerHpLastFrame = 0.0f;
+    std::string m_portalMessage;
+    float m_portalMessageTimer = 0.0f;
+    Entity m_nearReturnPortal = static_cast<Entity>(-1);
+    bool m_hoveringReturnPortal = false;
+    bool m_clickedOnReturnPortal = false;
+    void SpawnMapReturnPortalAtPlayer();
+    // Combatゾーン開始時のRare/ボスの頭数(m_zoneKind==Combatの間だけ意味を持つ)。0まで
+    // 減ったら(全滅)一度だけ帰還用ポータルを出す("レア敵とボスを全部倒してからだす"
+    // という指示、1体倒すたびに出していた旧実装を撤回)。
+    int m_notableEnemiesRemaining = 0;
+    bool m_notablePortalSpawned = false;
 
     // Town NPCs (item Vendor / Waystone Vendor / Stash, see ZoneBuilder::PlaceTownNpcs).
     // m_nearNpcIndex is the one within click range this frame (-1 = none); at most one
@@ -84,6 +111,9 @@ private:
     std::shared_ptr<InputSystem> inputSystem;
     std::shared_ptr<PhysicsSystem> physicsSystem;
     std::shared_ptr<MapRenderSystem> mapRenderSystem;
+    std::shared_ptr<MinimapSystem> minimapSystem;
+    std::shared_ptr<HazardGroundSystem> hazardGroundSystem;
+    std::shared_ptr<HazardGroundRenderSystem> hazardGroundRenderSystem;
     std::shared_ptr<SkillSystem> skillSystem;
     std::shared_ptr<UISystem> uiSystem;
 	std::shared_ptr<SparkVisualSystem> sparkVisualSystem;

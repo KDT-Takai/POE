@@ -3,6 +3,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <cstdio>
+#include <random>
 
 namespace {
     void WriteStats(std::ofstream& out, const std::string& prefix, const CharacterStatsComponent& s) {
@@ -263,8 +264,10 @@ void CampaignManager::BuildActs() {
         // 見た目の解像度も上がる。敵数は面積比(16900/8100)に合わせて30→62へ増やした。
         // タウン(endgame_hub)は既に別フィードバックでサイズ調整済みのためtileSizeは
         // 既定の64pxのまま変更しない。
+        // ボスのHP/ATK倍率は「ボスもう少し強くして欲しい」というフィードバックで
+        // 14.0/3.5から引き上げた(約+35%/+43%)。
         ZoneDefinition endgameMap = MakeBoss("endgame_map", "歪んだ地図", 130, 130, 62, 3.2f, 3.0f, "歪みの落とし子", sf::Color(200, 40, 160),
-            "地図の歪みの化身", 14.0f, 3.5f, sf::Color(255, 0, 120), DamageElement::Lightning);
+            "地図の歪みの化身", 19.0f, 5.0f, sf::Color(255, 0, 120), DamageElement::Lightning);
         endgameMap.tileSize = 48.0f;
         act.zones.push_back(endgameMap);
         m_acts.push_back(act);
@@ -286,7 +289,17 @@ bool CampaignManager::OpenEndgameMap(int tier, const std::vector<WaystoneMod>& m
     m_endgameMapTier = tier;
     m_activeMapMods = mods;
     m_mapAttemptActive = true;
-    m_mapDeathsRemaining = 6;
+    m_mapDeathsMax = MaxMapDeathsForTier(tier);
+    m_mapDeathsRemaining = m_mapDeathsMax;
+    {
+        std::random_device rd;
+        m_mapSeed = rd() | 1u; // 0は「非決定的」の意味で予約しているため必ず非0にする
+    }
+    // 新しいマップアタemptを開始するので、前のアタempトの帰還地点/討伐記録は持ち越さない。
+    m_mapReturnPositionValid = false;
+    m_deadEnemySlots.clear();
+    m_enemySlotHp.clear();
+    m_mapVisitedTiles.clear();
     // Deliberately does NOT touch m_zoneIndex here -- this is always called from the hub
     // (index 0), and the caller follows up with CompleteCurrentZoneAndAdvance's 0<->1
     // toggle to actually move into the map. Setting it directly here used to fight that
@@ -343,6 +356,12 @@ void CampaignManager::ResetCampaign() {
     m_savedPassiveTree.clear();
     m_mapAttemptActive = false;
     m_mapDeathsRemaining = 0;
+    m_mapDeathsMax = 0;
+    m_mapSeed = 0;
+    m_mapReturnPositionValid = false;
+    m_deadEnemySlots.clear();
+    m_enemySlotHp.clear();
+    m_mapVisitedTiles.clear();
     m_activeMapMods.clear();
     m_pendingAtlasNodeValid = false;
     m_savedAtlasNodes.clear();
@@ -448,6 +467,15 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     if (m_actIndex >= static_cast<int>(m_acts.size())) m_actIndex = static_cast<int>(m_acts.size()) - 1;
     if (m_actIndex < 0) m_actIndex = 0;
     if (m_zoneIndex >= static_cast<int>(m_acts[m_actIndex].zones.size())) m_zoneIndex = 0;
+    // マップアタempt状態(m_mapAttemptActive等)はこの関数の対象外(上記コメント通り非
+    // 永続)。そのため、保存されたzoneIndexがCombatを指していてもこの時点では必ず
+    // 「アタemptなし」になる。アタemptがない状態でマップの中にいる、という組み合わせは
+    // この作品のWaystoneゲート式デザイン(マップは必ずWaystone消費で入る)が想定しない
+    // 状態のため、タウンへ寄せる(でないと、ハブに戻る手段がないままマップに取り
+    // 残されるバグに繋がる)。
+    if (m_zoneIndex != 0 && !m_mapAttemptActive) {
+        m_zoneIndex = 0;
+    }
 
     ReadStats(kv, "stats.", m_savedStats);
     ReadStats(kv, "base.", m_savedEquipment.baseStats);

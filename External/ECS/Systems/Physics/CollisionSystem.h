@@ -11,6 +11,7 @@
 #include "../../Components/Item/SkillGem.h"
 #include "../../Components/Tags/Boss/Boss.h"
 #include "../../Components/Chara/Minion.h"
+#include "../../Components/Chara/MapSlot.h"
 #include <System/Campaign/CampaignManager.h>
 #include "../../Components/VFX/HitFlash.h"
 #include "../../Components/PlayerSkill/SparkVisual.h"
@@ -30,8 +31,24 @@ public:
     std::string levelUpMessage;
     float levelUpMessageTimer = 0.0f;
 
+    // ボスに与えた累計ダメージ("プレイヤーがどれだけダメージを与えているか分かりやすく"
+    // という指示対応、GameScene::RenderがボスHPバー右上に表示する)。一定時間
+    // (kBossDamageResetTimeout)与えられなかったら0にリセットする(表示側はdealt<=0で
+    // 非表示にするだけでよい)。
+    static constexpr float kBossDamageResetTimeout = 3.0f;
+    float bossDamageDealt = 0.0f;
+    float bossDamageResetTimer = 0.0f;
+
     void Update(Registry& registry, float dt) {
         if (levelUpMessageTimer > 0.0f) levelUpMessageTimer -= dt;
+
+        if (bossDamageDealt > 0.0f) {
+            bossDamageResetTimer -= dt;
+            if (bossDamageResetTimer <= 0.0f) {
+                bossDamageDealt = 0.0f;
+                bossDamageResetTimer = 0.0f;
+            }
+        }
 
         auto projectiles = registry.View<ProjectileComponent, BoxColliderComponent, TransformComponent>();
         auto enemies = registry.View<CharacterStatsComponent, BoxColliderComponent, TransformComponent>();
@@ -98,6 +115,11 @@ public:
                             // already shakes the camera (below), dealing damage previously
                             // didn't at all.
                             if (isCrit) CameraManager::Instance().Shake(5.0f, 0.15f);
+
+                            if (registry.HasComponent<BossTag>(enemyEntity)) {
+                                bossDamageDealt += dealt;
+                                bossDamageResetTimer = kBossDamageResetTimeout;
+                            }
                         }
 
                         if (registry.HasComponent<StatusEffectsComponent>(enemyEntity)) {
@@ -271,11 +293,35 @@ public:
             }
         }
 
+        // 弾のヒット以外(床属性ギミックの継続ダメージ、Ignite/Bleed/Poison等のDoT、
+        // HazardGroundSystem/StatusEffectSystemが直接currentHPを減らす経路)でHPが0に
+        // なった敵は、上の弾ヒットループを経由しないためdeadEntitiesに積まれず、
+        // HP0のままいつまでも生き残ってしまっていた("死なない敵がいる"というバグ
+        // 報告に対応)。ここで敵全体を一度スイープして拾う(同じエンティティが既に
+        // deadEntitiesにいても、後段のDestroyEntityはIsValidで安全にスキップされる
+        // ため重複しても実害はない)。
+        for (auto entity : enemies) {
+            if (registry.HasComponent<PlayerInputComponent>(entity)) continue;
+            if (registry.HasComponent<AllyTagComponent>(entity)) continue;
+            auto& sweepStats = registry.GetComponent<CharacterStatsComponent>(entity);
+            if (sweepStats.currentHP <= 0.0f) {
+                deadEntities.push_back(entity);
+            }
+        }
+
         for (auto e : destroyedProjectiles) {
             if (registry.IsValid(e)) registry.DestroyEntity(e);
         }
         for (auto e : deadEntities) {
             if (registry.IsValid(e)) {
+                // このマップアタempト内でのスポーン枠(MapSlotComponent)を持つ個体
+                // (トラッシュ/Rare/ボス、EnemySummonSystemの一時的な増援には付与
+                // されない)が死んだら記録しておく。同じアタempト中の再入場では
+                // ZoneBuilder::Buildがこの枠を二度と湧かせない
+                // ("雑魚敵も復活しないようにして…同じ個体で"という指示対応)。
+                if (registry.HasComponent<MapSlotComponent>(e)) {
+                    CampaignManager::Instance().NotifyEnemySlotDead(registry.GetComponent<MapSlotComponent>(e).slotIndex);
+                }
                 SpawnDeathBurst(registry, e);
                 TrySpawnItemDrop(registry, e);
                 registry.DestroyEntity(e);
@@ -284,6 +330,12 @@ public:
     }
 
 private:
+    // 帰還用ポータルの「レア敵とボスを全滅させたら出現」判定はGameScene::Updateが
+    // 毎フレームの残数チェックとしてまとめて行う(1体倒すたびではなく、Rare/ボスが
+    // 全員死んだ最初のフレームだけ出す必要があるため、キル毎に反応するこの関数側では
+    // 判定しきれない。以前はここで1体倒すごとに出していたが「レア敵とボス全部倒して
+    // からだす」という指示で撤回した)。
+
     void SpawnDeathBurst(Registry& registry, Entity deadEntity) {
         if (!registry.HasComponent<TransformComponent>(deadEntity)) return;
         auto& trans = registry.GetComponent<TransformComponent>(deadEntity);
