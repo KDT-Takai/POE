@@ -36,6 +36,7 @@
 #include "../../ECS/Systems/UI/SkillGemSystem.h"
 #include "../../ECS/Systems/UI/GemIdentifySystem.h"
 #include "../../ECS/Systems/UI/KeyBindSystem.h"
+#include "../../ECS/Systems/UI/TutorialSystem.h"
 #include "../../ECS/Systems/Chara/MinionSystem.h"
 #include "../../ECS/Components/Tags/Boss/Boss.h"
 #include "../../ECS/Components/Interaction/MapReturnPortal.h"
@@ -61,6 +62,8 @@ private:
     void RenderGemDebugTools();
     static sf::Color NpcRingColor(TownNpcKind kind);
     static std::string NpcHudHint(TownNpcKind kind);
+    static std::string NpcName(TownNpcKind kind);
+    void DrawWorldLabel(sf::RenderTarget& target, const std::string& utf8, sf::Vector2f center, sf::Color color, bool highlighted) const;
 
     Entity playerEntity = -1;
 
@@ -141,4 +144,9 @@ private:
     std::shared_ptr<GemIdentifySystem> gemIdentifySystem;
     std::shared_ptr<KeyBindSystem> keyBindSystem;
     std::shared_ptr<MinionSystem> minionSystem;
+    std::shared_ptr<TutorialSystem> tutorialSystem;
+
+    float m_tutorialMovedDistance = 0.0f;
+    sf::Vector2f m_tutorialLastPlayerPos;
+    bool m_tutorialHasLastPlayerPos = false;
 };

@@ -144,6 +144,7 @@
     <ClInclude Include="External\ECS\Systems\UI\SkillGemSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\GemIdentifySystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\KeyBindSystem.h" />
+    <ClInclude Include="External\ECS\Systems\UI\TutorialSystem.h" />
     <ClInclude Include="External\ECS\Systems\UI\UISystem.h" />
     <ClInclude Include="External\ECS\Systems\World\MapRenderSystem.h" />
     <ClInclude Include="External\ECS\Systems\World\TileTextureFactory.h" />

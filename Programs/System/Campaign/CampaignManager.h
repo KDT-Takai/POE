@@ -128,12 +128,15 @@ class CampaignManager : public Singleton<CampaignManager> {
     std::array<bool, 5> m_savedAuraActive = { false, false, false, false, false };
     std::vector<std::pair<int, int>> m_savedAtlasNodes;
     bool m_isHardcore = false;
+    int m_tutorialStep = 0;
 
     void BuildActs();
 
 public:
     bool IsHardcore() const { return m_isHardcore; }
     void SetHardcore(bool hardcore) { m_isHardcore = hardcore; }
+    int GetTutorialStep() const { return m_tutorialStep; }
+    void SetTutorialStep(int step) { m_tutorialStep = step; }
     const ActDefinition& CurrentAct() const { return m_acts[m_actIndex]; }
     const ZoneDefinition& CurrentZone() const { return CurrentAct().zones[m_zoneIndex]; }
     int GetEndgameMapTier() const { return m_endgameMapTier; }

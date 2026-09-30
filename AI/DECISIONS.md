@@ -109,6 +109,8 @@ AIは同じ提案を繰り返さないこと。詳しい経緯・議論の記録
 
 - **同じマップアタempト中はミニマップの探索範囲も帰還用ポータルの離脱時点から引き継ぐ**: 「ミニマップがリセットされてる」というバグ報告対応。`MapComponent::visited`(探索済みタイル)はゾーン(登録された`Registry`ごとMapComponentも)を再構築するたびに真っさらな状態で生成されるため、マップシード/敵の生死/HPを同じアタempト内で引き継ぐようにした後も、探索範囲だけは毎回リセットされていた。他の同種の状態(`m_mapSeed`/`m_deadEnemySlots`/`m_enemySlotHp`等)と同じパターンで`CampaignManager::SetMapVisitedTiles`/`GetMapVisitedTiles`を追加し、`GameScene::ReturnToHubViaPortal`が離脱時点の`visited`をスナップショットし、`ZoneBuilder::Build`が(タイル数が一致する=同じマップの時のみ)それを新しいMapComponentへ復元する。タウンは既存の`RevealAll`で常に全体表示のため対象外。
 
+- **チュートリアルは操作を実際に行うと進む目標トラッカー方式**: 「チュートリアルも欲しい」という指示対応。スライド式の説明ページではなく、移動→NPC→インベントリ→スキルジェム→Atlas→Waystone→入場→レア/ボス討伐→帰還→パッシブツリーの10ステップを、実際にその操作をした時点で自動で次へ進める(`TutorialSystem`)。新規ゲーム(`ResetCampaign`)のみ表示し、`tutorialStep`キーを持たない旧セーブは完了扱い。いつでもスキップ可能。
+
 ## 運用ルール
 
 - ここに書くのは結論だけ。長い経緯や議論の記録は書かず、`ROADMAP.md` 側に書いて参照リンクだけ置く。

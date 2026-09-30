@@ -82,11 +82,13 @@ public:
             // もの。「マップデバイスのポータルが消えるタイミングは次のマップをウェイス
             // トーンで開くときに更新される」の通り、ここでの再計算はゾーン再構築(=次の
             // マップ開始/再入場)のたびにしか起きない。
+            // portalMarkers[0]は常にデバイス本体(Atlasを開く)。アタempト中でもデバイスを
+            // 消さない("戻った後マップデバイスがない"というバグ報告対応)。
+            SpawnPortal(registry, goalPos);
+            result.portalMarkers = { result.portalPos };
             if (hasActiveMapAttempt && mapDeathsRemaining > 0) {
-                result.portalMarkers = SpawnReturnPortalRing(registry, result.portalPos, mapDeathsRemaining);
-            } else {
-                SpawnPortal(registry, goalPos);
-                result.portalMarkers = { result.portalPos };
+                auto ring = SpawnReturnPortalRing(registry, result.portalPos, mapDeathsRemaining);
+                result.portalMarkers.insert(result.portalMarkers.end(), ring.begin(), ring.end());
             }
 
             result.townNpcs = PlaceTownNpcs(registry, map, startPos, goalPos);

@@ -2,6 +2,7 @@
 #include <ECS.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <System/CameraManager/CameraManager.h>
 #include <System/Time/Time.h>
 #include <System/DebugGui/DebugGui.h>
@@ -59,6 +60,7 @@ GameScene::GameScene() {
 	gemIdentifySystem = std::make_shared<GemIdentifySystem>();
 	keyBindSystem = std::make_shared<KeyBindSystem>();
 	minionSystem = std::make_shared<MinionSystem>();
+	tutorialSystem = std::make_shared<TutorialSystem>();
 
     auto& campaign = CampaignManager::Instance();
     const ZoneDefinition& zone = campaign.CurrentZone();
@@ -313,6 +315,36 @@ sf::Color GameScene::NpcRingColor(TownNpcKind kind) {
     }
 }
 
+std::string GameScene::NpcName(TownNpcKind kind) {
+    switch (kind) {
+    case TownNpcKind::ItemVendor: return "商人";
+    case TownNpcKind::WaystoneVendor: return "ウェイストーン商人";
+    case TownNpcKind::Stash: return "保管庫";
+    default: return "";
+    }
+}
+
+void GameScene::DrawWorldLabel(sf::RenderTarget& target, const std::string& utf8, sf::Vector2f center, sf::Color color, bool highlighted) const {
+    auto font = ResourceManager::Instance().getFont("Assets/Fonts/NotoSansJP-Regular.ttf");
+    if (!font) return;
+    sf::Text label(*font, sf::String::fromUtf8(utf8.begin(), utf8.end()), 16);
+    label.setFillColor(highlighted ? sf::Color(255, 255, 140) : color);
+    label.setOutlineColor(sf::Color::Black);
+    label.setOutlineThickness(2.0f);
+    sf::FloatRect bounds = label.getLocalBounds();
+    label.setOrigin({ bounds.position.x + bounds.size.x / 2.0f, bounds.position.y + bounds.size.y });
+    label.setPosition(center);
+
+    sf::RectangleShape plate({ bounds.size.x + 14.0f, bounds.size.y + 10.0f });
+    plate.setOrigin({ plate.getSize().x / 2.0f, plate.getSize().y - 5.0f });
+    plate.setPosition(center);
+    plate.setFillColor(sf::Color(10, 10, 14, 150));
+    plate.setOutlineColor(sf::Color(color.r, color.g, color.b, 120));
+    plate.setOutlineThickness(1.0f);
+    target.draw(plate);
+    target.draw(label);
+}
+
 std::string GameScene::NpcHudHint(TownNpcKind kind) {
     switch (kind) {
     case TownNpcKind::ItemVendor: return "クリックして商人と取引する";
@@ -513,6 +545,29 @@ void GameScene::Update() {
     skillGemSystem->Update(*registry, dt);
     gemIdentifySystem->Update(*registry, dt);
 
+    if (registry->IsValid(playerEntity) && registry->HasComponent<TransformComponent>(playerEntity)) {
+        sf::Vector2f playerPosForTutorial = registry->GetComponent<TransformComponent>(playerEntity).position;
+        if (m_tutorialHasLastPlayerPos) {
+            sf::Vector2f delta = playerPosForTutorial - m_tutorialLastPlayerPos;
+            m_tutorialMovedDistance += std::sqrt(delta.x * delta.x + delta.y * delta.y);
+        }
+        m_tutorialLastPlayerPos = playerPosForTutorial;
+        m_tutorialHasLastPlayerPos = true;
+    }
+    TutorialContext tutorialCtx;
+    tutorialCtx.isTown = m_zoneKind == ZoneKind::Town;
+    tutorialCtx.playerMovedDistance = m_tutorialMovedDistance;
+    tutorialCtx.anyNpcPanelOpen = vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen;
+    tutorialCtx.inventoryOpen = inventorySystem->isOpen;
+    tutorialCtx.skillGemsOpen = skillGemSystem->isOpen;
+    tutorialCtx.atlasOpen = atlasSystem->isOpen;
+    tutorialCtx.hasActiveMapAttempt = CampaignManager::Instance().HasActiveMapAttempt();
+    tutorialCtx.notableEnemiesCleared = m_notablePortalSpawned;
+    tutorialCtx.passiveTreeOpen = passiveTreeSystem->isOpen;
+    tutorialCtx.hidePanel = characterSheetSystem->isOpen || skillGemSystem->isOpen || passiveTreeSystem->isOpen || atlasSystem->isOpen ||
+        vendorSystem->isOpen || waystoneVendorSystem->isOpen || stashSystem->isOpen || keyBindSystem->isOpen || gemIdentifySystem->isOpen || minimapSystem->IsFullMapOpen();
+    tutorialSystem->Update(tutorialCtx, dt);
+
     // パッシブツリー等をゆっくり操作できるよう、それらのメニューが開いている間は
     // ワールドシミュレーションを止める。ただしインベントリ(アイテム)/キャラクター
     // シート(ステータス)/スキルジェムはPoE2同様、開いたまま戦闘・移動を続けられる
@@ -529,7 +584,8 @@ void GameScene::Update() {
     bool mouseOverFreeMenu =
         inventorySystem->IsPointInPanel(mouseScreenPos, winSizeForUI) ||
         characterSheetSystem->IsPointInPanel(mouseScreenPos) ||
-        skillGemSystem->IsPointInPanel(mouseScreenPos);
+        skillGemSystem->IsPointInPanel(mouseScreenPos) ||
+        tutorialSystem->IsPointInPanel(mouseScreenPos);
     bool uiOwnsClicks = isPaused || mouseOverFreeMenu;
 
     // 地面のアイテムはクリックで拾う(徘徊での自動拾得は廃止)。カーソルが
@@ -684,8 +740,12 @@ void GameScene::Update() {
                 m_playerNearPortal = distSq < (150.0f * 150.0f);
 
                 if (m_clickedOnPortal) {
-                    TryOpenEndgameMapFromHub();
-                    return;
+                    if (m_hoveredPortalMarker == 0) {
+                        atlasSystem->Open();
+                    } else {
+                        TryOpenEndgameMapFromHub();
+                        return;
+                    }
                 }
             }
         }
@@ -754,6 +814,21 @@ void GameScene::Render(sf::RenderTarget& target) {
         target.draw(ring);
     }
 
+    if (m_zoneKind == ZoneKind::Town) {
+        float labelBob = std::sin(static_cast<float>(Time::Instance().GetTotalTime()) * 2.0f) * 2.0f;
+        for (size_t i = 0; i < m_townNpcs.size(); ++i) {
+            sf::Color nameColor = NpcRingColor(m_townNpcs[i].kind);
+            nameColor.a = 255;
+            bool highlighted = m_hoveringNpc && static_cast<int>(i) == m_nearNpcIndex;
+            DrawWorldLabel(target, NpcName(m_townNpcs[i].kind), m_townNpcs[i].pos + sf::Vector2f(0.0f, -30.0f + labelBob), nameColor, highlighted);
+        }
+        if (m_hasPortal) {
+            float deviceLabelOffset = m_portalMarkers.size() > 1 ? -92.0f : -36.0f;
+            DrawWorldLabel(target, "マップデバイス", m_portalPos + sf::Vector2f(0.0f, deviceLabelOffset + labelBob), sf::Color(120, 220, 255),
+                m_hoveringPortal && m_hoveredPortalMarker == 0);
+        }
+    }
+
     // マップデバイス(ポータル)もNPCと同じクリック範囲リングを表示する。進行中のマップ
     // アタempトがあれば円状に並んだ全マーカーそれぞれにリングを描く。
     if (m_hasPortal && m_playerNearPortal) {
@@ -786,13 +861,14 @@ void GameScene::Render(sf::RenderTarget& target) {
     target.setView(target.getDefaultView());
 	uiSystem->Render(*registry, target, m_zoneKind == ZoneKind::Combat, m_portalChannelRemaining, kPortalChannelDuration);
 	minimapSystem->RenderMinimap(*registry, target, playerEntity);
+	tutorialSystem->Render(target);
 
     std::string hudLine;
     if (m_zoneKind == ZoneKind::Town) {
         if (m_playerNearPortal) {
             auto& campaign = CampaignManager::Instance();
-            if (campaign.HasActiveMapAttempt()) {
-                hudLine = "ポータルをクリックしてTier " + std::to_string(campaign.GetEndgameMapTier())
+            if (campaign.HasActiveMapAttempt() && m_hoveredPortalMarker != 0) {
+                hudLine = "周りのポータルをクリックしてTier " + std::to_string(campaign.GetEndgameMapTier())
                     + " のマップへ再入場 (残りポータル " + std::to_string(campaign.GetMapDeathsRemaining()) + "/" + std::to_string(campaign.GetMapDeathsMax()) + ")";
             } else {
                 hudLine = "クリックしてAtlasを開く (所持ウェイストーン: " + HeldWaystoneSummary() + ")";

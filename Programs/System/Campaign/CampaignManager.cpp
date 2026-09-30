@@ -365,6 +365,7 @@ void CampaignManager::ResetCampaign() {
     m_activeMapMods.clear();
     m_pendingAtlasNodeValid = false;
     m_savedAtlasNodes.clear();
+    m_tutorialStep = 0;
 }
 
 void CampaignManager::SavePlayerStats(const CharacterStatsComponent& stats) {
@@ -390,6 +391,7 @@ void CampaignManager::SaveToDisk(const std::string& path) const {
     out << "endgameMapTier=" << m_endgameMapTier << "\n";
     out << "hasSavedPlayer=" << (m_hasSavedPlayer ? 1 : 0) << "\n";
     out << "isHardcore=" << (m_isHardcore ? 1 : 0) << "\n";
+    out << "tutorialStep=" << m_tutorialStep << "\n";
 
     WriteStats(out, "stats.", m_savedStats);
     WriteStats(out, "base.", m_savedEquipment.baseStats);
@@ -462,6 +464,8 @@ bool CampaignManager::LoadFromDisk(const std::string& path) {
     m_zoneIndex = GetI(kv, "zoneIndex", 0);
     m_endgameMapTier = GetI(kv, "endgameMapTier", 1);
     m_isHardcore = GetI(kv, "isHardcore", 0) != 0;
+    // チュートリアル導入前のセーブは既プレイ扱いにして表示しない
+    m_tutorialStep = GetI(kv, "tutorialStep", 1000);
     m_hasSavedPlayer = GetI(kv, "hasSavedPlayer", 0) != 0;
 
     if (m_actIndex >= static_cast<int>(m_acts.size())) m_actIndex = static_cast<int>(m_acts.size()) - 1;
